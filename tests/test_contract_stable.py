@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # never pollute the engine checkout
+
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / 'deps' / 'PS2Recomp'
 

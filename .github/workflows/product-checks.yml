@@ -28,6 +28,8 @@ jobs:
       - name: Prebuilt trust-boundary regressions (no disc)
         run: python3 tools/ssx3/test_prebuilt.py
       - name: Archive identity stable across the move
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
         run: python3 tests/test_contract_stable.py
       - name: Byte-preservation manifest
         run: python3 tests/provenance/check_manifest.py
