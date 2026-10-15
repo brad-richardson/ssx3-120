@@ -1,0 +1,37 @@
+name: product-checks
+
+# No-disc product checks: builder unit tests, prebuilt trust-boundary
+# regressions, archive-identity stability (product == pinned engine), and
+# the byte-preservation manifest. Nothing here reads a disc, a card, or a
+# private work directory.
+
+on: [push, pull_request]
+
+jobs:
+  no-disc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Engine pin matches deps.lock.json
+        run: |
+          test "$(git -C deps/PS2Recomp rev-parse HEAD)" = "$(python3 -c "import json; print(json.load(open('deps.lock.json'))['engine']['pin'])")"
+          test -z "$(git -C deps/PS2Recomp status --porcelain)"
+      - name: Builder unit tests
+        run: |
+          pip install numpy pillow
+          for t in tools/ssx3/tests/test_*.py; do python3 "$t"; done
+      - name: Prebuilt trust-boundary regressions (no disc)
+        run: python3 tools/ssx3/test_prebuilt.py
+      - name: Archive identity stable across the move
+        run: python3 tests/test_contract_stable.py
+      - name: Byte-preservation manifest
+        run: python3 tests/provenance/check_manifest.py
+      - name: Shell syntax
+        run: |
+          for s in $(git ls-files '*.sh'); do sh -n "$s"; done
+          python3 -m py_compile build.py tools/ssx3/build.py tools/ssx3/prebuilt.py tools/ssx3/test_prebuilt.py tools/bench/bench-android.py tools/replay/padrec_complete.py tools/replay/padrec_replay_env.py tests/det/boot/baseline.py tests/det/knob_registry.py tests/det/knob_matrix.py

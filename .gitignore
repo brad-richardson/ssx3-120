@@ -1,0 +1,5 @@
+# Build outputs, caches and OS noise never enter the product repo.
+__pycache__/
+*.py[cod]
+.DS_Store
+*.orig

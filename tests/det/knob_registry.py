@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Check registered PS2X_/GE1_ runtime names at a selected fork revision.
+"""Check registered PS2X_/GE1_ runtime names at a selected engine revision.
 
 Direct getenv literals and quoted names passed through tables/helpers are covered.
 Generated runner code and tests are excluded. The GE1 adapter is vendored under
-ps2xRuntime/third_party.
+ps2xRuntime/third_party. Both ownership roots are scanned: the engine checkout
+(via git objects) and this repo's tools/ssx3 + games trees.
 """
 
 import argparse
@@ -14,7 +15,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_FORK = Path.home() / 'dev/PS2Recomp'
+ROOT = HERE.parent.parent  # tests/det -> repo root
+DEFAULT_ENGINE = ROOT / "deps" / "PS2Recomp"
 NAME = re.compile(r'"((?:PS2X|GE1)_[A-Z0-9_]+)"')
 DIRECT = re.compile(r'(?:std::)?getenv\s*\(\s*"((?:PS2X|GE1)_[A-Z0-9_]+)"')
 CLASSES = {'play-default', 'user-toggle', 'reference', 'gate', 'diag', 'active-lane', 'dead'}
@@ -33,18 +35,34 @@ def source_names(source):
     return set(NAME.findall(source)), set(DIRECT.findall(source))
 
 
-def names_at(fork, rev):
-    paths = git(fork, 'ls-tree', '-r', '--name-only', rev, '--', 'ps2xRuntime',
-                'tools/ssx3/offline-core').splitlines()
+def names_at_engine(engine, rev):
+    paths = git(engine, 'ls-tree', '-r', '--name-only', rev, '--', 'ps2xRuntime').splitlines()
     all_names, direct = {}, set()
     for path in paths:
         if Path(path).suffix not in SOURCE_EXT or path.startswith('ps2xRuntime/src/runner/'):
             continue
-        source = git(fork, 'show', f'{rev}:{path}')
+        source = git(engine, 'show', f'{rev}:{path}')
         quoted, getenv = source_names(source)
         for name in quoted:
-            all_names.setdefault(name, path)
+            all_names.setdefault(name, 'engine: ' + path)
         direct.update(getenv)
+    return all_names, direct
+
+
+def names_at_tree(root):
+    all_names, direct = {}, set()
+    for base in ('tools/ssx3', 'games'):
+        for path in sorted((root / base).rglob('*')):
+            if not path.is_file() or path.suffix not in SOURCE_EXT:
+                continue
+            try:
+                source = path.read_text()
+            except OSError:
+                continue
+            quoted, getenv = source_names(source)
+            for name in quoted:
+                all_names.setdefault(name, str(path.relative_to(root)))
+            direct.update(getenv)
     return all_names, direct
 
 
@@ -79,13 +97,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--list', action='store_true')
-    parser.add_argument('--rev', default='fork/ssx3')
-    parser.add_argument('--fork', type=Path, default=DEFAULT_FORK)
+    parser.add_argument('--rev', default='HEAD')
+    parser.add_argument('--engine', type=Path, default=None)
+    parser.add_argument('--fork', type=Path, default=None, help='alias for --engine')
     parser.add_argument('--registry', type=Path, default=HERE / 'knob_registry.tsv')
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
     try:
-        found, direct = names_at(args.fork, args.rev)
+        engine = args.engine or args.fork or DEFAULT_ENGINE
+        found_e, direct_e = names_at_engine(engine, args.rev)
+        found_p, direct_p = names_at_tree(ROOT)
+        found = {**found_e, **{k: v for k, v in found_p.items() if k not in found_e}}
+        direct = direct_e | direct_p
         registry, duplicates = load_registry(args.registry)
     except (OSError, RuntimeError, KeyError) as error:
         print(f'knob-registry: {error}', file=sys.stderr)

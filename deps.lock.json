@@ -1,0 +1,47 @@
+{
+  "product": "ssx3-120",
+  "engine": {
+    "repo": "https://github.com/brad-richardson/PS2Recomp.git",
+    "ref": "ssx3",
+    "pin": "35cfdcddeeec9319e278a0c92ce10caa058bffca",
+    "submodule": "deps/PS2Recomp",
+    "runner_invariant_base": "c5a9d02573410a2085a4b4b831b0b68ba3515440",
+    "upstream_base": "2c5fbb9389e11dd95693385969490c9e8e6f57b4"
+  },
+  "generator": {
+    "repo": "https://github.com/brad-richardson/PS2Recomp.git",
+    "pin": "03c10b5aeccd4fb673fecaea3cf4a5f5064afe14"
+  },
+  "vendor": {
+    "armsx2": {
+      "repo": "https://github.com/brad-richardson/armsx2.git",
+      "pin": "afad5a04c2668a10e12adadaa51d54c46f832236"
+    },
+    "plutovg": "v1.1.0",
+    "plutosvg": "v0.0.7",
+    "turnip": {
+      "release": "turnip-ssx3-ad094bb9",
+      "binary_sha256": "ad094bb99750e9793c887fe99551e0868ee58f9a0911f21f66b6c27a372bbb92",
+      "notices_sha256": "514bffd1c642245e59efe3e40666d4b05642c072557625343ed9afd850c4d8c0"
+    }
+  },
+  "toolchains": {
+    "ndk": "28.2.13676358",
+    "sdk": ["platforms;android-34", "build-tools;34.0.0", "cmake;3.22.1", "platform-tools"],
+    "android_api": 29,
+    "android_abi": "arm64-v8a"
+  },
+  "archive_identity": {
+    "contract": "39faf513d0b57a2c0138ca42ccb8ee8e6bfe1b9de50e19d33805a249313fe5cc",
+    "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
+  },
+  "inputs": {
+    "iso_sha256": "3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5",
+    "elf_sha256": "1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc",
+    "note": "hashes of the user's own USA disc/ELF; no game data ships in this repo"
+  },
+  "pool": {
+    "key_35cfdcdd": "566c222baceb04f5",
+    "note": "private canonical-build cache key for the pinned engine; product SHA joins the key after the step-1 adapter lands"
+  }
+}

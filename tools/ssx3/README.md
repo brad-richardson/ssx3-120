@@ -148,7 +148,7 @@ dependencies. Keep the directory in place while running.
 work directory**; it bypasses startup movies. It does not use another user's
 cards, texture packs or play settings. See [knobs.tsv](knobs.tsv) for a
 source-registry snapshot; supported defaults remain defined by
-[ps2_knobs.h](../../ps2xRuntime/include/ps2_knobs.h). Registry classes describe
+[ps2_knobs.h](../../deps/PS2Recomp/ps2xRuntime/include/ps2_knobs.h). Registry classes describe
 the source census, not a promise that every diagnostic knob is supported.
 
 ## Android APK
@@ -177,8 +177,8 @@ saves. The ISO stays outside the APK. On Android 11+, the installed app uses
 its own external files directory; adb has shell access to push those files.
 Use `--serial DEVICE` if adb sees more than one device. `stage` remains a
 local layout preview and prints manual adb commands. The shipped
-Android presets are [presets/ps2x.env](presets/ps2x.env) and
-[presets/full120.env](presets/full120.env), derived from the Odin play env
+Android presets are [ps2x.env](../../presets/ps2x.env) and
+[full120.env](../../presets/full120.env), derived from Adreno play-device tuning
 with every private path removed and the SET2 settings overlay on
 (`PS2X_SETTINGS_OVERLAY=1`). The public preset selects the driver by Vulkan
 GPU vendor and uses interpreted VU0 (`PS2X_VU0_RECOMP=0`). Reported RAM at
@@ -188,15 +188,15 @@ CAS; Android scales that output to the panel. The in-game Resolution setting
 persists and overrides the render default.
 
 JNI input must contain your locally source-built `arm64-v8a/libge1_gs.so`
-and `libmv2_microvu.so`; never include `libhardware.so`, which this fork builds
-from [HAL source](../../android/hwcompat/hwcompat.c). Optional custom Vulkan
+and `libmv2_microvu.so`; never include `libhardware.so`, which the engine builds
+from [HAL source](../../apps/android/hwcompat/hwcompat.c). Optional custom Vulkan
 comes from [Mesa sources](https://github.com/brad-richardson/mesa/tree/ssx3).
 The public `android` step downloads the pinned release in
 [`turnip.json`](turnip.json), verifies the binary and notices by SHA-256, and
 packages both. `--no-turnip` omits them. A failed download prints a warning
 and builds with the system Vulkan driver. Adreno selects Turnip when present;
 a load failure falls back to the system driver.
-The APK stays under `android/app/build/outputs/apk/release` locally.
+The APK stays under `apps/android/app/build/outputs/apk/release` locally.
 
 `android-libs` invokes the pinned ARMSX2 public source dependency recipe
 `.github/workflows/scripts/android/build-dependencies.sh` with your NDK,
@@ -205,12 +205,13 @@ that local prefix. The dependency recipe has its own parallelism setting
 (based on host CPU count). It stages JNI libraries and public renderer
 resources into your work directory. This source-only route avoids the old
 private remote helper and bundled dependency directory. Android library/APK
-compilation and signing were validated on macOS Apple silicon by PUB1 and PUB2.
+compilation and signing are validated on macOS Apple silicon and Linux
+(x86_64 and arm64 clean containers).
 Installation, title, a finished race, controls, sound, and save/reload
-remain for device acceptance. Linux hosts, the remaster pack and Tricky
+remain for device acceptance. The remaster pack and Tricky
 preparation have not been validated by this route.
 
-After building, follow [Android setup/save protection](../../android/README.md)
+After building, follow [Android setup/save protection](../../apps/android/README.md)
 for the 60/120 launcher layers. `build.py
 android` creates a per-user signing keystore once in your work directory
 (`ssx3-signing.keystore`) and reuses it on every later build, with a
@@ -239,7 +240,7 @@ translated guest-function identities and counts; keep them private and
 regenerate after guest-code changes. The helper only flushes every 30 seconds.
 PGO is optional; no profile is bundled or fetched.
 
-[iOS base preset](presets/ios.env) and [full120 layer](presets/full120-ios.env)
+[iOS base preset](../../presets/ios.env) and [full120 layer](../../presets/full120-ios.env)
 export settings without a personal host/card path or automatic pad route.
 They require your own game inputs and offline VU1 stage. The handwritten
 [offline host machinery](offline-core/README.md) is included as source,

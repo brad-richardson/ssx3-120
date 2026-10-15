@@ -1,262 +1,231 @@
 #!/bin/bash
-# One-command Mac gate (BN1): the fight-forward loop's Mac vetting.
+# Public determinism gate (Mac host): four det keys against your own disc.
 #
-# Usage: mac_gate.sh <worktree> [--profiles reference,play,full120events,play120]
-#   <worktree>  PS2Recomp fork checkout to vet (e.g. a lane worktree at the
-#               gated tip that would be pushed).
+# Usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles reference,play,full120events,play120] [--engine DIR] [--jobs N]
+#   --work      external private work dir (prepare/mac-libs/mac outputs live here)
+#   --iso       own supported USA disc image (prepare step only)
+#   --elf       boot ELF (default: DIR/SLUS_207.72 from a previous prepare)
+#   --engine    engine checkout (default: this repo's deps/PS2Recomp submodule)
 #
 # Steps (one PASS/FAIL table at the end; exit 0 iff all PASS):
-#   1. Mac build via mac_build.sh --det (shared ccache, niced).
-#   2. Suite (ps2x_tests) from the worktree root.
-#   3. Runner-dir check vs RUNNER_BASE (default upstream c5a9d02, the base the fork
-#      was rebuilt on in UPR1 10-02), committed + dirty.
-#   4. Knob-off det vs the current Mac play key (p-lane slot, 1 boot).
-#   5. Self-match for each named profile key (reference, play,
-#      full120events, play120; the default is 4 boots total).
+#   0. Knob checks (matrix signed-off set + registry coverage).
+#   1. Build: prepare (disc -> codegen) unless inputs.json exists,
+#      mac-libs (GE1/microVU), mac (runner + suite).
+#   2. Suite (ps2x_tests) from the engine root.
+#   3. Runner-dir check vs RUNNER_BASE (must stay empty).
+#   4. One det boot per profile + public-key compare (IDENTICAL).
 #
-# Keys resolve by profile+build, newest manifest wins (lanes re-mint on
-# deliberate change); every candidate is printed. Det boots mirror
-# baseline.py make (pins' route/backend/sound/stop/hash-every/coverage +
-# the pinned microVU dylib). CN2a: the backend comes from the key's pins.
-# CN2b: the det keys are backend=external (GE1, the extracted PCSX2 GS, on
-# MoltenVK); the GE1 dylib's SHA-256 must equal the key's ge1_lib pin.
-# backend=parallel keys (paraLLEl-GS, retired) are refused. The arm64 reference key (RF1, 09-30) is PS2X_PROFILE=reference
-# (every compiled default off) with the VU1 engine on microVU: det_boot adds
-# PS2X_VU1_ENGINE=microvu + PS2X_MTVU=1 (microVU refuses to start without MTVU) for it, as
-# baseline.py make does. x86 det boots are retired.
+# Backend libs are the just-built dylibs. Their SHAs are recorded in the
+# receipt; a mismatch against the key's lib pins warns (build-environment
+# bytes vary by host) but does not fail: the det hash is
+# renderer-independent with readback off, so only guest hashes, snd rows
+# and coverage can fail the gate.
 set -u
 
-WT=""; PROFILES="reference,play,full120events,play120"
+WORK=""; ISO=""; ELF=""; PROFILES="reference,play,full120events,play120"; ENGINE=""; JOBS=4
 while [ $# -gt 0 ]; do
   case $1 in
+    --work) WORK=$2; shift;;
+    --iso) ISO=$2; shift;;
+    --elf) ELF=$2; shift;;
     --profiles) PROFILES=$2; shift;;
-    -*) echo "usage: mac_gate.sh <worktree> [--profiles reference,play,full120events,play120]" >&2; exit 2;;
-    *) [ -z "$WT" ] || { echo "one <worktree> only" >&2; exit 2; }; WT=$1;;
+    --engine) ENGINE=$2; shift;;
+    --jobs) JOBS=$2; shift;;
+    -*) echo "usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles ...] [--engine DIR] [--jobs N]" >&2; exit 2;;
+    *) echo "unknown arg: $1" >&2; exit 2;;
   esac
   shift
 done
-[ -n "$WT" ] || { echo "usage: mac_gate.sh <worktree> [--profiles reference,play,full120events,play120]" >&2; exit 2; }
-WT="${WT%/}"
-[ -d "$WT" ] || { echo "not a dir: $WT" >&2; exit 2; }
+[ -n "$WORK" ] || { echo "--work is required" >&2; exit 2; }
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# OMF1 lane hook: find the repo root by walking up (the lane copy sits one
-# level deeper than the landed path, so a fixed ../.. is wrong for one of
-# them); prefer tooling copies beside this script (lane testing).
-REPO="$(cd "$SCRIPT_DIR" && while [ ! -f "$PWD/local/tooling/p_lane_lease.py" ] && [ "$PWD" != / ]; do cd ..; done; pwd)"
-pick() { [ -f "$SCRIPT_DIR/$1" ] && printf '%s' "$SCRIPT_DIR/$1" || printf '%s' "$REPO/local/tooling/$1"; }
-MAC_BUILD="$(pick build/mac_build.sh)"
-KNOB_MATRIX="$(pick knob_matrix.py)"
-KNOB_REGISTRY="$(pick knob_registry.py)"
-POOL_PY="$(pick pool.py)"
-BOOT="$(pick boot/ssx3_boot.py)"
-BASELINE="$(pick boot/baseline.py)"
-PLEASE="$(pick p_lane_lease.py)"
-WORK=$HOME/dev/ssx3-work
-STORE=${MAC_GATE_STORE:-$WORK/baselines}
-# PI1: pinned inputs (pinned/INDEX.tsv; the keys pin both SHAs, checked below).
-MVU_DYLIB=$WORK/pinned/mac/microvu-dylib-ac245573/libmv2_microvu.dylib
-GE1_DYLIB=$WORK/pinned/mac/ge1-dylib-37a81b4d/libge1_gs.dylib # = ssx3_boot.py GE1_LIB
-for f in "$MAC_BUILD" "$POOL_PY" "$BOOT" "$BASELINE" "$PLEASE"; do
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ENGINE="${ENGINE:-$ROOT/deps/PS2Recomp}"
+BUILD="$ROOT/tools/ssx3/build.py"
+BOOT="$ROOT/tests/det/boot/ssx3_boot.py"
+COMPARE="$ROOT/tests/det/compare.py"
+KEYS="$ROOT/tests/det/keys"
+MATRIX="$ROOT/tests/det/knob_matrix.py"
+REGISTRY="$ROOT/tests/det/knob_registry.py"
+for f in "$BUILD" "$BOOT" "$COMPARE" "$MATRIX" "$REGISTRY"; do
   [ -f "$f" ] || { echo "missing $f" >&2; exit 2; }
 done
 
-HEAD_SHA="$(git -C "$WT" rev-parse HEAD)" || { echo "not a git worktree: $WT" >&2; exit 2; }
-SHA7="$(printf %s "$HEAD_SHA" | cut -c1-7)"
-DIRTY_N="$(git -C "$WT" status --porcelain | wc -l | tr -d ' ')"
-GATE="$(dirname "$WT")/mac-gate-$SHA7"
+ENGINE_SHA="$(git -C "$ENGINE" rev-parse HEAD)" || { echo "engine is not a git checkout: $ENGINE" >&2; exit 2; }
+SHA7="$(printf %s "$ENGINE_SHA" | cut -c1-7)"
+LOCK_SHA="$(python3 -c "import json; print(json.load(open('$ROOT/deps.lock.json'))['engine']['pin'])")"
+[ "$ENGINE_SHA" = "$LOCK_SHA" ] || { echo "engine $ENGINE_SHA != deps.lock.json $LOCK_SHA" >&2; exit 2; }
+[ -z "$(git -C "$ENGINE" status --porcelain)" ] || { echo "engine checkout is dirty" >&2; exit 2; }
+mkdir -p "$WORK"
+GATE="$WORK/det-gate-$SHA7"
 mkdir -p "$GATE"
-echo "== mac_gate $WT @ $HEAD_SHA (dirty=$DIRTY_N)"
+echo "== mac_gate engine $ENGINE_SHA work $WORK"
 echo "   gate dir: $GATE"
 
 RESULTS="$GATE/table.md"
-: > "$RESULTS"
-pass() { printf '| %s | PASS | %s |\n' "$1" "$2" | tee -a "$RESULTS"; }
-fail() { printf '| %s | FAIL | %s |\n' "$1" "$2" | tee -a "$RESULTS"; }
 {
   echo "# mac_gate $SHA7 ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
   echo ""
-  echo "worktree \`$WT\` @ \`$HEAD_SHA\` dirty=$DIRTY_N profiles=$PROFILES"
+  echo "engine \`$ENGINE_SHA\` work \`$WORK\` profiles=$PROFILES"
   echo ""
   echo "| Step | Result | Detail |"
   echo "| --- | --- | --- |"
-} | tee "$RESULTS"
+} > "$RESULTS"
+pass() { printf '| %s | PASS | %s |\n' "$1" "$2" | tee -a "$RESULTS"; }
+fail() { printf '| %s | FAIL | %s |\n' "$1" "$2" | tee -a "$RESULTS"; }
 FAIL_N=0
 
-# 0. Knob checks: pure file reads, no slot needed. Pins
-# --rev to the tested tip, so a signed-off play setting that isn't effective
-# on a platform fails the gate.
-echo "== [0/5] knob-matrix check"
-if python3 "$KNOB_MATRIX" --check --rev "$HEAD_SHA" > "$GATE/knob-check.log" 2>&1; then
-  pass "knob-check" "signed-off play set effective at $SHA7 (log $GATE/knob-check.log)"
+echo "== [0/4] knob checks"
+if python3 "$MATRIX" --check --rev "$ENGINE_SHA" --engine "$ENGINE" > "$GATE/knob-check.log" 2>&1; then
+  pass "knob-check" "signed-off set effective at $SHA7 (log knob-check.log)"
 else
   fail "knob-check" "divergence (see $GATE/knob-check.log)"; FAIL_N=$((FAIL_N+1))
 fi
-if "$KNOB_REGISTRY" --check --fork "$WT" --rev "$HEAD_SHA" > "$GATE/knob-registry.log" 2>&1; then
-  pass "knob-registry" "runtime reads registered at $SHA7 (log $GATE/knob-registry.log)"
+if python3 "$REGISTRY" --check --engine "$ENGINE" --rev "$ENGINE_SHA" > "$GATE/knob-registry.log" 2>&1; then
+  pass "knob-registry" "runtime reads registered at $SHA7 (log knob-registry.log)"
 else
   fail "knob-registry" "missing or invalid registration (see $GATE/knob-registry.log)"; FAIL_N=$((FAIL_N+1))
 fi
 
-# 1. Build: pool first (BLD1b), in-place fallback. The suite still runs from $WT.
-echo "== [1/5] build --det (pool first)"
-SUITE_BIN=""; RUNNER=""; POOL_KEY=""
-if [ -z "${POOL_DISABLE:-}" ] && POOL_KEY="$(python3 "$POOL_PY" key --worktree "$WT" --flavour det 2>"$GATE/pool-key.log")"; then
-  if POOL_ENTRY="$(python3 "$POOL_PY" get --worktree "$WT" --flavour det 2>"$GATE/pool-get.log")"; then
-    POOL_ENTRY="$(printf %s "$POOL_ENTRY" | grep '^/' | head -1)"
-    POOL_MSG="$(grep POOL "$GATE/pool-get.log" | tail -1)"
-    SUITE_BIN="$POOL_ENTRY/ps2x_tests"
-    RUNNER="$POOL_ENTRY/ps2EntryRunner"
-    pass "build" "pool $POOL_MSG key=$POOL_KEY (log $GATE/pool-get.log)"
-  else
-    fail "build" "pool.py get failed (see $GATE/pool-get.log)"; FAIL_N=$((FAIL_N+1))
+echo "== [1/4] build (prepare, mac-libs, mac)"
+if [ ! -f "$WORK/inputs.json" ]; then
+  if [ -z "$ISO" ]; then
+    fail "build" "--work has no inputs.json and no --iso given"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1
   fi
-else
-  if [ -n "${POOL_DISABLE:-}" ]; then POOL_WHY="pool disabled"; else POOL_WHY="dirty"; fi
-  if nice -n 10 bash "$MAC_BUILD" "$WT" "$GATE/build" --det > "$GATE/build.log" 2>&1; then
-    pass "build" "in-place ($POOL_WHY) mac_build.sh --det rc=0 (log $GATE/build.log)"
-  else
-    fail "build" "in-place ($POOL_WHY) see $GATE/build.log"; FAIL_N=$((FAIL_N+1))
-  fi
-  SUITE_BIN="$GATE/build/ps2xTest/ps2x_tests"
-  RUNNER="$GATE/build/ps2xRuntime/ps2EntryRunner"
+  python3 "$BUILD" prepare --work "$WORK" --iso "$ISO" --engine "$ENGINE" --jobs "$JOBS" > "$GATE/prepare.log" 2>&1 \
+    || { fail "build" "prepare failed (see $GATE/prepare.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
 fi
+GE1_DYLIB="$WORK/libs-build/ge1-adapter/libge1_gs.dylib"
+MVU_DYLIB="$WORK/libs-build/libmv2_microvu.dylib"
+if [ ! -f "$GE1_DYLIB" ] || [ ! -f "$MVU_DYLIB" ]; then
+  python3 "$BUILD" mac-libs --work "$WORK" --engine "$ENGINE" --jobs "$JOBS" > "$GATE/mac-libs.log" 2>&1 \
+    || { fail "build" "mac-libs failed (see $GATE/mac-libs.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
+fi
+RUNNER_BUILD="$WORK/runner-build"
+if [ ! -x "$RUNNER_BUILD/ps2xRuntime/ps2EntryRunner" ]; then
+  python3 "$BUILD" mac --work "$WORK" --engine "$ENGINE" --jobs "$JOBS" --suite > "$GATE/mac.log" 2>&1 \
+    || { fail "build" "mac failed (see $GATE/mac.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
+fi
+if [ -x "$RUNNER_BUILD/ps2xRuntime/ps2EntryRunner" ]; then
+  pass "build" "prepare + mac-libs + mac (logs in $GATE)"
+else
+  fail "build" "runner missing after build"; FAIL_N=$((FAIL_N+1))
+fi
+RUNNER="$RUNNER_BUILD/ps2xRuntime/ps2EntryRunner"
+SUITE_BIN="$RUNNER_BUILD/ps2xTest/ps2x_tests"
 
-# 2. Suite from the worktree root.
-echo "== [2/5] suite"
+echo "== [2/4] suite"
 if [ -x "$SUITE_BIN" ]; then
-  (cd "$WT" && "$SUITE_BIN" > "$GATE/suite.log" 2>&1)
+  (cd "$ENGINE" && "$SUITE_BIN" > "$GATE/suite.log" 2>&1)
   SUITE_RC=$?
   TOTAL="$(sed -n 's/^Total Tests: \([0-9]*\)$/\1/p' "$GATE/suite.log" | tail -1)"
-  PASSED="$(sed -n 's/^Passed: \([0-9]*\)$/\1/p' "$GATE/suite.log" | tail -1)"
   FAILED="$(sed -n 's/^Failed: \([0-9]*\)$/\1/p' "$GATE/suite.log" | tail -1)"
   if [ "$SUITE_RC" = "0" ] && [ -n "$TOTAL" ] && [ "$FAILED" = "0" ]; then
-    pass "suite" "$PASSED/$TOTAL from the worktree root"
+    pass "suite" "$TOTAL/$TOTAL from the engine root"
   else
-    fail "suite" "rc=$SUITE_RC total=$TOTAL passed=$PASSED failed=$FAILED (see $GATE/suite.log)"; FAIL_N=$((FAIL_N+1))
+    fail "suite" "rc=$SUITE_RC failed=$FAILED (see $GATE/suite.log)"; FAIL_N=$((FAIL_N+1))
   fi
 else
-  fail "suite" "missing $SUITE_BIN (build failed?)"; FAIL_N=$((FAIL_N+1))
+  fail "suite" "missing $SUITE_BIN"; FAIL_N=$((FAIL_N+1))
 fi
 
-# 3. Runner-dir check.
-echo "== [3/5] runner-dir check"
-# Pinned upstream base (not upstream/main, which moves): bump at the next rebase.
+echo "== [3/4] runner-dir check"
 RBASE="${RUNNER_BASE:-c5a9d02573410a2085a4b4b831b0b68ba3515440}"
-RDIFF="$(git -C "$WT" diff --stat "$RBASE" HEAD -- ps2xRuntime/src/runner)"
-RDIRTY="$(git -C "$WT" status --porcelain -- ps2xRuntime/src/runner)"
+RDIFF="$(git -C "$ENGINE" diff --stat "$RBASE" HEAD -- ps2xRuntime/src/runner)"
+RDIRTY="$(git -C "$ENGINE" status --porcelain -- ps2xRuntime/src/runner)"
 if [ -z "$RDIFF" ] && [ -z "$RDIRTY" ]; then
   pass "runner-dir" "empty vs $RBASE, no dirty files"
 else
   fail "runner-dir" "committed=[${RDIFF:-empty}] dirty=[${RDIRTY:-empty}]"; FAIL_N=$((FAIL_N+1))
 fi
 
-# Key resolution: newest manifest among profile+build matches whose pinned fork commit is an
-# ancestor of (or equal to) the tested tip. Unmerged lane-local keys are skipped (09-30: FH9/FH17
-# keys minted on unpushed branches were picked by other lanes' gates).
-resolve_key() { # $1 = profile -> prints key (and candidates to stderr)
-  python3 - "$STORE" "$1" "$WT" <<'EOF'
+resolve_key() { # $1 = profile -> prints key dir name
+  python3 - "$KEYS" "$1" "$ENGINE" <<'EOF'
 import json, os, sys, subprocess
-store, profile, wt = sys.argv[1:4]
+keys, profile, engine = sys.argv[1:4]
 def reachable(sha):
     if not sha:
         return True
-    return subprocess.run(['git', '-C', wt, 'merge-base', '--is-ancestor', sha, 'HEAD'],
+    return subprocess.run(['git', '-C', engine, 'merge-base', '--is-ancestor', sha, 'HEAD'],
                           capture_output=True).returncode == 0
-build = '%s-native-arm64' % profile
 cands = []
-if os.path.isdir(store):
-    for d in sorted(os.listdir(store)):
-        man_p = os.path.join(store, d, 'manifest.json')
-        if not os.path.exists(man_p):
-            continue
-        man = json.load(open(man_p))
-        pins = man['pins']
-        if pins.get('knobs', 'reference') == profile and pins.get('build') == build:
-            if not reachable(pins.get('fork', '')):
-                print('skip (fork %s not in tip) %s' % (pins.get('fork', '')[:9], man['key']), file=sys.stderr)
-                continue
-            cands.append((man.get('created_utc', ''), man['key']))
+for d in sorted(os.listdir(keys)):
+    man_p = os.path.join(keys, d, 'manifest.json')
+    if not os.path.exists(man_p):
+        continue
+    man = json.load(open(man_p))
+    if man.get('profile') != profile:
+        continue
+    if not reachable(man['pins'].get('fork', '')):
+        print('skip (engine %s not in tip) %s' % (man['pins'].get('fork', '')[:9], man['key']), file=sys.stderr)
+        continue
+    cands.append(d)
 if not cands:
-    print('MISSING profile=%s build=%s' % (profile, build))
+    print('MISSING profile=%s' % profile)
     sys.exit(2)
-for created, key in cands:
-    print('candidate %s %s' % (created, key), file=sys.stderr)
-print(sorted(cands)[-1][1])
+print(sorted(cands)[-1])
 EOF
 }
 
-det_boot() { # $1 = profile, $2 = key -> 0 iff compare IDENTICAL
-  PROF=$1; KEY=$2
-  get() { python3 -c "import json,sys; print(json.load(open('$STORE/$KEY/manifest.json'))['pins']['$1'])"; }
+echo "== [4/4] det boots (profiles: $PROFILES)"
+ELF="${ELF:-$WORK/SLUS_207.72}"
+[ -f "$ELF" ] || { fail "det" "missing ELF $ELF (run prepare first)"; FAIL_N=$((FAIL_N+1)); }
+if [ -z "$ISO" ]; then
+  ISO="$(python3 -c "import json; print(json.load(open('$WORK/inputs.json'))['iso'])")"
+fi
+[ -f "$ISO" ] || { fail "det" "missing ISO $ISO"; FAIL_N=$((FAIL_N+1)); }
+OLD_IFS="$IFS"; IFS=","
+# shellcheck disable=SC2086
+set -- $PROFILES
+IFS="$OLD_IFS"
+for PROF in "$@"; do
+  PROF="$(printf %s "$PROF" | tr -d ' ')"
+  case $PROF in
+    reference|play|full120|full120events|play120) ;;
+    *) echo "bad profile: $PROF" >&2; exit 2;;
+  esac
+  KEY="$(resolve_key "$PROF" 2>"$GATE/key-$PROF.txt")" || { cat "$GATE/key-$PROF.txt" >&2; fail "key-$PROF" "key resolution failed"; FAIL_N=$((FAIL_N+1)); continue; }
+  get() { python3 -c "import json; print(json.load(open('$KEYS/$KEY/manifest.json'))['pins']['$1'])"; }
   BACKEND="$(get backend)"; ROUTE="$(get route)"; SOUND="$(get sound)"
   STOP="$(get stop_tick)"; HEVERY="$(get hash_every)"; COV="$(get coverage_tick)"
-  SSAA="$(get ssaa)"; HIRES="$(get hires)"; PIPE="$(get pipeline)"
-  VU1LIB_PIN="$(get vu1_lib)"; GE1LIB_PIN="$(get ge1_lib)"
-  GE1REN_PIN="$(python3 -c "import json; print(json.load(open('$STORE/$KEY/manifest.json'))['pins'].get('ge1_renderer', 'vk'))")"
-  echo "key $KEY pins: backend=$BACKEND route=$ROUTE sound=$SOUND stop=$STOP every=$HEVERY cov=$COV ssaa=$SSAA hires=$HIRES pipe=$PIPE"
-  [ -f "$MVU_DYLIB" ] || { echo "missing $MVU_DYLIB" >&2; return 2; }
+  REG_SHA="$(get codegen_register)"
+  GE1_PIN="$(get ge1_lib)"; MVU_PIN="$(get vu1_lib)"
+  HAVE_GE1="$(shasum -a 256 "$GE1_DYLIB" | cut -d' ' -f1)"
   HAVE_MVU="$(shasum -a 256 "$MVU_DYLIB" | cut -d' ' -f1)"
-  [ "$HAVE_MVU" = "$VU1LIB_PIN" ] || { echo "microVU dylib $HAVE_MVU != pins $VU1LIB_PIN" >&2; return 2; }
-  case $BACKEND in
-    external)
-      [ -f "$GE1_DYLIB" ] || { echo "missing $GE1_DYLIB" >&2; return 2; }
-      HAVE_GE1="$(shasum -a 256 "$GE1_DYLIB" | cut -d' ' -f1)"
-      [ "$HAVE_GE1" = "$GE1LIB_PIN" ] || { echo "GE1 dylib $HAVE_GE1 != pins $GE1LIB_PIN" >&2; return 2; };;
-    cpu) ;;
-    *) echo "key $KEY backend=$BACKEND: paraLLEl-GS is retired (CN2b); re-mint on external" >&2; return 2;;
-  esac
-  [ "$SSAA" = "1" ] && [ "$HIRES" = "0" ] && [ "$PIPE" = "0" ] || { echo "ssaa/hires/pipeline are paraLLEl pins (want 1/0/0)" >&2; return 2; }
+  LIBNOTE="ge1=$HAVE_GE1 microvu=$HAVE_MVU"
+  if [ "$HAVE_GE1" != "$GE1_PIN" ] || [ "$HAVE_MVU" != "$MVU_PIN" ]; then
+    LIBNOTE="$LIBNOTE (key pins differ: backend bytes vary by host; recorded, not gated)"
+  fi
+  echo "key $KEY pins: backend=$BACKEND route=$ROUTE sound=$SOUND stop=$STOP every=$HEVERY cov=$COV"
+  echo "libs: $LIBNOTE" | tee -a "$GATE/libs-$PROF.txt"
   OUTD="$GATE/det-$PROF"
-  [ ! -e "$OUTD" ] || { echo "existing output: $OUTD" >&2; return 2; }
-  ENVS=(--env "PS2X_MICROVU_LIB=$MVU_DYLIB")
-  [ "$PROF" = "reference" ] && ENVS+=(--env "PS2X_VU1_ENGINE=microvu" --env "PS2X_MTVU=1")
-  WALL=()
-  [ "$BACKEND" = "cpu" ] && WALL=(--wall 590) # CN2a: CPU raster races run slower; stay under 600 s
-  [ "$BACKEND" = "external" ] && WALL=(--ge1-lib "$GE1_DYLIB" --env "GE1_RENDERER=$GE1REN_PIN")
-  python3 "$BOOT" --mode det --backend "$BACKEND" --runner "$RUNNER" ${WALL[@]+"${WALL[@]}"} \
-    --label "mac-gate-$SHA7-$PROF" --out "$OUTD" --stop-tick "$STOP" --sound "$SOUND" \
-    --route "$ROUTE" --profile "$PROF" --coverage-tick "$COV" --hash-every "$HEVERY" \
-    "${ENVS[@]}" > "$GATE/boot-$PROF.log" 2>&1
-  BRC=$?
-  [ "$BRC" = "0" ] || { echo "boot $PROF failed (rc=$BRC); see $GATE/boot-$PROF.log" >&2; return 1; }
-  python3 "$BASELINE" --store "$STORE" compare --key "$KEY" --cand "$OUTD" 2>&1 | tee "$GATE/compare-$PROF.log" | tail -3
-  tail -1 "$GATE/compare-$PROF.log" | grep -q ": IDENTICAL$" || return 1
-  return 0
-}
-
-# 4+5. Det boots (one p-lane slot for the session).
-echo "== [4/5] det boots (profiles: $PROFILES)"
-SLOT=""
-if [ ! -x "$RUNNER" ]; then
-  fail "det" "missing $RUNNER (build failed?)"; FAIL_N=$((FAIL_N+1))
-else
-  SLOT="$(python3 "$PLEASE" claim "mac-gate-$SHA7")" || SLOT=""
-  [ -n "$SLOT" ] || { echo "no p-lane slot free" >&2; exit 2; }
-  echo "slot: $SLOT"
-  trap 'python3 "$PLEASE" release "$SLOT" >/dev/null 2>&1; echo "released slot $SLOT"' EXIT
-  # Step 4 (knob-off det vs the Mac play key) always runs, even when
-  # --profiles omits play; duplicates are dropped.
-  case ",$(printf %s "$PROFILES" | tr -d ' ')," in *,play,*) ;; *) PROFILES="play,$PROFILES";; esac
-  OLD_IFS="$IFS"; IFS=","
-  # shellcheck disable=SC2086
-  set -- $PROFILES
-  IFS="$OLD_IFS"
-  for PROF in "$@"; do
-    PROF="$(printf %s "$PROF" | tr -d ' ')"
-    case $PROF in
-      reference|play|full120|full120events|play120) ;;
-      *) echo "bad profile: $PROF (want reference|play|full120|full120events|play120)" >&2; exit 2;;
-    esac
-    KEY="$(resolve_key "$PROF" 2>"$GATE/key-$PROF.txt")" || { cat "$GATE/key-$PROF.txt" >&2; fail "key-$PROF" "key resolution failed"; FAIL_N=$((FAIL_N+1)); continue; }
-    cat "$GATE/key-$PROF.txt"
-    if det_boot "$PROF" "$KEY"; then
-      pass "key-$PROF" "$KEY IDENTICAL"
-    else
-      fail "key-$PROF" "$KEY DIFFER or boot failed (see $GATE/compare-$PROF.log $GATE/boot-$PROF.log)"; FAIL_N=$((FAIL_N+1))
+  ENVS=(--env "PS2X_MICROVU_LIB=$MVU_DYLIB" --env "GE1_GS_RESOURCES_DIR=$WORK/resources")
+  if [ "$PROF" = "reference" ]; then
+    ENVS+=(--env "PS2X_VU1_ENGINE=microvu" --env "PS2X_MTVU=1")
+  fi
+  if python3 "$BOOT" --mode det --backend "$BACKEND" --runner "$RUNNER" \
+    --label "mac-gate-$SHA7-$PROF" --out "$OUTD" --iso "$ISO" --elf "$ELF" \
+    --codegen "$WORK/codegen" \
+    --ge1-lib "$GE1_DYLIB" --microvu-lib "$MVU_DYLIB" \
+    --stop-tick "$STOP" --sound "$SOUND" --route "$ROUTE" --profile "$PROF" \
+    --coverage-tick "$COV" --hash-every "$HEVERY" \
+    "${ENVS[@]}" > "$GATE/boot-$PROF.log" 2>&1; then
+    HAVE_REG="$(python3 -c "import json; print(json.load(open('$OUTD/result.json'))['codegen_register_sha'])")"
+    REGNOTE="register=$HAVE_REG"
+    if [ "$HAVE_REG" != "$REG_SHA" ]; then
+      # Registration-table ownership can move without guest change (the
+      # deterministic-generator re-pin); only guest hashes gate. Recorded.
+      REGNOTE="$REGNOTE (key pins $REG_SHA; ownership-only drift, not gated)"
     fi
-  done
-fi
+    echo "$REGNOTE" | tee -a "$GATE/libs-$PROF.txt"
+    if python3 "$COMPARE" --key "$KEYS/$KEY" --cand "$OUTD" 2>&1 | tee "$GATE/compare-$PROF.log" | tail -1 | grep -q ": IDENTICAL$"; then
+      pass "key-$PROF" "$KEY IDENTICAL ($LIBNOTE; $REGNOTE)"
+    else
+      fail "key-$PROF" "$KEY DIFFER (see $GATE/compare-$PROF.log)"; FAIL_N=$((FAIL_N+1))
+    fi
+  else
+    fail "key-$PROF" "boot failed (see $GATE/boot-$PROF.log)"; FAIL_N=$((FAIL_N+1))
+  fi
+done
 
 echo ""
 cat "$RESULTS"

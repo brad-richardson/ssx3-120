@@ -1,0 +1,8 @@
+[coverage:tick] vsync=2400
+[coverage:missing-functions] targets=0
+[coverage:unknown-syscalls] ids=0
+[coverage:unhandled-rpcs] pairs=4
+[coverage:unhandled-rpc] sid=0x80000211 function=0x1 hits=1
+[coverage:unhandled-rpc] sid=0x237 function=0x0 hits=1
+[coverage:unhandled-rpc] sid=0x534e44 function=0x0 hits=1
+[coverage:unhandled-rpc] sid=0x80000006 function=0xff hits=1

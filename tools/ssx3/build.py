@@ -17,6 +17,12 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
+# Product/engine split (repo-split-2 step 2): the runtime, recompiler and
+# vendor adapters live in the pinned engine checkout; product metadata,
+# presets, builder and app shell live here. ENGINE defaults to the
+# deps/PS2Recomp submodule and can be overridden with --engine (or
+# SSX3_ENGINE_DIR) for engine-lane worktrees.
+ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
 GENERATOR = '03c10b5aeccd4fb673fecaea3cf4a5f5064afe14'
 FORK = 'https://github.com/brad-richardson/PS2Recomp.git'
 ISO_SHA = '3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5'
@@ -316,13 +322,13 @@ def configure(src, dst, *flags):
 def prepare_generator(a):
     gen = a.work / 'generator-source'
     if not gen.exists():
-        # Prefer the exact pinned commit already present in this checkout.
+        # Prefer the exact pinned commit already present in the engine checkout.
         # This also validates an unpublished lane commit without a fork push.
         local_pin = subprocess.run(
-            ['git', '-C', str(ROOT), 'cat-file', '-e', GENERATOR + '^{commit}'],
+            ['git', '-C', str(ENGINE), 'cat-file', '-e', GENERATOR + '^{commit}'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
         run('git', 'init', gen)
-        run('git', '-C', gen, 'fetch', '--depth=1', str(ROOT) if local_pin else FORK, GENERATOR)
+        run('git', '-C', gen, 'fetch', '--depth=1', str(ENGINE) if local_pin else FORK, GENERATOR)
         run('git', '-C', gen, 'checkout', '--detach', GENERATOR)
     actual = subprocess.check_output(['git', '-C', str(gen), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != GENERATOR:
@@ -376,7 +382,7 @@ def prepare(a):
 
 def mac(a):
     extra = 'ON' if a.suite else 'OFF'
-    configure(ROOT, a.work / 'runner-build', '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+    configure(ENGINE, a.work / 'runner-build', '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
         '-DPS2X_VU0_RECOMP_DIR=', '-DPS2X_BUILD_RECOMP=' + extra, '-DPS2X_BUILD_ANALYZER=' + extra,
         '-DPS2X_BUILD_TEST=' + extra, '-DPS2X_ENABLE_DEBUG_UI=OFF', '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
         '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
@@ -496,7 +502,8 @@ def android(a):
             print('Turnip unavailable (' + str(e) + '); continuing with system Vulkan.', file=sys.stderr)
     print('Signing with local keystore ' + str(keystore) + ' (versionCode ' + str(version_code) + ').')
     print('Back up your keystore; a different key forces an uninstall, which wipes saves.')
-    run('bash', ROOT / 'android/gradlew', '-p', ROOT / 'android', 'assembleRelease',
+    run('bash', ROOT / 'apps/android/gradlew', '-p', ROOT / 'apps/android', 'assembleRelease',
+        '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
         '-Pps2xVu0RecompDir=',
@@ -541,8 +548,8 @@ def libs(a):
         run('cmake', '--build', dst, '--parallel', a.jobs)
         run('cmake', '--install', dst)
     assembly = vendor.parent
-    for src, dest in [(ROOT / 'ps2xRuntime/third_party/armsx2/ge1', assembly / 'adapter'),
-                      (ROOT / 'ps2xRuntime/third_party/armsx2/mv2', assembly / 'mv2-adapter'),
+    for src, dest in [(ENGINE / 'ps2xRuntime/third_party/armsx2/ge1', assembly / 'adapter'),
+                      (ENGINE / 'ps2xRuntime/third_party/armsx2/mv2', assembly / 'mv2-adapter'),
                       (ROOT / 'tools/ssx3/mac-libs', assembly / 'mac-platform')]:
         shutil.copytree(src, dest, dirs_exist_ok=True)
     link = assembly / 'mac-platform/3rdparty'
@@ -552,7 +559,7 @@ def libs(a):
     run('cmake', '-S', assembly / 'mac-platform', '-B', build, '-G', 'Ninja',
         '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=/usr/bin/cc',
         '-DCMAKE_CXX_COMPILER=/usr/bin/c++', '-DCMAKE_PREFIX_PATH=' + prefixes,
-        '-DPS2RECOMP_SOURCE=' + str(ROOT), '-DLTO_PCSX2_CORE=OFF')
+        '-DPS2RECOMP_SOURCE=' + str(ENGINE), '-DLTO_PCSX2_CORE=OFF')
     run('cmake', '--build', build, '--parallel', a.jobs, '--target', 'ge1_gs', 'mv2_microvu', 'ge1_metallibs')
     resources = a.work / 'resources'
     shutil.copytree(vendor / 'bin/resources', resources, dirs_exist_ok=True)
@@ -681,11 +688,11 @@ def android_libs(a):
     recipe_path.write_text(recipe.replace(marker, 'NPROCS=' + str(a.jobs)))
     subprocess.run(['bash', str(recipe_path), str(prefix)], env=env, cwd=a.work, check=True)
     assembly = vendor.parent
-    for src, dest in [(ROOT / 'ps2xRuntime/third_party/armsx2/ge1', assembly / 'adapter'),
-                      (ROOT / 'ps2xRuntime/third_party/armsx2/mv2', assembly / 'mv2-adapter'),
+    for src, dest in [(ENGINE / 'ps2xRuntime/third_party/armsx2/ge1', assembly / 'adapter'),
+                      (ENGINE / 'ps2xRuntime/third_party/armsx2/mv2', assembly / 'mv2-adapter'),
                       (ROOT / 'tools/ssx3/android-libs', assembly / 'android-platform')]:
         shutil.copytree(src, dest, dirs_exist_ok=True)
-    shutil.copy2(ROOT / 'ps2xRuntime/third_party/armsx2/platform/android/ax4b_android_stubs.cpp',
+    shutil.copy2(ENGINE / 'ps2xRuntime/third_party/armsx2/platform/android/ax4b_android_stubs.cpp',
                  assembly / 'adapter/ax4b_android_stubs.cpp')
     for name, target in [('3rdparty', vendor / '3rdparty'), ('pcsx2', vendor / 'pcsx2'),
                          ('tests', vendor / 'tests'), ('common', vendor / 'common')]:
@@ -716,7 +723,7 @@ def stage(a):
     inputs = json.loads((a.work / 'inputs.json').read_text())
     files = a.work / 'stage/files'
     files.mkdir(parents=True, exist_ok=True)
-    presets = ROOT / 'tools/ssx3/presets'
+    presets = ROOT / 'presets'
     for name in ('ps2x.env', 'full120.env'):
         src = presets / name
         if not src.is_file():
@@ -734,7 +741,7 @@ def stage(a):
     (files / 'mc0').mkdir(exist_ok=True)
     device = '/storage/emulated/0/Android/data/' + a.app_id + '/files'
     stage_fonts(a, inputs, files, device)
-    apk = ROOT / 'android/app/build/outputs/apk/release/app-release.apk'
+    apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     print('Staged device layout in ' + str(files))
     if a.step != 'stage':
         return files
@@ -800,7 +807,7 @@ def install(a):
             print(f'Would copy {source_path} ({source_path.stat().st_size} bytes) to {relative}')
         return
     files = stage(a)
-    apk = ROOT / 'android/app/build/outputs/apk/release/app-release.apk'
+    apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     if not apk.is_file():
         raise ValueError('missing release APK; run android first')
     if apk_package(apk) != a.app_id:
@@ -879,7 +886,16 @@ def main():
     p.add_argument('--suite', action='store_true', help='also build optional Mac development suite and its analyzer/recompiler fixtures')
     p.add_argument('--jobs', type=int, default=8)
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
+    p.add_argument('--engine', type=Path, default=None,
+                   help='engine checkout (default: SSX3_ENGINE_DIR or deps/PS2Recomp submodule)')
     a = p.parse_args()
+    global ENGINE
+    if a.engine is not None:
+        ENGINE = a.engine.resolve()
+    if not (ENGINE / 'ps2xRuntime/CMakeLists.txt').is_file():
+        p.error('--engine must point at the pinned PS2Recomp checkout (missing ps2xRuntime/CMakeLists.txt): ' + str(ENGINE))
+    actual_engine = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'], text=True).strip()
+    print('engine: ' + str(ENGINE) + ' @ ' + actual_engine)
     if a.step == 'doctor':
         doctor(a)
         return

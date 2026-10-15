@@ -5,9 +5,10 @@ engine structure independently (app-manager `checkHalt` loop, timer
 accumulator, 30-entry buffered input ring). This file merges them so neither
 side is rediscovered. Docs only; no new experiment.
 
-Pins: GC GXBE69 DOL sha256 `b92162d6…29ce`, map rev `ec889b87…f7a35`
-[GC-analysis §Initial]; PS2 `SLUS_207.72` sha256 `1b49d05c…af7bc`, gp
-`0x4a30f0` [RV6 §Scope]. GC addresses are DOL VAs; PS2 addresses are EE VAs.
+Pins: GameCube build per the analysis archive (private; the public record is
+`docs/research/gamecube-learnings.md`); PS2 `SLUS_207.72` sha256
+`1b49d05c…af7bc`, gp `0x4a30f0`. GC addresses are DOL VAs; PS2 addresses are
+EE VAs.
 "Proven live" = observed in a live boot; "static only" = disassembly/ELF read;
 "inferred" = fits counts but order/role unobserved. GC↔PS2 pairs are marked
 *structural match* (same shape, role not cross-proven) or *verified same role*
@@ -243,10 +244,9 @@ PS2 lane does not redo it.
    precedent) and per-state attribution transfer directly [GC-f §Phase 2].
 7. **Input cadence at 120 Hz (GC solved for live; PS2 open).** GC: game polls
    ~2×/VI (~117/s); doubled updates consume the DTM stream 2×, but live
-   re-poll is already correct and latching would double-fire edges — gate 2
-   became research-tooling-only [GC-f §Gate 2]. PS2: which producer samples
-   carry fresh pad state is unmeasured; two samples/wake may repeat state;
-   I26-FAST's vsync-indexed navigation is not a 120 Hz input oracle
+   re-poll is already correct and latching would double-fire edges. PS2: which
+   producer samples carry fresh pad state is unmeasured; two samples/wake may
+   repeat state; vsync-indexed menu navigation is not a 120 Hz input oracle
    [RV6 §5–6].
 8. **Ring overflow / backlog behavior (open on both).** Stock backlog volume,
    30-ring overflow/aliasing vs threshold-12 interaction, and intentionally
@@ -271,41 +271,27 @@ interpolation revival all stay parked [RV6 §5–6; RV7 §4].
 
 ## 5. How to measure (pointers, not recipes)
 
-- **PS2 live chain**: TM1's observation-only tap (`PS2X_TIMING_TAP=1`,
-  VBlank/update/render counts, `A` fields, pos before/after) — non-
-  perturbing, det-identical [TM1 §§Tap–Commands].
-- **PS2 writer attribution**: `PS2X_DIAG_WATCH=<addrs>` +
-  `PS2X_DIAG_WATCH_TICKS=<from-to>` (store-tick windows; DMA `SPR_FROM`
-  rows; `tm4-jalr` dispatch-target tap for indirect edges). Needs a
-  DIAG_TAPS build; bradflix builds are non-DIAG [TM2 §Coverage; TM4 §Part 3].
-- **PS2 probes**: `PS2X_TM_RATE120=1/2/3/4` ladder (manager-only → +K1–K3 →
-  +K4 → +C1–C4); each step's acceptance is motion/VBlank ±5 % + HUD slope +
-  SND counters + det-hash-from-tick-39 [TM3 §B; TM4 §§C, Parts 2–3].
-- **GC present/upgrade traces**: `tools/gamecube_present_trace.py`
-  (Metal `presentedTime` observer), `tools/gamecube_native_trace.py`
-  (callback probes, double-render/scheduler/interp drivers),
-  `tools/gamecube_schedule_trace.py` + `gamecube_f_regression.py` +
-  `gamecube_parity_compare.py` (guest-aligned compare, counter-rate,
-  drift report) [GC-analysis §Baseline; GC-f §Phase 4–4a].
-- **GC determinism**: single-core `SSX3_MOVIE_PLAY` + guest-XFB arming gives
-  byte-identical world color/depth; dual-core diverges in ~3 s and is not a
-  comparator [GC-reproj §HUD; GC-f §Scouts]. PS2: `PS2X_DETERMINISTIC=1` +
-  VBlank XXH64 tap + `baseline.py` keys [facts.md §Runtime; TM1 §Tap].
+- **PS2 live chain**: an observation-only tap (VBlank/update/render counts,
+  manager fields, rider position before/after) — non-perturbing,
+  det-identical. Needs a DIAG_TAPS build; speed builds compile taps out.
+- **PS2 writer attribution**: address watch + store-tick windows and a
+  dispatch-target tap for indirect edges (lab research archive).
+- **PS2 probes**: a manager-rate/dt ladder (manager-only → +timestep terms →
+  +countdown terms); each step's acceptance is motion/VBlank ±5 % + HUD slope
+  + sound counters + det-hash-from-early-tick.
+- **GC present/upgrade traces**: presentation observers, callback probes and
+  guest-aligned compare tooling (lab research archive; GC tooling is not
+  published).
+- **GC determinism**: single-core movie playback gives byte-identical world
+  captures; dual-core diverges and is not a comparator. PS2:
+  `PS2X_DETERMINISTIC=1` + VBlank XXH64 tap + `tests/det` keys.
 - ** Budgets**: speed numbers only from diagnostics-off builds, guest vsyncs
-  per wall second ÷ 59.94; vsync-pad route I26-FAST for race boots
-  [AGENTS.md].
+  per wall second ÷ 59.94; vsync-pad routes for race boots.
 
-## Sources (short keys used above)
+## Sources
 
-GC-analysis `docs/research/120hz-analysis.md`; GC-native `…/120hz-native-
-path.md`; GC-schedule `…/120hz-independent-schedule.md`; GC-replay
-`…/120hz-host-replay.md`; GC-render-seam `…/120hz-render-seam.md`; GC-interp
-`…/120hz-native-interpolation.md`; GC-reproj `…/120hz-reprojection.md`; GC-f
-`…/120hz-f-spike.md`; GC-pacing `…/120hz-pacing-acceptance.md`; GC-cpu
-`…/120hz-cpu-overhead-spikes.md`; reserve/plan `docs/reserve/plan-120fps-
-2026-09-17.md`; reserve.md `docs/reserve.md`; RV6 `docs/research/review-
-2026-09-26-astra-120hz.md`; RV7 `…-astra-emulators.md`; TM1–TM4
-`local/research/TM{1,2,3,4}/REPORT.md`; facts.md `docs/facts.md`.
-Reserve/ skim (collision, rails, scenery, world, materials) is course data,
-out of scope per the brief; current `docs/reserve.md` carries no
-determinism/timing section (parked summary only).
+GC claims rest on the parked GameCube analysis archive (private); the public
+record is `docs/research/gamecube-learnings.md`. PS2 claims rest on the
+engine's `games/ssx3` metadata, the pinned generator output, and the
+`tests/det` keys. Short keys used above (`GC-analysis`, `TM1–TM4`, `RV6`,
+`RV7`, lane IDs) refer to that private archive, not to files in this repo.

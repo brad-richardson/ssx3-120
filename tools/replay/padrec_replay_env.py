@@ -8,13 +8,15 @@ any session replays standalone.
 
 Usage:
   padrec_replay_env.py <recording> [--apk APK] [--env-file FILE]
-                       [--push-to odin|mac] [--inline]
+                       [--push-to android|mac] [--app-id ID] [--serial SER]
+                       [--inline]
   padrec_replay_env.py --self-test
 
 The replay env prints PS2X_PAD_SCRIPT=@<path> (RP2: the runtime loads the
-script from the file; the pre-RP2 bare path never worked). --push-to odin
-adb-pushes the recording into the app's files/ dir and prints the device
-path; --push-to mac prints the absolute local path (no copy needed).
+script from the file). --push-to android adb-pushes the recording into
+the app's files/ dir and prints the device path (needs --app-id; --serial
+selects the device, else adb's default); --push-to mac prints the absolute
+local path (no copy needed).
 --inline prints the recording body as the value (the AR1 workaround).
 
 Checks (a refusal prints REFUSED: ... to stderr and exits 1):
@@ -244,14 +246,12 @@ def check_snapshot(header, rec_path):
     return snap_dir, '', ''
 
 
-# RP2: where --push-to odin stages the recording (the app's files/ dir,
-# the same FILES root odin_run.py pushes ps2x.env to).
-ODIN_PKG = 'com.ps2x.runner'
-ODIN_FILES = '/storage/emulated/0/Android/data/%s/files' % ODIN_PKG
+def android_files_dir(app_id):
+    return '/storage/emulated/0/Android/data/%s/files' % app_id
 
 
-def odin_device_path(rec_path):
-    return '%s/%s' % (ODIN_FILES, os.path.basename(rec_path))
+def android_device_path(app_id, rec_path):
+    return '%s/%s' % (android_files_dir(app_id), os.path.basename(rec_path))
 
 
 def local_pad_value(rec_path, text, inline):
@@ -263,18 +263,9 @@ def local_pad_value(rec_path, text, inline):
     return '@' + os.path.abspath(rec_path)
 
 
-def adb_push_to_odin(rec_path):
-    """Push the recording into the app's files/ dir; return the device path.
-    Uses local/odin-serial when present, else adb's default device."""
-    dest = odin_device_path(rec_path)
-    serial = ''
-    serial_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                               'odin-serial')
-    try:
-        with open(serial_file) as f:
-            serial = f.read().strip()
-    except OSError:
-        pass
+def adb_push_to_android(rec_path, app_id, serial):
+    """Push the recording into the app's files/ dir; return the device path."""
+    dest = android_device_path(app_id, rec_path)
     cmd = ['adb']
     if serial:
         cmd += ['-s', serial]
@@ -392,8 +383,10 @@ def self_test():
     assert local_pad_value('/tmp/r/padrec-x.txt', '# h\n0:idle:16\n', False) == '@/tmp/r/padrec-x.txt'
     assert local_pad_value('/tmp/r/padrec-x.txt', '# h\n0:idle:16\n', True) == '# h\n0:idle:16'
     assert local_pad_value('/tmp/r/padrec-x.txt', '0:idle:16\r\n', True) == '0:idle:16'
-    assert odin_device_path('/tmp/r/padrec-x.txt') == ODIN_FILES + '/padrec-x.txt'
-    assert odin_device_path('padrec-x.txt') == ODIN_FILES + '/padrec-x.txt'
+    assert android_device_path('com.x', '/tmp/r/padrec-x.txt') == \
+        '/storage/emulated/0/Android/data/com.x/files/padrec-x.txt'
+    assert android_device_path('com.x', 'padrec-x.txt') == \
+        '/storage/emulated/0/Android/data/com.x/files/padrec-x.txt'
     print('padrec_replay_env self-test: 8/8 OK')
 
 
@@ -402,18 +395,23 @@ def main(argv):
         self_test()
         return 0
     apk, envf, rec, push_to = None, None, None, None
+    app_id, serial = None, ''
     inline = False
     args = argv[1:]
     i = 0
     usage = ('usage: padrec_replay_env.py <recording> [--apk APK] [--env-file FILE]\n'
-             '                               [--push-to odin|mac] [--inline]\n')
+             '                               [--push-to android|mac] [--app-id ID] [--serial SER] [--inline]\n')
     while i < len(args):
         if args[i] == '--apk' and i + 1 < len(args):
             apk, i = args[i + 1], i + 2
         elif args[i] == '--env-file' and i + 1 < len(args):
             envf, i = args[i + 1], i + 2
-        elif args[i] == '--push-to' and i + 1 < len(args) and args[i + 1] in ('odin', 'mac'):
+        elif args[i] == '--push-to' and i + 1 < len(args) and args[i + 1] in ('android', 'mac'):
             push_to, i = args[i + 1], i + 2
+        elif args[i] == '--app-id' and i + 1 < len(args):
+            app_id, i = args[i + 1], i + 2
+        elif args[i] == '--serial' and i + 1 < len(args):
+            serial, i = args[i + 1], i + 2
         elif args[i] == '--inline':
             inline, i = True, i + 1
         elif args[i].startswith('--') or rec is not None:
@@ -461,11 +459,14 @@ def main(argv):
         return 1
     if warning:
         sys.stderr.write('warning: %s\n' % warning)
-    if push_to == 'odin':
+    if push_to == 'android':
+        if app_id is None:
+            sys.stderr.write('--push-to android needs --app-id\n')
+            return 2
         try:
-            dest = adb_push_to_odin(rec)
+            dest = adb_push_to_android(rec, app_id, serial)
         except RuntimeError as e:
-            sys.stderr.write('cannot stage on the Odin: %s\n' % e)
+            sys.stderr.write('cannot stage on the device: %s\n' % e)
             return 2
         sys.stderr.write('staged %s -> %s\n' % (rec, dest))
         pad_value = '@' + dest

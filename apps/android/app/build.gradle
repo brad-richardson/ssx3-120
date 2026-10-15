@@ -57,6 +57,11 @@ def ps2xKeyPassword = project.findProperty('ps2xKeyPassword') ?: ''
 // Signed public builder invocations use their own package. The existing
 // maintainer/debug Gradle recipe supplies no keystore property and retains
 // its installed package and card directory.
+// SSX3-120 composition (repo-split-2 step 2): the native build source is the
+// pinned engine checkout, explicit via -Pps2xEngineCMakeLists from
+// tools/ssx3/build.py. The default keeps direct Gradle invocations working
+// from this tree layout (apps/android/app -> product deps/PS2Recomp).
+def ps2xEngineCMakeLists = project.findProperty('ps2xEngineCMakeLists') ?: '../../../deps/PS2Recomp/CMakeLists.txt'
 def ps2xAppId = project.findProperty('ps2xAppId') ?: (ps2xKeystoreFile ? 'com.ssx3.recomp' : 'com.ps2x.runner')
 def ps2xBootElf = project.findProperty('ps2xBootElf') ?: "/storage/emulated/0/Android/data/${ps2xAppId}/files/game.elf"
 
@@ -147,7 +152,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path '../../CMakeLists.txt'
+            path ps2xEngineCMakeLists
             if (ps2xNativeBuildDir) {
                 buildStagingDirectory file(ps2xNativeBuildDir)
             }

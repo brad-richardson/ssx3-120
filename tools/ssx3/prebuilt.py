@@ -16,6 +16,12 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
+# Archive identity is engine-pinned (repo-split-2 step 2): the contract hashes
+# the engine checkout's bytes under engine-relative paths, so the stamp is
+# stable across the product move for the same engine pin and the product can
+# consume fork-published archives. Product composition (product SHA + engine
+# SHA) is recorded separately in deps.lock.json, not in the archive stamp.
+ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
 NDK = '28.2.13676358'
 VENDOR = 'afad5a04c2668a10e12adadaa51d54c46f832236'
 RELEASES = 'https://github.com/brad-richardson/PS2Recomp/releases/download/'
@@ -38,14 +44,15 @@ def digest(path):
 
 def contract():
     """Content identity avoids commit/tag self-reference and rejects stale headers."""
-    paths = [ROOT / 'CMakeLists.txt', Path(__file__), ROOT / 'tools/ssx3/prebuilt-consumer.cmake',
-             ROOT / 'tools/ssx3/build.py', ROOT / 'android/app/build.gradle']
+    paths = [ENGINE / 'CMakeLists.txt', ENGINE / 'tools/ssx3/prebuilt.py',
+             ENGINE / 'tools/ssx3/prebuilt-consumer.cmake',
+             ENGINE / 'tools/ssx3/build.py', ENGINE / 'android/app/build.gradle']
     for name in ('ps2xRuntime', 'ps2xIOP', 'android/hwcompat', 'tools/ssx3/android-libs'):
-        paths.extend(p for p in (ROOT / name).rglob('*') if p.is_file()
+        paths.extend(p for p in (ENGINE / name).rglob('*') if p.is_file()
                      and not p.is_symlink() and not p.name.startswith('._'))
     h = hashlib.sha256(json.dumps(RECIPE, sort_keys=True).encode())
     for p in sorted(set(paths)):
-        h.update(p.relative_to(ROOT).as_posix().encode() + b'\0')
+        h.update(p.relative_to(ENGINE).as_posix().encode() + b'\0')
         h.update(digest(p).encode() + b'\n')
     return h.hexdigest()
 
@@ -214,15 +221,15 @@ def build(a):
         if actual != VENDOR:
             raise ValueError('reused library vendor pin mismatch')
         for directory, staged in [('ge1', 'adapter'), ('mv2', 'mv2-adapter')]:
-            for source in (ROOT / 'ps2xRuntime/third_party/armsx2' / directory).rglob('*'):
+            for source in (ENGINE / 'ps2xRuntime/third_party/armsx2' / directory).rglob('*'):
                 if source.is_file():
-                    copied = libraries / 'android-assembly' / staged / source.relative_to(ROOT / 'ps2xRuntime/third_party/armsx2' / directory)
+                    copied = libraries / 'android-assembly' / staged / source.relative_to(ENGINE / 'ps2xRuntime/third_party/armsx2' / directory)
                     if not copied.is_file() or digest(source) != digest(copied):
                         raise ValueError('reused adapter source mismatch: ' + str(source))
-        if digest(ROOT / 'ps2xRuntime/third_party/armsx2/platform/android/ax4b_android_stubs.cpp') != digest(libraries / 'android-assembly/adapter/ax4b_android_stubs.cpp'):
+        if digest(ENGINE / 'ps2xRuntime/third_party/armsx2/platform/android/ax4b_android_stubs.cpp') != digest(libraries / 'android-assembly/adapter/ax4b_android_stubs.cpp'):
             raise ValueError('reused Android stub source mismatch')
         for name in ('CMakeLists.txt',):
-            if digest(ROOT / 'tools/ssx3/android-libs' / name) != digest(libraries / 'android-assembly/android-platform' / name):
+            if digest(ENGINE / 'tools/ssx3/android-libs' / name) != digest(libraries / 'android-assembly/android-platform' / name):
                 raise ValueError('reused library recipe mismatch')
     else:
         recipe.android_libs(a)
@@ -239,7 +246,7 @@ def build(a):
               'PS2X_BUILD_STUDIO', 'PS2X_ENABLE_SCCACHE', 'PS2X_ENABLE_DIAG_TAPS', 'PS2X_ENABLE_DIAG_WATCH',
               'PS2X_ENABLE_TS2_DIAG', 'PS2X_ENABLE_RUNTIME_LOGS', 'PS2X_ENABLE_AGRESSIVE_LOGS',
               'PS2X_ENABLE_IOP_RPC_TRACE', 'PS2X_ENABLE_DEBUG_UI')]
-    run(a.cmake, '-S', ROOT, '-B', runtime, '-G', 'Ninja', *flags)
+    run(a.cmake, '-S', ENGINE, '-B', runtime, '-G', 'Ninja', *flags)
     run(a.cmake, '--build', runtime, '--parallel', a.jobs, '--target', 'ps2EntryRunner', 'hardware')
     bundle = a.work / 'bundle'
     if bundle.exists():
@@ -264,11 +271,11 @@ def build(a):
     notice_dir = bundle / 'notices'
     notice_dir.mkdir()
     shutil.copy2(ROOT / 'LICENSE', notice_dir / 'PS2Recomp-LICENSE')
-    notices(ROOT / 'ps2xRuntime/third_party', notice_dir, 'runtime')
+    notices(ENGINE / 'ps2xRuntime/third_party', notice_dir, 'runtime')
     notices(libraries / 'android-assembly/vendor-pcsx2', notice_dir, 'vendor')
     notices(libraries / 'deps-build', notice_dir, 'vendor-dependencies')
     notices(runtime / '_deps', notice_dir, 'runtime-dependencies')
-    source_sha = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
+    source_sha = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'], text=True).strip()
     sources = {'PS2Recomp': 'https://github.com/brad-richardson/PS2Recomp/tree/' + source_sha,
                'armsx2': 'https://github.com/brad-richardson/armsx2/tree/' + VENDOR,
                'recipe_contract': stamp, 'ndk': NDK}

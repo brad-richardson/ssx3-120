@@ -1,0 +1,25 @@
+{
+  "_comment": "bench-android.sh legs recipe (copy to legs.json and fill in your card/pad paths). One entry per leg.",
+  "menu60": {
+    "env_base": "presets/ps2x.env",
+    "pad": {"type": "inline", "note": "empty pad idles at the title; legs that play use atfile with your own pad file"},
+    "card": {"type": "empty"},
+    "unpaced": 1,
+    "stop_tick": 2500,
+    "cpu_window": [1900, 2500],
+    "scap_ticks": [2100],
+    "wall": 600,
+    "extra_env": []
+  },
+  "race120": {
+    "env_base": "presets/full120.env",
+    "pad": {"type": "atfile", "file": "/path/to/your-race-pad.txt"},
+    "card": {"type": "seeded", "src": "/path/to/your-test-card/mc0"},
+    "unpaced": 0,
+    "stop_tick": 11600,
+    "cpu_window": [5600, 11500],
+    "scap_ticks": [2100, 3000, 4000],
+    "wall": 900,
+    "extra_env": ["PS2X_PERF_PRESENT_DETAIL=1"]
+  }
+}

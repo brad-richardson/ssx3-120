@@ -1,12 +1,12 @@
-# GameCube learnings inventory (EN2, 2026-09-26)
+# GameCube learnings
 
 Everything from the parked GameCube/Dolphin route **except** timing/120 Hz
-(EN1: `docs/research/ssx3-engine-timing.md`), mapped to the PS2 static-recomp
-runtime (EE/VU/GS/SPU2 via recompile/HLE on Odin/iPhone/Mac; PCSX2-parity
-accuracy target, `AGENTS.md` Product direction). Every claim cites file +
-section. PS2 context: `docs/status.md`, `docs/numbers-ledger.md`,
-`docs/research/review-2026-09-26-astra-perf.md` (RV4),
-`review-2026-09-26-astra-emulators.md` (RV7), `local/research/CP1/REPORT.md`.
+(`docs/research/ssx3-engine-timing.md`), mapped to the PS2 static-recomp
+runtime (EE/VU/GS/SPU2 via recompile/HLE; PCSX2-parity accuracy target).
+The underlying GameCube analysis archive is private; this file and the
+engine-timing note are the public record. Every claim below names the
+transfer verdict for the PS2 route; section cites (`gamecube-world.md`
+§…, `aloha-conversion.md` §…) refer to that private archive.
 
 ## 1. Summary
 
@@ -18,7 +18,7 @@ section. PS2 context: `docs/status.md`, `docs/numbers-ledger.md`,
 - **The big lever was generated-code shape, not helpers.** Every guest
   instruction as a switch target forbids cross-instruction register allocation;
   76–83% of entry cases are prunable; guest bodies are 45–57% of cycles
-  (`review-2026-09-17-recomp-perf.md` §2). PS2 analog (VU1 blocks) is RV4 rank 1.
+  (`review-2026-09-17-recomp-perf.md` §2). PS2 analog: VU1 block residency work is top-ranked follow-up.
 - **Per-op wins don't reproduce at game level.** psq −30%/call → flat; conversion
   split 2.79%→0% module-wide; fcmp inline +347 KB → −7.3% wall (layout/I-cache
   regime) (`review-2026-09-17-recomp-perf.md` §2, `review-2026-09-17-architecture.md` §2).
@@ -38,53 +38,54 @@ section. PS2 context: `docs/status.md`, `docs/numbers-ledger.md`,
   capacity/residency auditing, habit of immutable recipes + readback
   (`reserve/architecture-review.md` §§Prioritized; `full-course-experiment.md`).
 - **Receipts must name effective config + binary identity**, or verdicts rot
-  (M5 profiled a pre-Wave-B module; Metal validation inherited from shell)
+  (a stale module was once profiled; inherited validation went unnoticed)
   (`review-2026-09-17-architecture.md` §1, `review-2026-09-17-recomp-perf.md` §4).
 - **Idle-skip failed twice-shaped**: naive skip regressed; the "contradictory"
   numbers were a capped-speed metric artefact (CPU share carried the signal)
-  (`review-2026-09-17-recomp-perf.md` §1). RV7 queues wait-loop work only after
-  hot polling is found.
+  (`review-2026-09-17-recomp-perf.md` §1). wait-loop work queues only after hot polling is found.
 
 ## 2. Performance inventory
 
 Transfer key: **direct** = applies directly · **technique** = applies as a
-technique · **done (lane)** = already done on PS2 · **n/a** = not applicable ·
-**?** = unknown. EN1 owns 120 Hz rows; only the CPU-cost fact is kept here.
+technique · **done** = already done on the PS2 route · **n/a** = not
+applicable · **?** = unknown. Engine-timing owns the 120 Hz rows; only the
+CPU-cost fact is kept here. Device numbers below were measured on desktop
+and Adreno play hardware as noted per row.
 
 | Optimization | What it did | Measured effect (number + conditions) | Cost & risk | PS2 transfer |
 | --- | --- | --- | --- | --- |
-| Dual-core CPU/GPU split | `CPUThread=True`: FIFO decode + vertex conversion on 2nd thread | Phone render CPU med 9.49→7.77 ms (p95 10.51→8.43); stadium speed 0.887→1.000; headroom 1.00→1.25; slow rows 34→3 (~150 s rides); thermal nominal→fair; +110 MB (`performance-review-2026-09-13.md` §Batch 1) | 2nd-thread power/thermals; replay/pose diagnostics assume single-core | **done (E)**: MTVU threaded VIF1/VU1/GIF, det-identical (MT1: Mac 1.31×, Odin 0.378× leg; ledger) |
-| Fast-FP (JIT-fidelity inline FP) | Scalar + paired-single arithmetic inline at Dolphin-JIT semantics; NaN/exception fallback | Desktop replay 1,022/1,022 identical control rows over 1.07B dispatches; module 76.6→80.4 MB (`performance-review-2026-09-13.md` §Batch 2). Phone pair **inconclusive** (12.9% render edge tracked 10.5% lighter workload; lines diverged in ~3 s) (`performance-batch2-followup.md` §Result) | Correctness bar = JIT defaults, not interpreter; FPR/gameplay-memory equivalence unverified | **technique** (E already did this class: VR1/VB1/VR2 VU1 recompile 1.35–1.44× bit-exact; ledger) |
+| Dual-core CPU/GPU split | `CPUThread=True`: FIFO decode + vertex conversion on 2nd thread | Phone render CPU med 9.49→7.77 ms (p95 10.51→8.43); stadium speed 0.887→1.000; headroom 1.00→1.25; slow rows 34→3 (~150 s rides); thermal nominal→fair; +110 MB (`performance-review-2026-09-13.md` §Batch 1) | 2nd-thread power/thermals; replay/pose diagnostics assume single-core | **done**: MTVU threaded VIF1/VU1/GIF, det-identical |
+| Fast-FP (JIT-fidelity inline FP) | Scalar + paired-single arithmetic inline at Dolphin-JIT semantics; NaN/exception fallback | Desktop replay 1,022/1,022 identical control rows over 1.07B dispatches; module 76.6→80.4 MB (`performance-review-2026-09-13.md` §Batch 2). Phone pair **inconclusive** (12.9% render edge tracked 10.5% lighter workload; lines diverged in ~3 s) (`performance-batch2-followup.md` §Result) | Correctness bar = JIT defaults, not interpreter; FPR/gameplay-memory equivalence unverified | **technique** (this class already shipped: bit-exact VU1 recompile) |
 | FP classifier early-return | Integer-only FPRF fast path for normal finite results | Mixed: gen-FMA −2.8% med in one corpus, flat/noisy elsewhere; identical-code controls varied −20%..+28% — rejected (`float-arithmetic-audit.md` §§First timing, Scoped) | Tiny slice (FMA ~1.5% desktop); benchmark-layout sensitivity | **technique** as process lesson only (microbenchmarks need same-address controls) |
 | Conversion-split inlining | `always_inline` fast path for normal f32↔f64 bit converts; cold slow path | Outlined-shape 0.66×/0.62× per convert, but already-inlined shape **regressed 1.19×/1.12×**, rare inputs +18–29%; game level ~1.5% slice, module-wide 2.79%→0%, no wall change (`float-conversion-spike.md` §§Correctness, Bounded check) | +5.3% object text; keeps strict FP flags | **technique** (inline by force only where probe shows outlined; verify at game level) |
-| O2 vs O3 generated module | Same C, only opt level changed (fresh builds, Clang 23.1 pair) | No O3 benefit: extra wall med 7.9–8.4 ms O2 vs 8.3–8.5 O3, unmatched trajectories + observer warnings; O3 text −1.3%; keep O2 (`120hz-cpu-overhead-spikes.md` §O2 vs O3). Closed (`performance-review-2026-09-13.md` §Priorities) | Rebuild cost only | **technique — and contrast**: Android −O3 gave +5.3% Odin race (BA1, ledger). Flags are per-target; measure each |
-| −O0→−O2+ThinLTO (Odin) | Optimized + LTO the generated module | 2.5–3.5×; "−O2 *deleted* call overhead" = structural-cost signature (`review-2026-09-17-recomp-perf.md` §2) | Link time (one-object ThinLTO link 230 s desktop; `float-conversion-spike.md`) | **done (E/N)** (Release builds; ThinLTO audited: +0 over −O3, BA1) |
+| O2 vs O3 generated module | Same C, only opt level changed (fresh builds, Clang 23.1 pair) | No O3 benefit: extra wall med 7.9–8.4 ms O2 vs 8.3–8.5 O3, unmatched trajectories + observer warnings; O3 text −1.3%; keep O2 (`120hz-cpu-overhead-spikes.md` §O2 vs O3). Closed (`performance-review-2026-09-13.md` §Priorities) | Rebuild cost only | **technique — and contrast**: Android −O3 gave +5.3 % on an Adreno race build. Flags are per-target; measure each |
+| −O0→−O2+ThinLTO (Adreno) | Optimized + LTO the generated module | 2.5–3.5×; "−O2 *deleted* call overhead" = structural-cost signature (`review-2026-09-17-recomp-perf.md` §2) | Link time (one-object ThinLTO link 230 s desktop; `float-conversion-spike.md`) | **done** (release builds; ThinLTO audited neutral over −O3) |
 | psq helper merge | Fold per-site constants into quant-load/store helpers | Could not pay: `static inline` helpers outline everywhere (still 250–280 samples post-merge); fix = `always_inline` or split to fast path (`review-2026-09-17-architecture.md` §2) | — | **technique** (verify inlining by symbol absence, not wall time) |
-| fcmp inline | Forced-inline FP compare helper | **Regressed**: +347 KB in 82 MB → −7.3% wall throughput, ABA-confirmed → layout/I-cache-bound regime (`review-2026-09-17-recomp-perf.md` §2) | — | **technique** (code-layout sensitivity; order-file/PGO idea — RV4 ranks PGO 0–3, queue) |
-| Entry-switch pruning (proposed, not landed) | Restrict per-function entry switch to block leaders ∪ return targets | Static: 76.5–82.7% of 4,088 cases prunable across 3 chunks; ~6-instr regalloc windows; est ~1.15× overall (`review-2026-09-17-recomp-perf.md` §2) | Must enumerate all entry addresses (starts, return hooks, loop heads, exception vectors) | **technique** = RV4 rank 1: VU1 block residency, fewer state round trips (VR2 stage 4 in flight) |
-| PC-store pruning (proposed) | Clear `materialize_pc` except at observable boundaries | Static: PC stored at 95% (3,876/4,088) of instructions today (`review-2026-09-17-recomp-perf.md` §2) | Same entry-enumeration proof | **technique** (EE already goto + backward-edge checkpoints; external JAL still `dispatchGuestBranch` — RV4 §1) |
-| Memory-access fast paths (proposed) | `#if`-out never-installed write journal; const-fold GC RAM layout; inline gather-pipe test; `preserve_most`; fastmem | M7: `HookExternalWrite` 1.69% + `Write32` 1.16% + caller-side indirect-call cost; every store pays reservation load + journal branch (`review-2026-09-17-recomp-perf.md` §3) | Fastmem is the large structural item | **technique** / partly **done (E)**: EE FAST/RAM-MMIO/guard specialization exists (RV4 §1); audit for always-off diagnostic branches on hot path |
+| fcmp inline | Forced-inline FP compare helper | **Regressed**: +347 KB in 82 MB → −7.3% wall throughput, ABA-confirmed → layout/I-cache-bound regime (`review-2026-09-17-recomp-perf.md` §2) | — | **technique** (code-layout sensitivity; order-file/PGO idea queues behind codegen settling) |
+| Entry-switch pruning (proposed, not landed) | Restrict per-function entry switch to block leaders ∪ return targets | Static: 76.5–82.7% of 4,088 cases prunable across 3 chunks; ~6-instr regalloc windows; est ~1.15× overall (`review-2026-09-17-recomp-perf.md` §2) | Must enumerate all entry addresses (starts, return hooks, loop heads, exception vectors) | **technique**: VU1 block residency, fewer state round trips |
+| PC-store pruning (proposed) | Clear `materialize_pc` except at observable boundaries | Static: PC stored at 95% (3,876/4,088) of instructions today (`review-2026-09-17-recomp-perf.md` §2) | Same entry-enumeration proof | **technique** (EE already uses goto + backward-edge checkpoints; external JAL still dispatches) |
+| Memory-access fast paths (proposed) | `#if`-out never-installed write journal; const-fold GC RAM layout; inline gather-pipe test; `preserve_most`; fastmem | M7: `HookExternalWrite` 1.69% + `Write32` 1.16% + caller-side indirect-call cost; every store pays reservation load + journal branch (`review-2026-09-17-recomp-perf.md` §3) | Fastmem is the large structural item | **technique** / partly **done**: EE FAST/RAM-MMIO/guard specialization exists; audit for always-off diagnostic branches on hot path |
 | `convert_to_double` inline | `always_inline` a 0.66% out-of-line helper | Not measured post-fix (`review-2026-09-17-recomp-perf.md` §3) | Trivial | **technique** (same audit class as psq) |
-| Chunk-granular lookup | 24 MiB int-per-word table → s16 per 256 B granule + binary search on mixed | Correctness covered by the 1,022-row replay; no isolated timing (`performance-review-2026-09-13.md` §Batch 2) | — | **?** (EE dispatch 17% inclusive vs 0.16% self is mostly callees — RV4 §1; different dispatcher shape) |
-| Idle skip | Skip guest idle spin (`loop_80288ED4`, 7.8% desktop) | **Failed**: earlier attempts regressed/failed to progress (`120hz-cpu-overhead-spikes.md` §Audit; `normal-frame-cpu-spike.md` §Next work); `CoreTiming::Idle` skips one slice only — correct form = fast-forward to next event + host sleep (`performance-review-2026-09-13.md` §Runtime overhead) | Thermal, not FPS, is the metric | **technique** with care: PCSX2-parity allows wait-loop detection, but RV7 says queue only after hot polling is found; HLE `waitVSync` exists |
-| Idle A/B metric lesson | Same experiment read three ways | "−30% Mac, ≈0% desktop O2, +27% Odin" reconciled: capped speed saturates at 1.00; CPU column carried it (ON 1.00 @56% CPU vs OFF 0.62–0.93 @84%) (`review-2026-09-17-recomp-perf.md` §1) | — | **done (process)**: ledger already requires CPU-ms/frame under a cap |
-| Throttle-overflow fix (`1f1bc2d`) | u32 wrap at speed 10 made a 1.16262 phantom wall | Voided 9 verdicts (fast-FP 0.00, SyncGPU, pinning, EGL=Vulkan, EFB 2×, validation…); first real Odin race 0.83×/0.63× OGL (`review-2026-09-17-recomp-perf.md` §1) | s64 multiply within 4× of limit; prefer divide-first or `__int128` | **done (process)**: use unlimited mode (`EmulationSpeed=0` analog); ledger's exclusive-host + ≥2-run rules |
-| FastDiscSpeed | Buffered DVD reads (latency model only) | Mac menu 20.10→14.85 s (−26.1%, paired n=6) (`loading-speed-spike.md`); phone ≈0 (CPU-bound; ≤1.2 s of 20 s boot was ever latency) (`startup-shortcut.md` §Measured) | Needs card r/w/relaunch verification per device | **n/a** as a knob (no equivalent DVD-timing model); **technique**: per-device measurement; RV7 queues host caching only if measured |
-| Memcard read speedup | 8× modeled read rate (writes untouched) | Stock cost 1.32 s, zero writes; card-size override removed (scan not size-proportional); real wait = 5.0 s CPU-bound asset load (`startup-shortcut.md` §§Both levers, card screen) | Save durability depends on write timing | **technique**: PS2 `mc0` is a host dir, autoload delays title ~200 ticks (E55D16, `docs/facts.md`) — measure before touching |
-| Boot checkpoint resume | Savestate at main-menu readiness instead of cold boot | 1.8 s to menu vs ~20 s cold; 104 MB in ~0.1 s; 16 restores vs 84 identity rejections (whole-`files/` hash incl. app build) (`startup-shortcut.md` §§lever, pre-menu) | Identity must narrow to what a savestate depends on; hashing 1.3 GB costs ~1.9 s/launch | **technique** (E has SS1 save states, dev default off; play builds use saves — `docs/status.md`) |
-| Startup movie-skip | Clear pending mask `0xf` at `0x803d7f64`; START after complete state-5 title update | Phone menu 20.61 s; input-race fix (edge between resource-ready and activation is lost) covered by synthetic regression (`startup-shortcut.md` §§Seams, Installed build) | Dev-only; faithful playback separate | **done (E)**: `PS2X_SKIP_MOVIE`, default off, dev-only (`AGENTS.md`) |
-| Dispatch sampling default-off + trial-step hoist | Presence-based env sampling + 2 Step calls × 8M dispatches/s removed from prod path | "Costs nothing to remove"; cleaner later measurements (`performance-review-2026-09-13.md` §Runtime overhead) | — | **done (E/N)**: `PS2X_ENABLE_DIAG_TAPS=OFF` for speed builds (N5, `docs/facts.md`) |
+| Chunk-granular lookup | 24 MiB int-per-word table → s16 per 256 B granule + binary search on mixed | Correctness covered by the 1,022-row replay; no isolated timing (`performance-review-2026-09-13.md` §Batch 2) | — | **?** (EE dispatch inclusive cost is mostly callees; different dispatcher shape) |
+| Idle skip | Skip guest idle spin (`loop_80288ED4`, 7.8% desktop) | **Failed**: earlier attempts regressed/failed to progress (`120hz-cpu-overhead-spikes.md` §Audit; `normal-frame-cpu-spike.md` §Next work); `CoreTiming::Idle` skips one slice only — correct form = fast-forward to next event + host sleep (`performance-review-2026-09-13.md` §Runtime overhead) | Thermal, not FPS, is the metric | **technique** with care: PCSX2-parity allows wait-loop detection, but queue it only after hot polling is found; an HLE wait exists |
+| Idle A/B metric lesson | Same experiment read three ways | "−30% Mac, ≈0% desktop O2, +27% Odin" reconciled: capped speed saturates at 1.00; CPU column carried it (ON 1.00 @56% CPU vs OFF 0.62–0.93 @84%) (`review-2026-09-17-recomp-perf.md` §1) | — | **done (process)**: CPU-ms/frame under a cap is already a standing rule |
+| Throttle-overflow fix (`1f1bc2d`) | u32 wrap at speed 10 made a 1.16262 phantom wall | Voided 9 verdicts (fast-FP 0.00, SyncGPU, pinning, EGL=Vulkan, EFB 2×, validation…); first real Odin race 0.83×/0.63× OGL (`review-2026-09-17-recomp-perf.md` §1) | s64 multiply within 4× of limit; prefer divide-first or `__int128` | **done (process)**: use uncapped mode; exclusive-host + ≥2-run rules |
+| FastDiscSpeed | Buffered DVD reads (latency model only) | Mac menu 20.10→14.85 s (−26.1%, paired n=6) (`loading-speed-spike.md`); phone ≈0 (CPU-bound; ≤1.2 s of 20 s boot was ever latency) (`startup-shortcut.md` §Measured) | Needs card r/w/relaunch verification per device | **n/a** as a knob (no equivalent DVD-timing model); **technique**: per-device measurement; host caching only after measured |
+| Memcard read speedup | 8× modeled read rate (writes untouched) | Stock cost 1.32 s, zero writes; card-size override removed (scan not size-proportional); real wait = 5.0 s CPU-bound asset load (`startup-shortcut.md` §§Both levers, card screen) | Save durability depends on write timing | **technique**: PS2 `mc0` is a host dir, autoload delays the title ~200 ticks — measure before touching |
+| Boot checkpoint resume | Savestate at main-menu readiness instead of cold boot | 1.8 s to menu vs ~20 s cold; 104 MB in ~0.1 s; 16 restores vs 84 identity rejections (whole-`files/` hash incl. app build) (`startup-shortcut.md` §§lever, pre-menu) | Identity must narrow to what a savestate depends on; hashing 1.3 GB costs ~1.9 s/launch | **technique** (save states exist, dev default off; play builds use saves) |
+| Startup movie-skip | Clear pending mask `0xf` at `0x803d7f64`; START after complete state-5 title update | Phone menu 20.61 s; input-race fix (edge between resource-ready and activation is lost) covered by synthetic regression (`startup-shortcut.md` §§Seams, Installed build) | Dev-only; faithful playback separate | **done**: `PS2X_SKIP_MOVIE`, default off, dev-only |
+| Dispatch sampling default-off + trial-step hoist | Presence-based env sampling + 2 Step calls × 8M dispatches/s removed from prod path | "Costs nothing to remove"; cleaner later measurements (`performance-review-2026-09-13.md` §Runtime overhead) | — | **done**: `PS2X_ENABLE_DIAG_TAPS=OFF` for speed builds |
 | Probe/trace buffering | 64 KiB stdio buffer vs flush-per-callback | 1–2 µs/callback vs ~7 ms callback — not promoted; crash-tail risk (`120hz-cpu-overhead-spikes.md` §Callback trace) | — | **technique** (same reason PS2 taps are compile-gated) |
 | "Determinism off 0.0%", pinning, EGL=Vulkan, EFB 2× | Four A/Bs at the phantom wall | All **void**; determinism-mode double-decodes every FIFO byte so the re-test is likely a real win; first genuine backend compare: Vulkan 0.73× vs OGL 0.83× race (`review-2026-09-17-recomp-perf.md` §§1, 4) | — | **technique** as harness caution (verify *effective* config in receipt; movie/det harness is pessimistic vs ship) |
-| Texture-cache Safe mode, video-thread atomics, EFB copies | CRC32 rehash 0.58%, `__aarch64_cas1` 1.52% + futex 3.2%, `CopyRenderTargetToTexture` 1.18% (M7) | Never A/B'd; open (`review-2026-09-17-recomp-perf.md` §6) | — | **?** (paraLLEl has own invalidation/CLUT tracking — RV7 §3; CP1's cost is `submit_empty` waits, not cache) |
+| Texture-cache Safe mode, video-thread atomics, EFB copies | CRC32 rehash 0.58%, `__aarch64_cas1` 1.52% + futex 3.2%, `CopyRenderTargetToTexture` 1.18% (M7) | Never A/B'd; open (`review-2026-09-17-recomp-perf.md` §6) | — | **?** (the GS renderer has own invalidation/CLUT tracking) |
 | Vertex-loader specialization | Fused AOT loaders for the game's small fixed `(vtxDesc, VAT)` set | Desktop "FIFO+vertex+encode" 1.56 ms of 15.76 (~1 ms lever); Odin used ARM64 JIT loader while iOS/desktop used software — every cross-platform render compare crossed that line (`review-2026-09-17-recomp-perf.md` §4) | — | **n/a** (no GC vertex loader on PS2 path); **technique** (record loader/codec identity in every receipt) |
-| Guest↔GPU empty-queue sync | Guest syncs GPU every frame with `queue_before=0` in all 1,360 renders | ~3.3 ms floor + scene-scaling part; 2.74 ms CPU-busy spin, 34% of render CPU; fix (defer completion) proposed, never scheduled (`review-2026-09-17-recomp-perf.md` §5) | — | **technique** (audit sync/wait points: CP1 shows 6.7 ms/frame GS-queue backpressure on MTVU; FS2 owns the submit wait) |
-| Extra frame = whole frame (kept for CPU cost only; EN1 owns 120 Hz) | Guest re-entry re-runs scene traversal + FIFO + conversion (4.7–9.1 ms med phone) vs host replay's ms-scale decode+submit (`performance-review-2026-09-13.md` §Structural 3; `review-2026-09-17-recomp-perf.md` §5) | — | — | **n/a** (no guest-renderer re-entry on PS2 route) |
+| Guest↔GPU empty-queue sync | Guest syncs GPU every frame with `queue_before=0` in all 1,360 renders | ~3.3 ms floor + scene-scaling part; 2.74 ms CPU-busy spin, 34% of render CPU; fix (defer completion) proposed, never scheduled (`review-2026-09-17-recomp-perf.md` §5) | — | **technique** (audit sync/wait points: GS-queue backpressure on MTVU is the known shape) |
+| Extra frame = whole frame (kept for CPU cost only; engine-timing owns 120 Hz) | Guest re-entry re-runs scene traversal + FIFO + conversion (4.7–9.1 ms med phone) vs host replay's ms-scale decode+submit (`performance-review-2026-09-13.md` §Structural 3; `review-2026-09-17-recomp-perf.md` §5) | — | — | **n/a** (no guest-renderer re-entry on PS2 route) |
 | Per-dispatch hooks (host-call style probes) | `StartupBoot::Step` + `Interpolation::Step` before every dispatch; Android trial `Step` did atomics + clock before PC filter | Removed/hoisted as free wins; no doc records a *failed host_call-hook optimization* per se — the recorded lesson is hook cost on the dispatch path (`performance-review-2026-09-13.md` §Runtime overhead; `review-2026-09-17-architecture.md` §6) | Per-dispatch clock reads once cost 25–30% (`120hz-cpu-overhead-spikes.md` §Next priority) | **technique** (PS2 tap-gating already follows this) |
 
 ## 3. Game-logic / engine knowledge
 
-GC addresses are GXBE69 rev 0 (DOL SHA `b92162d6…29ce`) unless noted. PS2
+GC addresses are the analyzed GameCube build revision unless noted. PS2
 equivalents cite where they live or say unknown.
 
 **Event / location / mode tables (course selection).**
@@ -155,7 +156,7 @@ location; event scripting lookup still open (`peaks-and-locations.md` §8.6).
 (rider allocated ≠ briefing ready); MemoryWatcher pointer chains are
 executable-specific, changed-words-only, implicit-zero
 (`gamecube-collision.md` §Runtime evidence). PS2 equivalent: **position only**
-— tracked EE `0x5409c0` (`tools/track_position.py` docstring); state fields
+— tracked EE `0x5409c0` (a position-logger tool (archive)); state fields
 unknown.
 
 ## 4. Data / asset knowledge
@@ -203,19 +204,19 @@ Dolphin-pipeline-specific and archived by policy
 
 **PS2-side notes from the same era.** PS2 path used ISO rebuild + PCSX2
 (`odin-testing.md` §§Put the build, handheld; `full-course-experiment.md`
-§Placement); run-gari-010 ISO SHA `5e53a815…` (`odin-testing.md`).
+§Placement); a test rebuild image (`odin-testing.md`).
 `SLUSOVF.BIG` overlay + file-table bsearch bug are PS2-lane findings, not GC
-(`docs/facts.md` §Guest).
+(see `docs/facts.md` §Guest).
 
-### 4a. Asset / texture preload (added by the orchestrator, 09-26; Brad asked)
+### 4a. Asset / texture preload
 
 GameCube finding (`docs/reserve/texture-remaster.md` §10.12–10.13; `docs/reserve/asset-policy.md` §Normalization):
 - **Loading textures on first draw causes mid-ride stalls.** With Dolphin's hi-res pack loaded lazily
   (`CacheHiresTextures` off), every burst of new art — a crash, a camera cut, new terrain — read and
   PNG-decoded on the frame that needed it; the frame rate dipped and recovered.
 - **Preload moves the cost to boot:** `SSXPreloadTextures` loaded the whole pack at start (894 MB decoded
-  for `pack-v8`, 8,806 PNGs before the first frame; fine on an 8 GB phone, slow to boot).
-- **Block compression removes it instead:** the phones support BC (A18 Pro `supportsBCTextureCompression = True`),
+  for `pack-v8`, 8,806 PNGs before the first frame; fine on a phone, slow to boot).
+- **Block compression removes it instead:** the phones support BC (modern phones report BC support),
   so a DDS pack (927 files with mip chains, `tools/texture_pack_dds.py`) uploads without decoding and BC1 cuts
   894 MB to ~110 MB, which makes preloading nearly free.
 - Startup side (`startup-shortcut.md`): the ~5 s pre-menu wait on the phone was CPU-bound asset load; latency
@@ -226,18 +227,19 @@ PS2 route: **not applicable yet, documented for later.**
   and paraLLEl renders from that (no texture-replacement path). The lessons apply if/when we add hi-res texture
   replacement (a remaster pack): preload or block-compress, never decode on the draw.
 - Nearest current analogues: paraLLEl's **pipeline/shader compiles** (MD1 counted 3,496 pipeline creates during the
-  title screen and none in the race — already a de facto warm-up) and **Turnip's first-use shader compiles** on the
-  Odin; host **file-read caching** of the ISO for loading screens (measure first; GC showed latency knobs don't help a
+  title screen and none in the race — already a de facto warm-up) and **Turnip's first-use shader compiles** on Adreno; host **file-read caching** of the ISO for loading screens (measure first; GC showed latency knobs don't help a
   CPU-bound load).
 - Candidate items (parked): texture-replacement design (preload + BC, paraLLEl hook) if a remaster is ever wanted;
-  a pipeline-cache persist/prewarm check on the Odin (does the first race stutter on first-time shader compiles?).
+  a pipeline-cache persist/prewarm check on Adreno (does the first race stutter on first-time shader compiles?).
 
 ## 5. Tooling inventory
 
-One line per tool (phrasing follows `tools/README.md` + docstrings); PS2
+Named `gamecube_*` tools live in the private analysis archive; only their
+transferable methods matter here. PS2-side reuse targets map to engine and
+`tests/` concepts, not to published scripts. One line per tool; PS2
 verdicts: **reuse** = usable as-is · **adapt** = port the idea ·
-**done** = PS2 lane already has it · **gc** = GC-only · **hist** = PS2-era,
-kept for reference. Harness pieces marked (H).
+**done** = the PS2 route already has it · **gc** = GC-only · **hist** =
+era reference. Harness pieces marked (H).
 
 **Read-only inspection.** `inspect_disc.py` ISO9660/EA-BIG inspection —
 **reuse** · `probe_worlds.py` staged-world inspector + previews — **adapt**
@@ -263,8 +265,8 @@ dispatch-trace compare — **adapt** (PS2: `PS2X_DETERMINISTIC=1` + VBlank hash 
 `gamecube_movie_ab.py` trajectory-gated movie A/B (resolves ≥3–4%) — **adapt**
 (PS2 det-hash A/B → **done**, E) · `gamecube_parity_compare.py`
 guest-time-aligned parity — **adapt** · `gamecube_f_regression.py` F-battery —
-**gc** (EN1) · `gamecube_schedule_check/schedule_trace.py` scheduling
-player/summary — **gc** (EN1) · `gamecube_perf_spike.py` probe-overhead
+**gc** (engine-timing) · `gamecube_schedule_check/schedule_trace.py` scheduling
+player/summary — **gc** (engine-timing) · `gamecube_perf_spike.py` probe-overhead
 compares — **adapt** · `native_probe_io_bench.py` trace-emitter CPU/storage
 bound — **adapt** · `gamecube_draw_trace.py` GX draw-state diagnostic players +
 comparator — **adapt** (PS2: `g46_rec2gs.py` + gsrunner → partly **done**, G/T) ·
@@ -328,7 +330,7 @@ contact — **reuse** · `track_position.py` EE-`0x5409c0` JSONL logger — **re
 `course_census.py` per-course render-cost census — **adapt** (PS2 cost census
 idea) · `paths.py` env-driven data locations — **reuse**.
 
-**120 Hz / media (EN1 owns; kept to one line).**
+**120 Hz / media (engine-timing owns; kept to one line).**
 `gamecube_reprojection{,_hud,_warp}.py`, `mobile_pacing_check.py`,
 `mobile_frame_cost.py`, `mobile_report.py`, `course_census.py`,
 `android_trial.py` — **gc**; `mobile_frame_cost.py` filtering discipline
@@ -362,9 +364,8 @@ identity: Snow Jam 0.287, Tricky 0.612 — `gamecube-world.md` §Runtime) —
   movie-driven input is the pairing instrument
   (`performance-batch2-followup.md` §Result; `route-control.md`).
 - **Under any cap, speed hides wins as idle** — report CPU-ms/guest-frame or
-  busy fraction (`review-2026-09-17-recomp-perf.md` §1). Already a ledger rule.
-- **Receipts pin effective config + binary identity**: module SHA (M5 staleness,
-  `review-2026-09-17-architecture.md` §1), requested-vs-effective flags (backend
+  busy fraction (`review-2026-09-17-recomp-perf.md` §1). Already a standing rule.
+- **Receipts pin effective config + binary identity**: module SHA (stale-module incidents), requested-vs-effective flags (backend
   override, `review-2026-09-17-recomp-perf.md` §1), inherited env (Metal
   validation, §4), loader/codec identity (vertex-loader JIT vs software, §4).
 - **Measurement configs differ from ship**: determinism double-decodes FIFO;
@@ -380,12 +381,10 @@ identity: Snow Jam 0.287, Tricky 0.612 — `gamecube-world.md` §Runtime) —
   `review-2026-09-17-architecture.md` §5). Trial lifecycle in scattered statics
   with comment-only ordering invariants caused exactly this class of bug (§2).
 - **Verdict-grade runs get an exclusive host/device** (sibling-run
-  contamination, ENOSPC, exFAT zeroing) + a current-numbers ledger, or stale
-  numbers keep getting cited (`review-2026-09-17-recomp-perf.md` §7). Both are
-  now standing rules (`AGENTS.md`; `docs/numbers-ledger.md`).
+  contamination, ENOSPC, exFAT zeroing) + a current-numbers ledger, or stale numbers keep getting cited. Both are standing rules.
 - **Phone/device discipline that transferred**: thermal state as the binding
   metric; always `install`; force-stop after every run; battery/AC + keyguard
-  checks (`performance-review-2026-09-13.md` §Batch 1; `AGENTS.md` §Devices).
+  checks (`performance-review-2026-09-13.md` §Batch 1).
 - **Course/content method**: validated-compiler mindset (bad reference fails
   the build with an ID, not in-game), immutable recipes + readback, separate
   residency budgets (geometry vs images), course owns its environment
@@ -397,15 +396,15 @@ identity: Snow Jam 0.287, Tricky 0.612 — `gamecube-world.md` §Runtime) —
 1. Audit always-on diagnostic branches on the EE/VU hot path (GC's journal
    branch + sampling default) — `review-2026-09-17-recomp-perf.md` §3.
 2. Specialize one measured hot constant-target external call past
-   `dispatchGuestBranch` (GC's direct-C-call item) — RV4 §1; `...-recomp-perf.md` §2.
+   `dispatchGuestBranch` (GC's direct-C-call item) — see the recompiler-perf review in the archive.
 3. Order-file/PGO for generated code after codegen settles (fcmp −7.3% lesson;
    ingredients exist) — `...-recomp-perf.md` §§2, 6.
 4. Idle/wait-loop fast-forward to next event + host sleep, only after hot
-   polling is demonstrated (PCSX2 `IntCHackCheck`/loop-detection model) —
-   `...-recomp-perf.md` §1; RV7 §2.
+   polling is demonstrated (PCSX2 wait-loop-detection model) — see the
+   recompiler-perf review in the archive.
 5. Host-side FS caching for loads if measured (GC: latency knobs ≈0 on
-   CPU-bound phone; never earlier guest completion) — `startup-shortcut.md`
-   §Measured; RV7 §2.
+   CPU-bound phone; never earlier guest completion) — see the startup study
+   in the archive.
 6. Narrow save-state identity to what a savestate depends on; cache the tree
    hash (GC: 84 rejections, ~1.9 s/launch hash) — `startup-shortcut.md` §lever.
 7. PS2 waypoint autopilot (PINE/pad-script steering) for deliberate-contact and

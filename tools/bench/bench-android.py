@@ -1,45 +1,30 @@
 #!/usr/bin/env python3
-"""odin_run.py — one canonical Odin leg (OB1).
+"""bench-android.py — one canonical Android bench leg.
 
-Replaces the ~47 per-lane copies of run1.sh/launch.py. One leg: cool-down
-(screen|final), lease, keyguard + AC + battery checks, install +
-installed-SHA check, env overlay on the play env, I26-FAST unpaced run to a
-stop tick with the full sampler set, force-stop, play-state restore,
-receipts + summary in one dir.
+One leg: keyguard + AC + battery pre-check, install + installed-SHA check,
+env overlay on the caller's base env, unpaced run to a stop tick with the
+full sampler set, force-stop, per-leg test-card/record cleanup, receipts +
+summary in one dir. No lease, no cooldown helper, no fan control, no
+play-state save/restore: the driver only touches the app's files under its
+own per-leg test dirs, which it removes afterwards. Reads/writes of the
+device ps2x.env are the caller's responsibility (bench-android.sh drives
+this per leg).
 
 Usage:
-    python3 local/tooling/odin_run.py --label OB1-A1 --out local/research/OB1/logs/OB1-A1 \\
-        --apk ~/dev/ssx3-work/odin-play/app-release.apk --apk-sha 24c01ee1... \\
-        [--mode screen|final] [--env K=V ...]
+    python3 tools/bench/bench-android.py --label A1 --out legs/A1 \
+        --serial SERIAL --app-id com.example.app --env-base base.env \
+        --apk app-release.apk [--apk-sha ...] [--mode screen|final] [--env K=V ...]
 
-Offline re-summary of any existing leg dir (no device; same code the batch
-collator reads):
-    python3 local/tooling/odin_run.py --summarize-only <leg dir>
+Offline re-summary of any existing leg dir (no device):
+    python3 tools/bench/bench-android.py --summarize-only <leg dir>
 
-Provenance (best current version of each piece, per the OB1 brief):
-  base driver + samplers  local/research/TN1/launch.py (newest lineage: TN1 =
-                          F9 + ps2x-game present-layer hitch sampler)
-  cooldown-before-claim + lease-race retry  local/research/F9/run1.sh
-  schedstat three-way (run/runnable/blocked)  TN1 write_sched (CP2/F9 method)
-  present-latency stitching  local/research/TN1/presentstat.py
-  gpu_clock_stats residency sampling  local/research/CP2/gpu_residency.py
-  devfreq/kgsl one-shots  local/research/GG1/run-gg1.sh (device.txt)
-  Granite logcat tag  local/tooling/odin_profile.py
-  race-rate / per-thread row  local/research/F9/legsum.py + ticks.py
-  phases table  local/research/F9/phases.py (= TN1/FS2/F8 phases.py)
-  lease / cooldown / restore  local/tooling/odin_lease.sh,
-    odin_cooldown.py, odin_restore_play.sh (shell out, not copied)
-  fast present poller (CP3): the 2 s main-loop polls overrun the 127-frame
-    SF ring whenever a loop iteration runs long (screencap, thermal+dumpsys),
-    forging 1-3 s stitching "stalls". A background thread polls --latency
-    every --fast-poll seconds into present-latency-fast.txt (preferred by
-    the summary); the main-loop file is kept as a control.
-
-Fixes vs the copies: the lease label is a flag (TN1 gap: copies hardcode
-their lane's label, e.g. TN1's T1-void died on the F8 label); OUT/scratch
-dirs are flags (GG1 had to mv another lane's dir); task_sched has a crash
-guard (TN1 P5 gap); env overlays the play env file instead of replicating
-its knobs per leg (replication drifts when the play env changes).
+Provenance: generalized from the lab's odin_run.py (repo-split-2); the
+sampler set, analysis library and summary format are unchanged. The fast
+present poller exists because 2 s main-loop polls overrun the 127-frame SF
+ring whenever an iteration runs long (screencap, thermal+dumpsys), forging
+1-3 s stitching "stalls": a background thread polls --latency every
+--fast-poll seconds into present-latency-fast.txt (preferred by the
+summary); the main-loop file is kept as a control.
 """
 import argparse
 import atexit
@@ -56,31 +41,16 @@ import threading
 import time
 from collections import defaultdict
 
-TOOL_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(os.path.dirname(TOOL_DIR))  # local/tooling -> repo root
-HOME = os.path.expanduser('~')
-ODIN_SERIAL_FILE = os.path.join(REPO, 'local/odin-serial')
-PKG = 'com.ps2x.runner'
-FILES = f'/storage/emulated/0/Android/data/{PKG}/files'
-DSCRAP = '/data/local/tmp/odinrun'
-LEASESH = os.path.join(TOOL_DIR, 'odin_lease.sh')
-COOLDOWN = os.path.join(TOOL_DIR, 'odin_cooldown.py')
-RESTORE = os.path.join(TOOL_DIR, 'odin_restore_play.sh')
-PLAYDIR = os.path.join(HOME, 'dev/ssx3-work/odin-play')
-PLAY_ENV = os.path.join(PLAYDIR, 'ps2x.env')
-PLAY_SUMS = os.path.join(PLAYDIR, 'SHA256SUMS')
-SCRATCH_ROOT = os.path.join(HOME, 'dev/ssx3-work/odinrun')
+DSCRAP = '/data/local/tmp/benchrun'
 
-# I31 odin-verify.txt full SHAs (read-only intactness check, never written).
-MC0_PINS = {
-    'BASLUS-20772-GAM0001/BASLUS-20772-GAM0001': '4bdaee79a3bdaceef898bb44b6bcf62058e882a24237f8c81e46953a5067b78e',
-    'BASLUS-20772-GAM0001/icon.sys': 'eab225745ef6695109743410261609e0569c14edb1555bc8941a965b3890a49c',
-    'BASLUS-20772-GAM0001/ssx1.ico': '5f8b5a9252f868d2fbc03378846b84ed601a2c872f47028711de67a4a714fc0b',
-    'BASLUS-20772-SET0001/BASLUS-20772-SET0001': '4a31a2d7e095e277edceae2243002055aa830019b3a1be64f126aee9129002f1',
-    'BASLUS-20772-SET0001/icon.sys': 'dddf2d9c81a1c8bac2fe2036e1771dfa63635e3ae676760551defec2da67ee13',
-    'BASLUS-20772-SET0001/ssx1.ico': '5f8b5a9252f868d2fbc03378846b84ed601a2c872f47028711de67a4a714fc0b',
-}
-# I26-FAST pad route (vsync clock; race HUD at tick ~1714). local/research/I26/ROUTES.md
+
+def app_files(app_id):
+    return f'/storage/emulated/0/Android/data/{app_id}/files'
+
+
+# Default menu-navigation pad script (vsync clock; race HUD at tick ~1714).
+# Legs normally supply their own pad; this is the fallback the det gate's
+# fr1r1 route uses. Ticks are guest vsyncs (59.94 Hz stock, 120 Hz in events).
 ROUTE = (
     '10611:start:250,12780:cross:250,14749:cross:250,16567:cross:250,18336:cross:250,19770:cross:250,21205:down:150,21706:down:150,22306:cross:250,24025:cross:250,28512:cross:200,28763:down:700,29513:cross:200,29764:down:700,30514:cross:200,30765:down:700,31515:cross:200,31766:down:700,32516:cross:200,32767:down:700,33517:cross:200,33768:down:700,34518:cross:200,34769:down:700,35519:cross:200,35770:down:700,36520:cross:200,36771:down:700,37521:cross:200,37772:down:700,38522:down:30000'
 )
@@ -103,15 +73,15 @@ STAGE_LINE_RE = re.compile(
 STAGES = ('ee.busy', 'ee.cpu', 'ee.wait', 'gs.busy', 'mtvu.busy', 'gpu.busy', 'gsback.busy')
 HIST_BUCKET_MS = 0.25
 HIST_MAX_MS = 20.0
-# Guest frame at 59.94 Hz. The runbook quotes Odin stage times as util% x this.
+# Guest frame at 59.94 Hz. Stage times read as util% x this.
 MS_PER_60FPS_FRAME = 16.68
 
 
 # ---------------------------------------------------------------------------
-# Pure analysis (device-free; also used by --summarize-only and odin_batch.py)
+# Pure analysis (device-free; also used by --summarize-only)
 # ---------------------------------------------------------------------------
 
-# DSP3 item 2: SF latch detector. latched= (distinct SF latch timestamps per
+# SF latch detector: latched= (distinct SF latch timestamps per
 # ~1 s perf window) drops to ~60/s when SF's vsync tracker is stuck at 60
 # (DSP2); a healthy 120 leg reads >= 118. The --latency ring cross-check uses
 # DSP2's latscan.py rule (> 30% of within-dump intervals < 12.4 ms = 120).
@@ -184,7 +154,7 @@ def ring_short_frac(present_latency_text):
 
 
 def sf_latch_summary(perf_dir, present_latency_text):
-    """DSP3 item 2 inputs: engaged-window latched stats + ring cross-check."""
+    """Engaged-window latched stats + ring cross-check."""
     rows = parse_perf_present_windows(perf_dir)
     engaged = [r for r in rows if r[1] >= DSP3_ENGAGED_VS and r[3] is not None]
     qual = [r for r in engaged if r[2] >= DSP3_POSTS_MIN]
@@ -603,7 +573,7 @@ def summarize_leg(outdir, extra_meta=None):
     if s['hitches'] is not None:
         s['hitches']['source'] = ('present-latency-fast.txt' if pl_fast
                                   else 'present-latency.txt')
-    # DSP3 item 2: SF latch detector (in-app latched= + ring cross-check).
+    # SF latch detector (in-app latched= + ring cross-check).
     s['sf_latch'] = sf_latch_summary(os.path.join(outdir, 'perf'), pl_fast or pl)
     s['diff_px'] = {int(t): int(px) for t, px in COMPARE_RE.findall(logcat)}
     mt = MTVU_RE.findall(logcat)
@@ -730,14 +700,20 @@ SUMMARY_NCOLS = 20
 # ---------------------------------------------------------------------------
 
 def build_arg_parser():
-    ap = argparse.ArgumentParser(description='One canonical Odin leg (OB1).')
+    ap = argparse.ArgumentParser(description='One canonical Android bench leg.')
     ap.add_argument('--label', default='',
-                    help='leg label (receipts, screencap names; also the default lease tag)')
-    ap.add_argument('--lease', default='',
-                    help='lease holder tag (default: --label)')
+                    help='leg label (receipts, screencap names)')
+    ap.add_argument('--serial', default='',
+                    help='adb device serial (required for a leg)')
+    ap.add_argument('--app-id', default='',
+                    help='installed application id (required for a leg)')
+    ap.add_argument('--env-base', default='',
+                    help='base env file the leg overlays (required for a leg)')
     ap.add_argument('--out', default='', help='receipts dir (required unless --summarize-only)')
     ap.add_argument('--scratch', default='',
-                    help='pulled PNGs/.data dir (default ~/dev/ssx3-work/odinrun/<label>)')
+                    help='pulled PNGs/.data dir (default OUT/scratch)')
+    ap.add_argument('--test-card-dir', default='mc0-bench-test',
+                    help='device files/ subdir used as the leg card (created empty, removed after)')
     ap.add_argument('--apk', default='', help='APK to install (always installed)')
     ap.add_argument('--apk-sha', default='')
     ap.add_argument('--mode', choices=('screen', 'final'), default='screen')
@@ -746,14 +722,14 @@ def build_arg_parser():
     ap.add_argument('--env', action='append', default=[],
                     help='ps2x.env overlay line K=V, applied after the play env (repeatable)')
     ap.add_argument('--variant', choices=('A', 'B', 'VA', 'VB'), default='A',
-                    help='V* = + PS2X_PRESENT_VULKAN=1 (CN2b: A/B differed only in paraLLEl-GS keys; now the same)')
+                    help='V* = + PS2X_PRESENT_VULKAN=1')
     ap.add_argument('--cpu-window', default='1900,2500',
                     help='schedstat three-way window S,E (empty = skip)')
     ap.add_argument('--compare-ticks', default='')
     ap.add_argument('--lifecycle', type=int, default=0)
     ap.add_argument('--sf-dump-tick', default='')
     ap.add_argument('--activity', default='android.app.NativeActivity',
-                    help='component to am start (TG1: .Launch60 / .Launch120 launcher aliases)')
+                    help='component to am start (.Launch60 / .Launch120 launcher aliases)')
     ap.add_argument('--aspect', choices=('', '4:3', '16:9', 'native'), default='')
     ap.add_argument('--vk', choices=('', '0', '1'), default='')
     ap.add_argument('--pad-probe', action='store_true')
@@ -769,22 +745,7 @@ def build_arg_parser():
                     'present-latency-fast.txt (0 = disable, legacy file only)')
     ap.add_argument('--scap-every', type=float, default=9999.0)
     ap.add_argument('--wall', type=float, default=600.0)
-    ap.add_argument('--min-battery', type=int, default=40)  # 10-14: was 20; back-to-back legs drained the Odin to 15 % (reboot)
-    ap.add_argument('--fan', choices=('smart', 'leave', 'performance'), default='smart',
-                    help='smart (default, Brad 10-15): fan_mode=4 during the leg, Brad\'s value restored after; '
-                         'performance: fan_mode=5 for a planned back-to-back batch only')
-    ap.add_argument('--cooldown-max-temp', type=float, default=42.0)
-    ap.add_argument('--cooldown-wait', type=float, default=180.0)
-    ap.add_argument('--cooldown-cap-min', type=float, default=20.0)
-    ap.add_argument('--no-cooldown', action='store_true')
-    ap.add_argument('--lease-tries', type=int, default=30)
-    ap.add_argument('--lease-sleep', type=float, default=30.0)
-    ap.add_argument('--keep-fan', action='store_true',
-                    help='KEEP_FAN=1 on the restore (batch legs except the last)')
-    ap.add_argument('--no-restore', action='store_true')
-    ap.add_argument('--restore-label', default='')
-    ap.add_argument('--play-env', default=PLAY_ENV)
-    ap.add_argument('--play-sums', default=PLAY_SUMS)
+    ap.add_argument('--min-battery', type=int, default=40)
     ap.add_argument('--summarize-only', default='',
                     help='no device: (re)build summary files for an existing leg dir')
     return ap
@@ -798,24 +759,19 @@ def sha256_file(path):
     return h.hexdigest()
 
 
-def play_env_sha(sums_path):
-    """Want-env SHA from the canonical SHA256SUMS (never hard-coded)."""
-    for line in open(sums_path):
-        parts = line.split()
-        if len(parts) == 2 and parts[1] == 'ps2x.env':
-            return parts[0]
-    raise SystemExit(f'no ps2x.env pin in {sums_path}')
-
-
 def run_leg(a):
-    D = open(ODIN_SERIAL_FILE).read().strip()
-    lease_tag = a.lease or a.label
-    OUT, SCR = a.out, a.scratch or os.path.join(SCRATCH_ROOT, a.label)
+    if not a.serial or not a.app_id or not a.env_base:
+        raise SystemExit('a leg needs --serial, --app-id and --env-base')
+    D = a.serial
+    PKG = a.app_id
+    FILES = app_files(PKG)
+    TESTCARD = f'{FILES}/{a.test_card_dir}'
+    OUT, SCR = a.out, a.scratch or os.path.join(a.out, 'scratch')
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(SCR, exist_ok=True)
     stop_tick = a.stop_tick or (3000 if a.mode == 'screen' else 4500)
     T0 = [None]
-    CLAIMED, PUSHED, LAUNCHED = {'v': False}, {'v': False}, {'v': False}
+    LAUNCHED = {'v': False}
     DISCONNECTS = {'n': 0}
 
     def adb(*args, check=False, timeout=60):
@@ -849,45 +805,21 @@ def run_leg(a):
         with open(f'{OUT}/driver.log', 'a') as f:
             f.write(line + '\n')
 
-    def lease_release():
-        subprocess.run(['bash', LEASESH, 'release', lease_tag],
-                       capture_output=True, timeout=60)
-
     def cleanup():
-        # Gated: only undo what this run did (never touch a session we didn't start).
-        try:
-            if PUSHED['v']:
-                subprocess.run(['adb', '-s', D, 'push', f'{OUT}/ps2x.env.brad',
-                                f'{FILES}/ps2x.env'], capture_output=True, timeout=60)
-        except Exception:
-            pass
+        # Only undo what this run did: force-stop the app. The device
+        # ps2x.env is the caller's (bench-android.sh rewrites it per leg);
+        # per-leg test dirs are removed by the leg body before this runs.
         try:
             if LAUNCHED['v']:
                 subprocess.run(['adb', '-s', D, 'shell', 'am', 'force-stop', PKG],
                                capture_output=True, timeout=30)
         except Exception:
             pass
-        try:
-            if CLAIMED['v']:
-                subprocess.run(['bash', LEASESH, 'release', lease_tag],
-                               capture_output=True, timeout=60)
-        except Exception:
-            pass
 
     atexit.register(cleanup)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit('SIGTERM'))
 
-    def cooldown():
-        cmd = [sys.executable, COOLDOWN, '--out', OUT, '--mode', a.mode,
-               '--max-temp-c', str(a.cooldown_max_temp), '--wait-s', str(a.cooldown_wait),
-               '--cap-min', str(a.cooldown_cap_min), '--fan', a.fan]
-        log('+ ' + ' '.join(cmd))
-        r = subprocess.run(cmd)
-        if r.returncode != 0:
-            raise SystemExit('cool-down refused (cap reached): operator decides')
-
-    # Fail-fast pre-check (read-only, no lease): don't cool down a locked/
-    # unplugged device for 20 min.
+    # Fail-fast pre-check (read-only).
     kg0 = sh('dumpsys window policy | grep -m1 showing').strip()
     bat0 = sh('dumpsys battery')
     m0 = re.search(r'level: (\d+)', bat0)
@@ -895,68 +827,29 @@ def run_leg(a):
     log(f'PRE0 keyguard="{kg0}" battery={m0.group(1) if m0 else "?"}% '
         f'ac={ac0.group(1) if ac0 else "?"}')
     if 'showing=false' not in kg0:
-        sys.exit('keyguard showing: ask Brad to unlock')
+        sys.exit('keyguard showing: unlock the device first')
     if not m0 or int(m0.group(1)) < a.min_battery or not ac0 or ac0.group(1) != 'true':
         sys.exit('battery/AC gate failed (need >= %d%% and AC powered, status ignored)'
                  % a.min_battery)
 
-    # F9 run1.sh order: cool down WITHOUT the lease, then claim; if the race
-    # is lost, wait for FREE and cool down again so the launch always follows
-    # a completed cool-down with no other lane's run in between.
-    if not a.no_cooldown:
-        for attempt in range(1, a.lease_tries + 1):
-            while True:
-                cur = subprocess.run(['bash', LEASESH, 'status'], capture_output=True,
-                                     text=True, timeout=60).stdout.strip()
-                if cur.startswith('LEASE_FREE') or cur.startswith(lease_tag + ' '):
-                    break
-                log(f'lease busy: {cur} (wait {a.lease_sleep:.0f}s)')
-                time.sleep(a.lease_sleep)
-            cooldown()
-            r = subprocess.run(['bash', LEASESH, 'claim', lease_tag],
-                               capture_output=True, text=True, timeout=60)
-            if r.returncode == 0:
-                CLAIMED['v'] = True
-                log(f'LEASE claimed after cool-down: {r.stdout.strip()}')
-                break
-            log(f'lost the lease race after cool-down ({r.stdout.strip()}); again')
-            if attempt >= a.lease_tries:
-                sys.exit('lease race lost too often; giving up')
-    else:
-        r = subprocess.run(['bash', LEASESH, 'claim', lease_tag],
-                           capture_output=True, text=True, timeout=60)
-        if r.returncode != 0:
-            sys.exit(f'atomic claim failed: {r.stdout.strip()} {r.stderr.strip()}')
-        CLAIMED['v'] = True
-
-    # --- preconditions (holding the lease) ---
-    lease = sh('cat /data/local/tmp/mg/LEASE').strip()
+    # --- preconditions (read-only) ---
     kg = sh('dumpsys window policy | grep -m1 showing').strip()
     bat = sh('dumpsys battery')
     level = int(re.search(r'level: (\d+)', bat).group(1))
     acm = re.search(r'AC powered: (\w+)', bat)
     ac = acm.group(1) if acm else 'unknown'
     pid0 = sh(f'pidof {PKG}').strip()
-    dev_env_sha = sh(f'sha256sum {FILES}/ps2x.env').split()[0]
-    sh(f'mkdir -p {FILES}/mc0-test')
-    mc0t = sh(f'ls -A {FILES}/mc0-test').strip()
-    mc0_bad = [f for f, want in MC0_PINS.items()
-               if sh(f'sha256sum {FILES}/mc0/{f}').split()[0] != want]
-    want_env = play_env_sha(a.play_sums)
-    log(f'PRE lease="{lease}" keyguard="{kg}" battery={level}% ac={ac} pid0={pid0 or "none"}')
-    log(f'PRE device-env={dev_env_sha} mc0-test={mc0t!r} mc0-bad={mc0_bad}')
+    card0 = sh(f'ls -A {TESTCARD} 2>/dev/null').strip()
+    log(f'PRE keyguard="{kg}" battery={level}% ac={ac} pid0={pid0 or "none"} card={card0!r}')
     if 'showing=false' not in kg:
-        sys.exit('keyguard showing: ask Brad to unlock')
+        sys.exit('keyguard showing: unlock the device first')
     if level < a.min_battery or ac != 'true':
         sys.exit(f'battery {level}% ac={ac}: need >= {a.min_battery}% and AC powered (status ignored)')
     if pid0:
         sys.exit(f'app already running (pid {pid0}): stop, do not disturb')
-    if dev_env_sha != want_env:
-        sys.exit(f'device env is NOT the play env: {dev_env_sha} (refusing to touch)')
-    if mc0_bad:
-        sys.exit(f'Brad mc0 mismatch: {mc0_bad} (refusing to run)')
-    if mc0t:
-        sys.exit(f'mc0-test not empty: {mc0t!r}')
+    if card0:
+        sys.exit(f'test card not empty: {TESTCARD} holds {card0!r} (another session?)')
+    sh(f'mkdir -p {TESTCARD}')
 
     # DSP3 item 3: pre-leg SF vsync-tracker sanity (read-only). A 120 leg on a
     # tracker stuck at 60 (DSP2) can latch at most 60/s no matter what the app
@@ -968,7 +861,7 @@ def run_leg(a):
         e.split('=', 1) == ['PS2X_SSX3_FULL120', 'events'] for e in (a.env or []) if '=' in e)
     if is_120_pre and ('vsyncRate=60.00' in sf_tracker or 'mPeriodConfirmationInProgress=1' in sf_tracker):
         sys.exit('INFRA-BLOCKED: SF vsync tracker stuck at 60 (see sf-tracker-pre.txt; '
-                 'needs Brad: screen power cycle or reboot)')
+                 'screen power cycle or reboot)')
 
     # GG1 device.txt: pre-run device state + devfreq/kgsl one-shots.
     with open(f'{OUT}/device.txt', 'w') as f:
@@ -983,8 +876,6 @@ def run_leg(a):
                 + sh('cat /sys/class/devfreq/*/available_frequencies 2>/dev/null'))
         f.write('devfreq_governor: ' + sh('cat /sys/class/devfreq/*/governor 2>/dev/null'))
 
-    adb('pull', f'{FILES}/ps2x.env', f'{OUT}/ps2x.env.brad')
-    shutil.copy(f'{OUT}/ps2x.env.brad', f'{SCR}/ps2x.env.brad-device')
     if not a.apk:
         sys.exit('needs --apk <path> (always installed, even if present)')
     h1, h2 = sha256_file(a.apk), sha256_file(a.apk)
@@ -998,22 +889,20 @@ def run_leg(a):
     if bsha != h1:
         sys.exit('installed base.apk does not match')
 
-    # Env: the PLAY ENV FILE as the base (never edited), then run keys, then
+    # Env: the caller's base env file (never edited), then run keys, then
     # --env overlays last. The app applies setenv in file order with
-    # overwrite=1, so later lines override earlier ones (TN1 P4).
-    base = [l.rstrip('\n') for l in open(a.play_env)
+    # overwrite=1, so later lines override earlier ones.
+    base = [l.rstrip('\n') for l in open(a.env_base)
             if l.strip() and not l.startswith('#')]
-    env = [f'# odin_run {a.label} mode={a.mode} variant={a.variant}',
-           f'# play base {a.play_env} sha={want_env}'] + base
-    env += [f'PS2X_MC_ROOT={FILES}/mc0-test',
+    env = [f'# bench-android {a.label} mode={a.mode} variant={a.variant}',
+           f'# base {a.env_base}'] + base
+    env += [f'PS2X_MC_ROOT={TESTCARD}',
             f'PS2X_PAD_SCRIPT={ROUTE}', 'PS2X_PAD_SCRIPT_CLOCK=vsync',
             'PS2X_VSYNC_RATE_LOG=1', 'PS2X_UNPACED=1',
-            # ACH3 (10-05): the play base enables achievements; test legs must never
-            # unlock into Brad's files/achievements-state.json or toast.
+            # Test legs never unlock achievements into the user's state file.
             'PS2X_ACHIEVEMENTS=0'] + [
-            # 10-06: the play base writes playthrough telemetry to files/telemetry; PB31/PB32
-            # bench legs filled Brad's dir with 45 test sessions. Redirect (keeps the cost).
-            f'{k}=/storage/emulated/0/Android/data/com.ps2x.runner/files/test-telemetry'
+            # Redirect session telemetry out of the user's dirs (keeps the cost).
+            f'{k}={FILES}/bench-leg/{a.label or "unlabeled"}/telemetry'
             for k in ('PS2X_VU_TELEMETRY', 'PS2X_GS_TELEMETRY', 'PS2X_COVERAGE_OUT', 'PS2X_SESSION_LOG')]
     if a.vk:
         env.append(f'PS2X_PRESENT_VULKAN={a.vk}')
@@ -1033,23 +922,21 @@ def run_leg(a):
         if '=' not in e:
             sys.exit(f'bad --env (want K=V): {e!r}')
         env.append(e)
-    # RPX1 (10-14): padrec replay uses the cycle-only event baseline even when the
-    # recording's live session had DET unset (4/4 EXACT with DET=1 vs host-timed
-    # A legs). Applied after caller overlays so a stray DET=0 can't reintroduce
-    # host-timed NV decisions.
+    # Padrec replay uses the cycle-only event baseline even when the
+    # recording's live session had DET unset. Applied after caller overlays
+    # so a stray DET=0 can't reintroduce host-timed decisions.
     pad_script = next((e.split('=', 1)[1] for e in reversed(env)
                        if e.startswith('PS2X_PAD_SCRIPT=')), '')
     if (pad_script.startswith('@') and
             os.path.basename(pad_script[1:]).startswith('padrec-')):
         env.append('PS2X_DETERMINISTIC=1')
         log('PADREC-REPLAY cycle-only scheduler PS2X_DETERMINISTIC=1')
-    # 10-14: lane legs never record into Brad's padrec folder (the play env's
-    # KEEP=10 rotation would push his own session recordings out). Redirect to a
-    # per-label lane dir instead of disabling: input markers write next to the
-    # record dir and stay off without one (GRY2). A caller that explicitly passes
-    # PS2X_PAD_RECORD_DIR keeps its value. Lanes remove FILES/lane-rec/<label>.
+    # Never record into the user's padrec folder (rotation would push their
+    # own session recordings out). Redirect to a per-leg dir instead of
+    # disabling: input markers write next to the record dir. A caller that
+    # explicitly passes PS2X_PAD_RECORD_DIR keeps its value.
     if not any(e.startswith('PS2X_PAD_RECORD_DIR=') for e in (a.env or [])):
-        env.append(f'PS2X_PAD_RECORD_DIR={FILES}/lane-rec/{a.label or "unlabeled"}/padrec')
+        env.append(f'PS2X_PAD_RECORD_DIR={FILES}/bench-leg/{a.label or "unlabeled"}/padrec')
     # GE5: the GS-stream record keys are exempt: they write a replayable capture,
     # not a present/video dump, and they force MTVU off in the runtime, so a
     # capture leg is diagnostic-only by construction (never a speed number).
@@ -1062,11 +949,10 @@ def run_leg(a):
                  ('PS2X_GS_CAPTURE', 'PS2X_GS_CAPTURE_STOP_TICK', 'PS2X_STRETCH_TRACE',
                   'MESA_GPU_TRACES', 'MESA_GPU_TRACEFILE', 'TU_GPU_TRACEPOINT')]
     assert a.compare_ticks or not any(x in e for e in _diag_env for x in ('DUMP', 'TRACE', 'CAPTURE', 'ORACLE')), \
-        'dump/trace key in env'
+        'dump/trace key in env (diagnostic-only legs must pass --compare-ticks or a trace dir)'
     open(f'{OUT}/ps2x.env', 'w').write('\n'.join(env) + '\n')
     sh(f'mkdir -p {DSCRAP}; rm -f {DSCRAP}/*.png {DSCRAP}/*.data; rm -rf {DDUMP}; mkdir -p {DDUMP}')
     adb('push', f'{OUT}/ps2x.env', f'{FILES}/ps2x.env', check=True)
-    PUSHED['v'] = True
     env_sha = sh(f'sha256sum {FILES}/ps2x.env').split()[0]
     log(f'ENV {env_sha}')
     sh(f'am force-stop {PKG}')
@@ -1131,8 +1017,8 @@ def run_leg(a):
         for l in sh('dumpsys SurfaceFlinger --list').splitlines():
             if PKG not in l or any(x in l for x in ('leash', 'InputSink', 'Background')):
                 continue
-            cands += re.findall(r'(com\.ps2x\.runner/android\.app\.NativeActivity#\d+)', l)
-            m = re.search(r'name=(\S+ )?(com\.ps2\.runner/[^)]*)\)', l)
+            cands += re.findall(re.escape(PKG) + r'/android\.app\.NativeActivity#(\d+)', l)
+            m = re.search(r'name=(\S+ )(' + re.escape(PKG) + r'/[^)]*)\)', l)
             if m:
                 cands.append(m.group(2))
             cands.append(l.strip())
@@ -1174,9 +1060,9 @@ def run_leg(a):
                                timeout=30).stdout
     open(f'{OUT}/transport-start.txt', 'w').write(f'serial={D}\n{transport}')
     json.dump({'T0': T0[0], 'layer': layer, 'env': env, 'variant': a.variant, 'serial': D,
-               'leg': a.label, 'mode': a.mode, 'stop_tick': stop_tick,
-               'apk': a.apk, 'apk_sha': h1, 'env_sha': env_sha, 'activity': a.activity,
-               'fan': a.fan, 'lease': lease_tag, 'fast_poll': a.fast_poll},
+               'leg': a.label, 'mode': a.mode, 'stop_tick': stop_tick, 'app_id': PKG,
+               'apk': a.apk, 'apk_sha': h1, 'env_base': a.env_base, 'activity': a.activity,
+               'fast_poll': a.fast_poll},
               open(f'{OUT}/meta.json', 'w'), indent=1)
 
     rate_re = re.compile(r'\[vsync-rate\] tick=(\d+) rate=([\d.]+)')
@@ -1679,13 +1565,8 @@ def run_leg(a):
     log(f"PERF {'pulled ' + ' '.join(sorted(perf_new)) if perf_new else 'no new perf log (knob off or old APK)'}")
     with open(f'{OUT}/device.txt', 'a') as f:
         f.write('gpu_clock_stats_post: ' + sh('cat /sys/class/kgsl/kgsl-3d0/gpu_clock_stats'))
-    adb('push', f'{OUT}/ps2x.env.brad', f'{FILES}/ps2x.env', check=True)
-    PUSHED['v'] = False
-    rest = sh(f'sha256sum {FILES}/ps2x.env').split()[0]
-    log(f'RESTORE {rest} match={rest == want_env}')
-    mc0_bad2 = [f for f, want in MC0_PINS.items()
-                if sh(f'sha256sum {FILES}/mc0/{f}').split()[0] != want]
-    log(f'MC0-AFTER bad={mc0_bad2}')
+    # Per-leg cleanup: remove the test card and leg record dirs the leg made.
+    sh(f'rm -rf {TESTCARD} {FILES}/bench-leg/{a.label or "unlabeled"}')
     with open(f'{OUT}/scap-sha.txt', 'w') as f:
         for name in sorted(os.listdir(SCR)):
             if name.endswith('.png') or name.endswith('.data') or name.endswith('.ppm'):
@@ -1695,30 +1576,15 @@ def run_leg(a):
                                    timeout=30).stdout
     open(f'{OUT}/transport-end.txt', 'w').write(f'serial={D}\ndisconnects={DISCONNECTS["n"]}\n{transport_end}')
     log(f'END pid-after={sh(f"pidof {PKG}").strip() or "none"} disconnects={DISCONNECTS["n"]}')
-    lease_release()
-    CLAIMED['v'] = False
-
-    # Full play-state restore (own lease; never a lane copy of an old APK).
-    restore_rc = 0
-    if not a.no_restore:
-        env = dict(os.environ)
-        if a.keep_fan:
-            env['KEEP_FAN'] = '1'
-        cmd = ['bash', RESTORE, a.restore_label or a.label]
-        log('+ ' + ' '.join(cmd) + (' KEEP_FAN=1' if a.keep_fan else ''))
-        restore_rc = subprocess.run(cmd, timeout=900, env=env).returncode
-        log(f'RESTORE_RC={restore_rc}')
 
     # Host-side summary (no device).
     meta = json.load(open(f'{OUT}/meta.json'))
-    meta.update({'stop_reason': stop_reason, 'restore_rc': restore_rc,
+    meta.update({'stop_reason': stop_reason, 'restore_rc': 0,
                  'disconnects': DISCONNECTS['n']})
     json.dump(meta, open(f'{OUT}/meta.json', 'w'), indent=1)
     s = write_summaries(OUT, meta)
-    if restore_rc != 0:
-        raise SystemExit(f'leg ran but restore failed (rc={restore_rc})')
-    # DSP3 item 2: a stuck-tracker leg fails loudly (after restore, so the
-    # bench stops instead of burning more legs on a 60 Hz compositor).
+    # A stuck-tracker leg fails loudly so the bench stops instead of burning
+    # more legs on a 60 Hz compositor.
     for r in s.get('reasons', []):
         if 'SF-LATCH-60' in r:
             raise SystemExit(r)

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Cached det baselines: store one control run per fork tip, boot only candidates.
+"""Det baselines: store one control run per engine pin, boot only candidates.
 
-Store: ~/dev/ssx3-work/baselines/<key>/ with manifest.json (pins + per-file
-SHAs). Key = readable prefix + short hash of the canonical pins JSON, e.g.
+Store: <store>/<key>/ with manifest.json (pins + per-file
+SHAs). Shipped keys live in tests/det/keys (comparison artifacts only:
+manifest + extracted hash/coverage/snd lines); full key dirs with runner
+binaries and frames stay in the operator's own store. Key = readable prefix + short hash of the canonical pins JSON, e.g.
 a3efbfe-det-fr1r1-t2400-snd1-1x-9f2c41ab. Key derivation is deterministic from
 the pins file, so `get --pins` finds what `put --pins` stored.
 
@@ -29,7 +31,7 @@ SS1 save states live in <store>/states/<key>/ (state.bin + manifest.json with
 the state's header lines). The state key uses only the guest-relevant pins
 (STATE_PINS) + the save tick, so any candidate build with matching guest code,
 route and backend finds it; SSAA/hi-res are in the key but only warn on load.
-Global: [--store DIR] (default $SSX3_BASELINES or ~/dev/ssx3-work/baselines/).
+Global: [--store DIR] (default $SSX3_DET_KEYS or tests/det/keys).
 """
 import argparse
 import hashlib
@@ -46,15 +48,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve()
 # OMF1 lane hook: find the repo root by walking up (the lane copy sits one
 # level deeper than the landed path, so parents[3] is wrong for one of them).
-_REPO = HERE.parent
-while not (_REPO / 'local' / 'tooling' / 'p_lane_lease.py').exists() and _REPO != _REPO.parent:
-    _REPO = _REPO.parent
-REPO = _REPO
+ROOT = HERE.parent.parent.parent  # tests/det/boot -> repo root
 BOOT_DRIVER = HERE.parent / 'ssx3_boot.py'
-GE1_DEFAULT = Path('/Users/brad/dev/ssx3-work/pinned/mac/ge1-dylib-37a81b4d/libge1_gs.dylib')  # = ssx3_boot.py GE1_LIB
-HASHDIFF = REPO / 'local' / 'research' / 'GB8' / 'gb8_hashdiff.py'
-DEFAULT_STORE = Path(os.environ.get('SSX3_BASELINES',
-                                    str(Path.home() / 'dev' / 'ssx3-work' / 'baselines')))
+HASHDIFF = ROOT / 'tests' / 'det' / 'hashdiff.py'
+DEFAULT_STORE = Path(os.environ.get('SSX3_DET_KEYS', str(ROOT / 'tests' / 'det' / 'keys')))
 
 # CN2b: parallel_gs/granite left REQUIRED_PINS with paraLLEl-GS (keys that have them keep them).
 # backend=external keys pin the GE1 dylib's SHA-256 in ge1_lib.
@@ -730,7 +727,9 @@ def cmd_make(args):
         if pins.get('vu1_lib') and sha_of(args.microvu_lib) != pins['vu1_lib']:
             raise SystemExit('--microvu-lib SHA does not match pins vu1_lib')
     if pins['backend'] == 'external':
-        ge1 = args.ge1_lib or str(GE1_DEFAULT)
+        if not args.ge1_lib:
+            raise SystemExit('make needs --ge1-lib PATH for backend=external')
+        ge1 = args.ge1_lib
         if sha_of(ge1) != sha64(pins.get('ge1_lib') or '', 'pins ge1_lib'):
             raise SystemExit('GE1 lib %s SHA does not match pins ge1_lib' % ge1)
     if pins['backend'] not in ('external', 'cpu'):
@@ -738,21 +737,27 @@ def cmd_make(args):
     if pins['ssaa'] != 1 or pins['hires'] or pins['pipeline']:
         raise SystemExit('ssaa/hires/pipeline are paraLLEl-GS pins; want 1/0/0')
     label = key[:32]
+    for flag in ('iso', 'elf', 'codegen'):
+        if not getattr(args, flag, None):
+            raise SystemExit('make needs --%s PATH (boot inputs)' % flag)
     cmd = [sys.executable, str(BOOT_DRIVER), '--mode', 'det',
            '--backend', pins['backend'], '--runner', args.runner,
            '--label', label, '--out', str(rundir),
+           '--iso', str(args.iso), '--elf', str(args.elf),
+           '--codegen', str(args.codegen),
            '--stop-tick', str(pins['stop_tick']), '--sound', pins['sound'],
            '--route', pins['route'], '--profile', profile,
            '--coverage-tick', str(pins.get('coverage_tick', pins['stop_tick'])),
            '--hash-every', str(pins.get('hash_every', 1))]
     if pins['backend'] == 'cpu':
-        cmd += ['--wall', '590']  # CN2a: the CPU raster is ~3x slower in races; stay under 600 s
+        cmd += ['--wall', '590']  # the CPU raster is ~3x slower in races; stay under 600 s
     if args.microvu_lib:
-        cmd += ['--env', 'PS2X_MICROVU_LIB=%s' % args.microvu_lib]
+        cmd += ['--microvu-lib', str(args.microvu_lib)]
     if pins['backend'] == 'external':
         cmd += ['--ge1-lib', ge1, '--env', 'GE1_RENDERER=%s' % pins.get('ge1_renderer', 'vk')]
+        cmd += ['--env', 'GE1_GS_RESOURCES_DIR=%s' % args.resources_dir] if args.resources_dir else []
     if profile == 'reference' and pins.get('vu1_engine', 'static') == 'microvu':
-        # RF1: the reference profile is a marker only (no compiled defaults), so the microVU
+        # The reference profile is a marker only (no compiled defaults), so the microVU
         # engine is selected explicitly; the play profiles get it from PLAY_ENV. microVU refuses
         # to start without PS2X_MTVU=1 (no LAG, no stages: the minimum the engine needs).
         cmd += ['--env', 'PS2X_VU1_ENGINE=microvu', '--env', 'PS2X_MTVU=1']
@@ -761,18 +766,17 @@ def cmd_make(args):
     if pins.get('vu1_stats'):
         cmd += ['--vu1-stats']
     print('+ %s' % ' '.join(cmd), flush=True)
-    # LS1 b: the make boot holds one slot itself (child reuses it via SSX3_HELD_SLOT), released on
-    # exit, error or SIGTERM (the child gets the SIGTERM too and unwinds).
-    sys.path.insert(0, str(REPO / 'local' / 'tooling'))  # OMF1: REPO is walked, not parents[1]
-    from p_lane_lease import hold
-    with hold('make-' + label) as slot:
-        if slot is None:
-            return 3  # INFRA-BLOCKED printed
-        print('make: holding slot %s' % slot, flush=True)
+    # Lab build-slot lease when available (shared hosts); otherwise unleased.
+    try:
+        from p_lane_lease import hold
+        have_lease = True
+    except ImportError:
+        have_lease = False
+    if not have_lease:
         if args.dry_run:
-            print('DRY-RUN %s (slot %s claimed, releasing)' % (key, slot))
+            print('DRY-RUN %s (unleased)' % key)
             return 0
-        proc = subprocess.Popen(cmd, env=dict(os.environ, SSX3_HELD_SLOT=str(slot)))
+        proc = subprocess.Popen(cmd)
         old = signal.signal(signal.SIGTERM, lambda sg, fr: (proc.terminate(), sys.exit(128 + sg)))
         try:
             proc.wait()
@@ -781,7 +785,25 @@ def cmd_make(args):
             if proc.poll() is None:
                 proc.terminate()
                 proc.wait()
-    r = proc
+        r = proc
+    else:
+        with hold('make-' + label) as slot:
+            if slot is None:
+                return 3  # INFRA-BLOCKED printed
+            print('make: holding slot %s' % slot, flush=True)
+            if args.dry_run:
+                print('DRY-RUN %s (slot %s claimed, releasing)' % (key, slot))
+                return 0
+            proc = subprocess.Popen(cmd, env=dict(os.environ, SSX3_HELD_SLOT=str(slot)))
+            old = signal.signal(signal.SIGTERM, lambda sg, fr: (proc.terminate(), sys.exit(128 + sg)))
+            try:
+                proc.wait()
+            finally:
+                signal.signal(signal.SIGTERM, old)
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait()
+        r = proc
     if r.returncode != 0:
         print('BOOT-FAILED %s rc=%d run=%s' % (key, r.returncode, rundir))
         return 1
@@ -822,7 +844,12 @@ def main():
     m.add_argument('--run', default='')
     m.add_argument('--microvu-lib', default='')
     m.add_argument('--ge1-lib', default='',
-                   help='CN2b: GE1 dylib for backend=external (default: ssx3_boot.py GE1_LIB)')
+                   help='GE1 dylib for backend=external (SHA must match pins)')
+    m.add_argument('--iso', default='', help='own supported USA disc image')
+    m.add_argument('--elf', default='', help='boot ELF extracted from --iso')
+    m.add_argument('--codegen', default='', help='generated game-code dir')
+    m.add_argument('--resources-dir', default='',
+                   help='GE1 resources dir (default: beside --ge1-lib)')
     pn = sub.add_parser('pins')
     pn.add_argument('--fork', default='')
     pn.add_argument('--fork-wt', default='')
