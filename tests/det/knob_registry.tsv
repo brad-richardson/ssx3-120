@@ -4,23 +4,23 @@ GE1_ADRENO_AD_ACCU	active-lane	GE1 adapter, host and replay (	lanes:AX4,AX4b	kee
 GE1_ADRENO_BLEND_MIX	play-default	CF2	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU19,AX4,AX4b,CFG1,ISH1,MPW1	keep
 GE1_ADRENO_DSTREAD	diag	CF2	tests/det/knob_matrix.py; lanes:AU19,AX4b,CFG1,ISH1,MPW1	keep
 GE1_ADRENO_OVERONE	dead	GE1 adapter, host and replay (	no setter	B4d
-GE1_ANISO	play-default	CFG1	ps2_knobs.h compiled default; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab-archive:local/tooling/perf/eebench/eebench.p	keep
+GE1_ANISO	play-default	CFG1	ps2_knobs.h compiled default; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/perf/eebench/eebench.p	keep
 GE1_BACKTHREAD	diag	CF2	tests/det/knob_matrix.py; lanes:AU19,AX4,AX4b,CFG1,ISH1,LT1,LT1b,MPW1	keep
-GE1_BLEND_CONST_SRC1	active-lane	not found	lab-archive:local/research/GTX1/part2/odin-receipts/GTX1-p2-A1/logcat.txt:115; lab-archive:local/research/GTX1/part2/odin-receipts/GTX1-p2-A2/logcat.txt:118; lab-archive:local/research/GTX1/part2/odin-receipts/GTX1-p2-B1/logcat.txt:120; lab-archive:local/research/GTX1/part2/odin-receipts/GTX1-p2-B2/logcat.txt:117 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+GE1_BLEND_CONST_SRC1	active-lane	not found	lab archive research/GTX1/part2/odin-receipts/GTX1-p2-A1/logcat.txt:115; lab archive research/GTX1/part2/odin-receipts/GTX1-p2-A2/logcat.txt:118; lab archive research/GTX1/part2/odin-receipts/GTX1-p2-B1/logcat.txt:120; lab archive research/GTX1/part2/odin-receipts/GTX1-p2-B2/logcat.txt:117 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 GE1_CAS	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
 GE1_DISABLE_FETCH	dead	CF2	no setter	B4d
-GE1_DISPLAY_SIZE	gate	UR1	lab-archive:local/tooling/bench/knobs.tsv; lanes:PB17	keep
-GE1_DRAW_BUFFERING	play-default	CU3	ps2_knobs.h compiled default; ios bundled ps2x.env; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,AX4,AX4b,CFG1,ISH1,IV1b,MPW1,MW2,PB17,PG5	keep
+GE1_DISPLAY_SIZE	gate	UR1	lab archive tooling/bench/knobs.tsv; lanes:PB17	keep
+GE1_DRAW_BUFFERING	play-default	CU3	ps2_knobs.h compiled default; ios bundled ps2x.env; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,AX4,AX4b,CFG1,ISH1,IV1b,MPW1,MW2,PB17,PG5	keep
 GE1_FEEDBACK_LOOP	active-lane	GE1 adapter, host and replay (	lanes:AX4,AX4b	keep
-GE1_FXAA	gate	GE1 adapter, host and replay (	lab-archive:local/tooling/bench/knobs.tsv; lanes:AX4b,PB17	keep
-GE1_GKV1_SHIFT0	play-default	not found	lab-archive:local/tooling/build/ios/ps2x.env:94=1	KNC2 inventory (keep pending review)
-GE1_GKV1_STATS	active-lane	not found	lab-archive:local/research/UPR2/receipts/pcsx2-carry.txt:19; lab-archive:local/research/UPR2/receipts/pcsx2-range-diff.txt:43 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+GE1_FXAA	gate	GE1 adapter, host and replay (	lab archive tooling/bench/knobs.tsv; lanes:AX4b,PB17	keep
+GE1_GKV1_SHIFT0	play-default	not found	lab archive tooling/build/ios/ps2x.env:94=1	KNC2 inventory (keep pending review)
+GE1_GKV1_STATS	active-lane	not found	lab archive research/UPR2/receipts/pcsx2-carry.txt:19; lab archive research/UPR2/receipts/pcsx2-range-diff.txt:43 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 GE1_GS_AHB_EXPORT	play-default	CF2	ps2_knobs.h compiled default; lanes:CFG1	keep
-GE1_GS_DATA_DIR	play-default	CF2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/build/ios/ps2x.env; lab-archive:local/tooling/perf/eebench/eebench.py; la	keep
-GE1_GS_RESOURCES_DIR	play-default	CF2	ps2_knobs.h compiled default; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:CFG1,ECR1,ISH1,LT1b,MPW1,OMF1,TK24,TK24b,TK24c,TK25b	keep
+GE1_GS_DATA_DIR	play-default	CF2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/build/ios/ps2x.env; lab archive tooling/perf/eebench/eebench.py; la	keep
+GE1_GS_RESOURCES_DIR	play-default	CF2	ps2_knobs.h compiled default; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:CFG1,ECR1,ISH1,LT1b,MPW1,OMF1,TK24,TK24b,TK24c,TK25b	keep
 GE1_PIPE_FLUSH_VSYNCS	play-default	CF2	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU19,AX4,CFG1	keep
 GE1_PIPE_STATS_CSV	active-lane	GE1 adapter, host and replay (	lanes:AX4b,ISH1	keep
-GE1_RENDERER	gate	CF2	tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:AX4,AX4b,BLD1b,ECR1,GKV1,HK1,IPG1,ISH1,LT1b,MPW1,MQ1,MQ2,MQ3,MW	keep
+GE1_RENDERER	gate	CF2	tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; lab archive tooling/perf/eebench/eebench.py; lanes:AX4,AX4b,BLD1b,ECR1,GKV1,HK1,IPG1,ISH1,LT1b,MPW1,MQ1,MQ2,MQ3,MW	keep
 GE1_REPLAY_AHB_PPM	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
 GE1_REPLAY_BACK_CSV	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
 GE1_REPLAY_EXPORT	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
@@ -38,32 +38,32 @@ GE1_TEX_PRELOAD	play-default	GE1	lab-work:odin-play/ps2x.env:58=1	KNC2 inventory
 GE1_TEX_REPLACE	play-default	GE1	lab-work:odin-play/ps2x.env:57=/storage/emulated/0/Android/data/com.ps2x.runner/files/rmt-pack	KNC2 inventory (keep pending review)
 GE1_TFX_PREWARM	play-default	CF2	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU19,AX4,CFG1,IPB8,ISH1,MPW1	keep
 GE1_TRILINEAR	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
-GE1_UPSCALE	play-default	CU3	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,AX4b,CFG1,GKV	keep
+GE1_UPSCALE	play-default	CU3	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,AX4b,CFG1,GKV	keep
 GE1_UPSCALE_FIX	active-lane	GE1 adapter, host and replay (	lanes:AX4b	keep
 GE1_VERTEX_KICK	diag	CF3	tests/det/knob_matrix.py; lanes:AU19,AX4,AX4b,CFG1,ISH1,MPW1	keep
-GE1_VK_TURNIP	play-default	CF2	ps2_knobs.h compiled default; lab-archive:local/tooling/bench/knobs.tsv; local/tooling/odin_run.py; tests/det/knob_matrix.py; lanes:AU19,AX4,CFG1,PB17,PG5,TK35,TKP2	keep
-PS2X_ACHIEVEMENTS	play-default	ACH2	"iOS bundled env =1 (Brad 10-04 ""turn on achievements on phone""); code default off; ps2xRuntime/include/ps2_ach.h; lab-archive:local/research/ACH2/REPORT.md"	keep
-PS2X_ACH_SET	active-lane	ACH2	ps2xRuntime/include/ps2_ach.h; lab-archive:local/research/ACH2/REPORT.md	keep
+GE1_VK_TURNIP	play-default	CF2	ps2_knobs.h compiled default; lab archive tooling/bench/knobs.tsv; tools/bench/bench-android.py; tests/det/knob_matrix.py; lanes:AU19,AX4,CFG1,PB17,PG5,TK35,TKP2	keep
+PS2X_ACHIEVEMENTS	play-default	ACH2	"iOS bundled env =1 (Brad 10-04 ""turn on achievements on phone""); code default off; ps2xRuntime/include/ps2_ach.h; lab archive research/ACH2/REPORT.md"	keep
+PS2X_ACH_SET	active-lane	ACH2	ps2xRuntime/include/ps2_ach.h; lab archive research/ACH2/REPORT.md	keep
 PS2X_ADPF	active-lane	AD1	lanes:GSR1	keep
 PS2X_ADPF_REPORT	dead	PW2	no setter	B4d
 PS2X_ADPF_TARGET_MS	dead	AD1	no setter	B4d
 PS2X_ANDROID_PAUSE_BG	dead	BG1	no setter	B4d
-PS2X_ASPECT	diag	I26	local/tooling/odin_run.py	keep
+PS2X_ASPECT	diag	I26	tools/bench/bench-android.py	keep
 PS2X_AUDIO_DC_BLOCK	play-default	AU19	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU18,AU19,FLK1,IN4,IPB7,IPR1,RRV1	keep
-PS2X_AUDIO_RESAMPLE	play-default	AU13	ps2_knobs.h compiled default; odin ps2x.env; ios bundled ps2x.env; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU17,AU18,AU19,CFG1,IPB3,MW2	keep
+PS2X_AUDIO_RESAMPLE	play-default	AU13	ps2_knobs.h compiled default; odin ps2x.env; ios bundled ps2x.env; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU17,AU18,AU19,CFG1,IPB3,MW2	keep
 PS2X_AUDIO_STRETCH	active-lane	AT1	lanes:AU17,IPR1	keep
-PS2X_BOOT_ELF	play-default	W1F2	ios bundled ps2x.env; lab-archive:local/tooling/build/ios/ps2x.env; lanes:CFG1,ISH1,IV1b,MPW1,MW2	keep
-PS2X_CD_IMAGE	play-default	Runner: allow raw CD sector re	odin ps2x.env; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_profile.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooling/odin/odin_r	keep
+PS2X_BOOT_ELF	play-default	W1F2	ios bundled ps2x.env; lab archive tooling/build/ios/ps2x.env; lanes:CFG1,ISH1,IV1b,MPW1,MW2	keep
+PS2X_CD_IMAGE	play-default	Runner: allow raw CD sector re	odin ps2x.env; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/odin_profile.py; lab archive tooling/build/ios/ps2x.env; lab archive tooling/odin/odin_r	keep
 PS2X_CD_OVERLAY	play-default	TK3	odin tricky.env; approved toggle (brief §1b); tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,	keep
 PS2X_CD_READ_TRACE	active-lane	E41	lanes:TK25,TK25b,TK25c	keep
 PS2X_CD_READ_TRACE_FROM	diag	E41	no setter	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_CD_READ_TRACE_TO	diag	E41	no setter	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_COVERAGE_OUT	play-default	TEL2	dir; cov-<session>.txt: cumulative guest dispatch-target coverage (one byte per dense-table slot) + CT1 sets + override PCs, atomic temp+rename at 60 s then every 300 s, Android pause, CT1 tick, exit; output-only, det IDENTICAL; lanes:TEL2	keep
-PS2X_COVERAGE_TICK	gate	CT1	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
-PS2X_DEINTERLACE	play-default	Present full frames by default	ios bundled ps2x.env; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2	keep
-PS2X_DETERMINISTIC	gate	E55B2	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/padrec_replay_env.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:ECR1,IP7,IV1,IV1b,LT1,LT1b,MQ1,MQ2,MQ3,MQ4,OBE	keep
-PS2X_DET_HASH_EVERY	gate	E55C2	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
-PS2X_DEV_NO_THINLTO	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:743 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_COVERAGE_TICK	gate	CT1	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
+PS2X_DEINTERLACE	play-default	Present full frames by default	ios bundled ps2x.env; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2	keep
+PS2X_DETERMINISTIC	gate	E55B2	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tools/replay/padrec_replay_env.py; lab archive tooling/perf/eebench/eebench.py; lanes:ECR1,IP7,IV1,IV1b,LT1,LT1b,MQ1,MQ2,MQ3,MQ4,OBE	keep
+PS2X_DET_HASH_EVERY	gate	E55C2	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
+PS2X_DEV_NO_THINLTO	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:743 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_DIAG_PARK	dead	Diag: T1 park snapshot emitter	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_DIAG_PARK_DIR	dead	Diag: T1 park snapshot emitter	no setter	P2
 PS2X_DIAG_PARK_TIMEOUT_MS	dead	Diag: T1 park snapshot emitter	no setter	P2
@@ -76,22 +76,22 @@ PS2X_DIAG_WATCH	active-lane	Diag: P1f watchpoint on guest 	lanes:FH26,TK34,TK37	
 PS2X_DISPLAY_HZ	play-default	DP1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/Info.plist; fork ps2xRuntime/ios/full120.env; tests/det/knob_matrix.py; lanes:AU19,CFG1,IOSR1,IPB8,IV1,IV1	keep
 PS2X_DROP_SILENCE	active-lane	Diag: P1w no-silent-drops cens	lanes:GKV1,HK1,IHP1,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1,PGO2,PKB1,PL3,PSO1,PT3,UPR1,VBK1	keep
 PS2X_E53_VU0_LOG	dead	E53	KNC2 B1: deleted at 5e08e9de; prior no-setter eligibility since 10-04/10-05	KNC2-B1 (removed)
-PS2X_EE_DISPATCH_FAST	play-default	DSP1	exact refactor, perf (compiled default on; 0 = exact dispatch/checkpoint paths); lanes:DSP1; lab-archive:local/research/DSP1/REPORT.md	keep
+PS2X_EE_DISPATCH_FAST	play-default	DSP1	exact refactor, perf (compiled default on; 0 = exact dispatch/checkpoint paths); lanes:DSP1; lab archive research/DSP1/REPORT.md	keep
 PS2X_EE_FPMODE	active-lane	E53	lanes:SPD1	keep
 PS2X_EE_SWITCH	dead	CTX1	no setter (test-only)	B4a
 PS2X_ENABLE_AGRESSIVE_LOGS	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_DEBUG_UI	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:855 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_DEBUG_UI	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:855 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_DET_HASH_TAP	gate	not found	tests/det/boot/ssx3_boot.py:22 (source references; last execution not found)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_DIAG_TAPS	active-lane	not found	lab-archive:local/research/FXA1/ps2_runtime.cpp.txt:122; lab-archive:local/research/FXA1/ps2_runtime.cpp.txt:129; lab-archive:local/research/FXA1/ps2_runtime.cpp.txt:132; lab-archive:local/research/GTX1/part2/REPORT.md:56 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_DIAG_WATCH	active-lane	not found	lab-archive:local/research/FXT1/REPORT.md:12 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_DIAG_TAPS	active-lane	not found	lab archive research/FXA1/ps2_runtime.cpp.txt:122; lab archive research/FXA1/ps2_runtime.cpp.txt:129; lab archive research/FXA1/ps2_runtime.cpp.txt:132; lab archive research/GTX1/part2/REPORT.md:56 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_DIAG_WATCH	active-lane	not found	lab archive research/FXT1/REPORT.md:12 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_FFMPEG	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_FFMPEG_DEFAULT	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_IOP_RPC_TRACE	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_RUNNER_PCH	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:741 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_RUNNER_UNITY_BUILD	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:739; lab-archive:local/research/XUP2/source-evidence.txt:481 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_RUNNER_PCH	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:741 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_RUNNER_UNITY_BUILD	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:739; lab archive research/XUP2/source-evidence.txt:481 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_RUNTIME_LOGS	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_ENABLE_SBR_TRIPWIRE	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_ENABLE_SCCACHE	active-lane	not found	lab-archive:local/research/XUP3/prepare.txt:110; lab-archive:local/research/XUP3/proof-prepare.txt:110 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_ENABLE_SCCACHE	active-lane	not found	lab archive research/XUP3/prepare.txt:110; lab archive research/XUP3/proof-prepare.txt:110 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_EVENT_CLOCK	dead	GE1	no setter (test-only)	B4a
 PS2X_EVENT_CLOCK_CENSUS	dead	GE1	no setter	B3
 PS2X_FALLBACK_MAGENTA	dead	I26	no setter	B4c
@@ -114,46 +114,46 @@ PS2X_FH1_TAP_EVERY	active-lane	FH1	lanes:APH1,FH26,FH27,IN3,TK19c,TK24,TK24a,TK2
 PS2X_FH26_TAP	active-lane	FH26	lanes:FH26,HK1	keep
 PS2X_FH27_ANIM	active-lane	FH27	lanes:FH27	keep
 PS2X_FH9_AI	active-lane	FH9	lanes:FH26,HK1	keep
-PS2X_FRAME_DUMP_DIR	play-default	Diag: env-gated presentation-f	ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:ISH1,IV1,IV1b,LT1b,MPW1,MW2,OBE1,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TK39,TKP2	keep
+PS2X_FRAME_DUMP_DIR	play-default	Diag: env-gated presentation-f	ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive tooling/build/ios/ps2x.env; lanes:ISH1,IV1,IV1b,LT1b,MPW1,MW2,OBE1,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TK39,TKP2	keep
 PS2X_FRAME_DUMP_ONCE_TICKS	gate	E56	tests/det/boot/ssx3_boot.py; lanes:FLK1,LT1b,OMF1,TK24,TK24a,TK24b,TK24c,TK37b,TK39,TKP2	keep
-PS2X_GAME_IPO	active-lane	not found	lab-archive:local/research/CGR1/build-binding-restored.txt:47; lab-archive:local/research/CGR1/build-fresh-rom.txt:47; lab-archive:local/research/CGR1/build-generator-binding-restored.txt:47; lab-archive:local/research/CGR1/build-generator-old-mmio.txt:47 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
-PS2X_GAME_THREAD_CPUS	play-default	N11	ps2_knobs.h compiled default; local/tooling/odin_run.py; tests/det/knob_matrix.py; lanes:AU19,CFG1	keep
+PS2X_GAME_IPO	active-lane	not found	lab archive research/CGR1/build-binding-restored.txt:47; lab archive research/CGR1/build-fresh-rom.txt:47; lab archive research/CGR1/build-generator-binding-restored.txt:47; lab archive research/CGR1/build-generator-old-mmio.txt:47 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_GAME_THREAD_CPUS	play-default	N11	ps2_knobs.h compiled default; tools/bench/bench-android.py; tests/det/knob_matrix.py; lanes:AU19,CFG1	keep
 PS2X_GAME_THREAD_STACK_KB	gate	F4	tests/det/boot/ssx3_boot.py; lanes:IV1,OMF1	keep
-PS2X_GE1_EXPORT_SIZE	play-default	UR1	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,ITH	keep
+PS2X_GE1_EXPORT_SIZE	play-default	UR1	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,ITH	keep
 PS2X_GIF_DIGEST	dead	VPL1	no setter	B3
 PS2X_GS_AHB_DUMP_DIR	dead	GE1	no setter	B3
-PS2X_GS_BACKEND	play-default	GB4	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_profile.py; tests/det/knob_matrix.py; local/tooling/	keep
+PS2X_GS_BACKEND	play-default	GB4	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/odin_profile.py; tests/det/knob_matrix.py; lab archive tooling/	keep
 PS2X_GS_BISECT_TO	dead	GB4	no setter	P2
-PS2X_GS_CAPTURE	diag	GB4	local/tooling/odin_run.py; local/tooling/odin/odin_replay.py; lanes:TK35	keep
+PS2X_GS_CAPTURE	diag	GB4	tools/bench/bench-android.py; lab archive odin-replay; lanes:TK35	keep
 PS2X_GS_CAPTURE_DIR	dead	GB2	no setter	P2
 PS2X_GS_CAPTURE_N	dead	GB2	no setter	P2
-PS2X_GS_CAPTURE_STOP_TICK	diag	GB4	local/tooling/odin_run.py; local/tooling/odin/odin_replay.py; lanes:TK35	keep
+PS2X_GS_CAPTURE_STOP_TICK	diag	GB4	tools/bench/bench-android.py; lab archive odin-replay; lanes:TK35	keep
 PS2X_GS_CONSUMED_LOG	dead	GF1	no setter	B3
 PS2X_GS_EXTERNAL_GPU_CSV	dead	GE1	no setter	P2
-PS2X_GS_EXTERNAL_LIBRARY	play-default	GE1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooli	keep
+PS2X_GS_EXTERNAL_LIBRARY	play-default	GE1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lab archive/tooli	keep
 PS2X_GS_EXTERNAL_LOG	diag	GE2	no setter (test-only)	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_GS_FINISH_TIMING	play-default	IR1b	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/padrec_replay_env.py; tests/det/knob_matrix.py; local/too	keep
+PS2X_GS_FINISH_TIMING	play-default	IR1b	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tools/replay/padrec_replay_env.py; tests/det/knob_matrix.py; lab archive/too	keep
 PS2X_GS_FRAME_CENSUS	dead	GE1	no setter	B3
-PS2X_GS_HANDOFF_DIET	play-default	GF1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2,PKB1	keep
+PS2X_GS_HANDOFF_DIET	play-default	GF1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2,PKB1	keep
 PS2X_GS_IOSURFACE_DUMP_DIR	active-lane	GI1	lanes:IP7,IPG1,ISH1,ISH2,MPW1	keep
 PS2X_GS_L2H_TRACE	dead	SQ2	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_GS_QUEUE	dead	GB2	no setter	B4b
 PS2X_GS_QUEUE_DESC	dead	GF1	no setter	B4b
-PS2X_GS_REPLAY_BACKEND	diag	GB4	local/tooling/odin/odin_replay.py	keep
+PS2X_GS_REPLAY_BACKEND	diag	GB4	lab archive odin-replay	keep
 PS2X_GS_REPLAY_BISECT_TO	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_GS_REPLAY_CAPTURE	diag	GB4	local/tooling/odin/odin_replay.py	keep
+PS2X_GS_REPLAY_CAPTURE	diag	GB4	lab archive odin-replay	keep
 PS2X_GS_REPLAY_DROP_PRIV	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_GS_REPLAY_EXPECT	diag	GB4	no setter (test-only)	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_GS_REPLAY_MODE	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_GS_REPLAY_OUT	diag	GB4	local/tooling/odin/odin_replay.py	keep
+PS2X_GS_REPLAY_OUT	diag	GB4	lab archive odin-replay	keep
 PS2X_GS_REPLAY_PACKET_TRACE	diag	GB4	no setter (test-only)	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_GS_REPLAY_PATH_FILE	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_GS_REPLAY_PKTSEQ	diag	N8D7M12	local/tooling/odin/odin_replay.py	keep
-PS2X_GS_REPLAY_PPM_DIR	diag	GB4	local/tooling/odin/odin_replay.py	keep
-PS2X_GS_REPLAY_PPM_TICKS	diag	GB4	local/tooling/odin/odin_replay.py	keep
+PS2X_GS_REPLAY_PKTSEQ	diag	N8D7M12	lab archive odin-replay	keep
+PS2X_GS_REPLAY_PPM_DIR	diag	GB4	lab archive odin-replay	keep
+PS2X_GS_REPLAY_PPM_TICKS	diag	GB4	lab archive odin-replay	keep
 PS2X_GS_REPLAY_RAW_PPM_DIR	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
 PS2X_GS_REPLAY_RTZ	diag	GB4	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_GS_REPLAY_STEP	diag	GB4	local/tooling/odin/odin_replay.py	keep
+PS2X_GS_REPLAY_STEP	diag	GB4	lab archive odin-replay	keep
 PS2X_GS_TELEMETRY	play-default	TEL1	dir; gs-<stamp>.tsv: GE1 PW1 per-vsync pipe-stats CSV drained via a pipe and summarised (10 s windows + compile-event rows); output-only; lanes:TEL1	keep
 PS2X_GS_TFX_RECORD	diag	TEL1	dir; sets GE1_TFX_PREWARM=<dir>/tfx-<stamp>.bin (record-only) only when GE1_TFX_PREWARM is unset; inert on Android (compiled default sets it when ge1-data/tfx-selectors.bin exists); lanes:TEL1	keep
 PS2X_GS_WAKE_CMDS	dead	GF1	no setter	B4b
@@ -166,49 +166,49 @@ PS2X_INPUT_DIAG	active-lane	IN4	lanes:FH26,FLK1,IN4,IPB7,IPR1,PL3,RRP1,RRV1	keep
 PS2X_INPUT_DIAG_DIR	active-lane	IN4	lanes:IN4,IPB7	keep
 PS2X_INTC_LOG	dead	CT1	no setter	B3
 PS2X_IOP_MODE	active-lane		lanes:RRV1,UPR1	keep
-PS2X_IOS_AUDIO_SESSION	diag	IA1	local/tooling/build/ios_build.sh; lanes:AU17,AU18,AX4,FLK1,GKV1,HK1,IHP1,IN3,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,IPR1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1,PGO2,PKB1,PL3,PRV1,PSO1,PT	keep
+PS2X_IOS_AUDIO_SESSION	diag	IA1	lab archive tooling/build/ios_build.sh; lanes:AU17,AU18,AX4,FLK1,GKV1,HK1,IHP1,IN3,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,IPR1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1,PGO2,PKB1,PL3,PRV1,PSO1,PT	keep
 PS2X_IOS_DOCUMENTS	active-lane	QSR1	host-set by ps2_ios_runtime.mm to the app Documents path (quick-save slot dir), not a user knob; lanes:QSR1	keep
 PS2X_IOS_TOUCH_EVENTS	user-toggle	IN4	fork src/lib/ps2_ios_runtime.mm; lanes:IN3,IN4	keep
 PS2X_LAUNCH_HZ	user-toggle	TG1	fork android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	keep
 PS2X_LAUNCH_LAYER	user-toggle	TKO1	fork android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	keep
-PS2X_MC_ROOT	play-default	I26	odin ps2x.env; ios bundled ps2x.env; fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; local/tooling/odin_bench.sh; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_run.py; l	keep
+PS2X_MC_ROOT	play-default	I26	odin ps2x.env; ios bundled ps2x.env; fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; tools/bench/bench-android.sh; lab archive research/EBN1/tooling/eebench.py; tools/bench/bench-android.py; l	keep
 PS2X_MICROVU_BRIDGE_LEAN	dead	MP1	no setter	B4d
-PS2X_MICROVU_FLAG_HACK	play-default	VU2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; local/tooling/	keep
-PS2X_MICROVU_LIB	gate	SS4	tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; local/tooling/lab/README.md; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:APH1,AX4b,BLD1b,ECR1,FH26,FH27,FLK	keep
-PS2X_MISSING_FUNCTION_POLICY	gate	E56	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:ECR1,LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
+PS2X_MICROVU_FLAG_HACK	play-default	VU2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/	keep
+PS2X_MICROVU_LIB	gate	SS4	tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; lab archive tooling/lab/README.md; lab archive tooling/perf/eebench/eebench.py; lanes:APH1,AX4b,BLD1b,ECR1,FH26,FH27,FLK	keep
+PS2X_MISSING_FUNCTION_POLICY	gate	E56	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:ECR1,LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
 PS2X_MPEG_FEED_TRACE	dead	I23: env-gated feed trace (PS2	no setter	B3
 PS2X_MPEG_VECTOR_PATH	dead	I23	KNC2 B2: deleted at 03cbc22e; evidence in inventory.tsv	KNC2-B2 (removed)
-PS2X_MTVU	play-default	MT1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; local/tooling/padrec_replay_env.py; local/tooling/knob_m	keep
-PS2X_MTVU_BUSY_PER_VBLANK	gate	VG2	lab-archive:local/tooling/bench/knobs.tsv; lanes:GSR1,PB17	keep
+PS2X_MTVU	play-default	MT1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; tools/replay/padrec_replay_env.py; lab archive tooling/knob_m	keep
+PS2X_MTVU_BUSY_PER_VBLANK	gate	VG2	lab archive tooling/bench/knobs.tsv; lanes:GSR1,PB17	keep
 PS2X_MTVU_CENSUS_OUT	dead	MT1	no setter	B3
 PS2X_MTVU_CPUS	play-default	MT1	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU19,CFG1	keep
-PS2X_MTVU_FINISH_EE	play-default	MQ2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooli	keep
+PS2X_MTVU_FINISH_EE	play-default	MQ2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lab archive/tooli	keep
 PS2X_MTVU_GIF_CPUS	dead	VPL1	no setter	P2
-PS2X_MTVU_GIF_STAGE	play-default	VPL1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; local/tooling/	keep
+PS2X_MTVU_GIF_STAGE	play-default	VPL1	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/	keep
 PS2X_MTVU_JITTER	dead	MT1	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
-PS2X_MTVU_LAG	play-default	MT1	ps2_knobs.h compiled default; ios bundled ps2x.env; fork ios/full120.env; fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/knob_	keep
+PS2X_MTVU_LAG	play-default	MT1	ps2_knobs.h compiled default; ios bundled ps2x.env; fork ios/full120.env; fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/knob_	keep
 PS2X_MTVU_STAGE_WAIT	play-default	HT1/OPK1	parseStagePark compiled default in ps2_mtvu.h; lanes:MW2,HT1,OPK1,HCH1,DEF1	keep
-PS2X_MTVU_VIF1_STAT_FREE	play-default	MQ3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooli	keep
+PS2X_MTVU_VIF1_STAT_FREE	play-default	MQ3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lab archive/tooli	keep
 PS2X_MTVU_VIF_CPUS	dead	VPL2	no setter	P2
-PS2X_MTVU_VIF_STAGE	play-default	VPL2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; local/tooling/	keep
+PS2X_MTVU_VIF_STAGE	play-default	VPL2	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/	keep
 PS2X_MTVU_WAIT	active-lane	MW1	lanes:IP7	keep
-PS2X_OM1_CERT	play-default	OM1	lab-archive:local/tooling/build/ios/ps2x.env:96=1	KNC2 inventory (keep pending review)
+PS2X_OM1_CERT	play-default	OM1	lab archive tooling/build/ios/ps2x.env:96=1	KNC2 inventory (keep pending review)
 PS2X_OM1_CERT_VERIFY	diag	OM1	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_OM1_DENY	active-lane	OM1	lab-archive:local/research/IRM1/receipts/bundled-env.json:5 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_OM1_DENY	active-lane	OM1	lab archive research/IRM1/receipts/bundled-env.json:5 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_OM1_FORCE_JUMP_MISS	diag	OM1	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_OM1_LEAN	play-default	OM1	lab-archive:local/tooling/build/ios/ps2x.env:86=1	KNC2 inventory (keep pending review)
-PS2X_OM1_LOGDIR	active-lane	OM1	lab-archive:local/research/IPB16/receipts/A1-markers.txt:3; lab-archive:local/research/IPB16/receipts/A2-markers.txt:3; lab-archive:local/research/IPB16/receipts/B1-markers.txt:4; lab-archive:local/research/IPB16/receipts/B2-markers.txt:3 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_OM1_LEAN	play-default	OM1	lab archive tooling/build/ios/ps2x.env:86=1	KNC2 inventory (keep pending review)
+PS2X_OM1_LOGDIR	active-lane	OM1	lab archive research/IPB16/receipts/A1-markers.txt:3; lab archive research/IPB16/receipts/A2-markers.txt:3; lab archive research/IPB16/receipts/B1-markers.txt:4; lab archive research/IPB16/receipts/B2-markers.txt:3 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_OM1_RESUME	diag	OM1	not found (execution not established)	KNC2 inventory (keep pending review)
-PS2X_OM1_SCAN	play-default	OM1	lab-archive:local/tooling/build/ios/ps2x.env:87=1	KNC2 inventory (keep pending review)
+PS2X_OM1_SCAN	play-default	OM1	lab archive tooling/build/ios/ps2x.env:87=1	KNC2 inventory (keep pending review)
 PS2X_PAD_LATCH	dead	IN2	no setter (test-only)	B4c
 PS2X_PAD_READ_LOG	active-lane	IN2	lanes:IN3	keep
 PS2X_PAD_RECORD	reference	IR1	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_PAD_RECORD_DIR	play-default	IR1b	odin ps2x.env; local/tooling/padrec_complete.py; lanes:CFG1	keep
+PS2X_PAD_RECORD_DIR	play-default	IR1b	odin ps2x.env; lab archive tooling/padrec_complete.py; lanes:CFG1	keep
 PS2X_PAD_RECORD_KEEP	reference	IR1b	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_PAD_SCRIPT	play-default	E31	odin ps2x.env; ios bundled ps2x.env; fork ps2xRuntime/ios/Settings.bundle/Root.plist; fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; local/tooling/odin_bench.sh; lab-archive:local/research/EBN1	keep
-PS2X_PAD_SCRIPT_CLOCK	play-default	E33	ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; local/tooling/odin_bench.sh; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_run.py; local/tooling/padrec_replay_env.py; local/tooling	keep
+PS2X_PAD_SCRIPT	play-default	E31	odin ps2x.env; ios bundled ps2x.env; fork ps2xRuntime/ios/Settings.bundle/Root.plist; fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; tools/bench/bench-android.sh; lab archive research/EBN1	keep
+PS2X_PAD_SCRIPT_CLOCK	play-default	E33	ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; tools/bench/bench-android.sh; lab archive research/EBN1/tooling/eebench.py; tools/bench/bench-android.py; tools/replay/padrec_replay_env.py; lab archive/tooling	keep
 PS2X_PAD_SCRIPT_EVENTS_CLOCK	reference	FH17	no setter	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_PERF_LOG	play-default	IP3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ECR1,GKV1,GSR1,HK1,IHP1,IN4,IOSR1,IP7,ISH1,ITH1,IV1,IV1b,LT1,LT1b,MP	keep
+PS2X_PERF_LOG	play-default	IP3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ECR1,GKV1,GSR1,HK1,IHP1,IN4,IOSR1,IP7,ISH1,ITH1,IV1,IV1b,LT1,LT1b,MP	keep
 PS2X_PERF_LOG_DIR	play-default	IP3	ps2_knobs.h compiled default; lanes:AU17,AU18,CFG1,ECR1,GKV1,GSR1,HK1,IHP1,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,ISH1,ISH2,ITH1,IV1,IV1b,LT1,LT1b,MPW1,MQ1,MQ2,MQ3,MQ4,MW2,OBE1,PGO2,PKB1,PL	keep
 PS2X_PKB	active-lane	PKB1	lanes:PKB1	keep
 PS2X_PRESENT_CAPTURE_DIR	active-lane	PSO1	lanes:PSO1	keep
@@ -220,24 +220,24 @@ PS2X_PRESENT_OWN_STRESS	active-lane	PSO1	lanes:PSO1	keep
 PS2X_PRESENT_PER_VSYNC	play-default	IQ1	odin full120.env; fork ios/full120.env; fork ps2xRuntime/ios/full120.env; tests/det/knob_matrix.py; lanes:AU19,CFG1,FLK1,IN3,IOSR1,IPB8,IV1,IV1b,MQ4,PGO2	keep
 PS2X_PRESENT_SHARE_DUMP_TICKS	dead	HR1	no setter	B3
 PS2X_PRESENT_UNPACED	dead	GE1	no setter	B4b
-PS2X_PRESENT_VULKAN	diag	VK1	local/tooling/odin_run.py	keep
-PS2X_PRESENT_ZERO_COPY	play-default	HR1	ios bundled ps2x.env; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2	keep
-PS2X_PROFILE	user-toggle	CF2	fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; tests/det/knob_matrix.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:	keep
+PS2X_PRESENT_VULKAN	diag	VK1	tools/bench/bench-android.py	keep
+PS2X_PRESENT_ZERO_COPY	play-default	HR1	ios bundled ps2x.env; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2	keep
+PS2X_PROFILE	user-toggle	CF2	fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; tests/det/knob_matrix.py; lab archive tooling/perf/eebench/eebench.py; lanes:	keep
 PS2X_QUICKSTATE_UI	play-default	QSR1	"iOS bundled env =1 (Brad 10-04 ""quick save good""); code default off; prototype: touch save/load/restart menu + auto snapshot (iOS); default off"	keep
 PS2X_RB2_LOG_MAX	active-lane	RB2	lanes:LT1,LT1b,PB21	keep
 PS2X_RB_LAGF_FRAMES	active-lane	LT1b	lanes:LT1,LT1b	keep
 PS2X_RB_LAGF_VERIFY	active-lane	LT1b	lanes:LT1,LT1b	keep
-PS2X_SAVESTATE_ALLOW_FIX_DELTA	diag	SVL1	lab-archive:local/research/SVL1/REPORT.md (sanctioned same-mode FIX-delta save-load, 2a; default off; mode changes keep refusing)	keep
-PS2X_SAVESTATE_EXIT_AFTER_SAVE	gate	SS1	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:OMF1	keep
+PS2X_SAVESTATE_ALLOW_FIX_DELTA	diag	SVL1	lab archive research/SVL1/REPORT.md (sanctioned same-mode FIX-delta save-load, 2a; default off; mode changes keep refusing)	keep
+PS2X_SAVESTATE_EXIT_AFTER_SAVE	gate	SS1	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:OMF1	keep
 PS2X_SAVESTATE_HOTKEY_AT	dead	DS1	no setter	P2
-PS2X_SAVESTATE_LOAD	gate	SS1	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:OMF1,TK37,TK38	keep
-PS2X_SAVESTATE_PATH	gate	SS1	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:OMF1,TK37	keep
-PS2X_SAVESTATE_SAVE_AT	gate	SS1	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:OMF1,TK37	keep
+PS2X_SAVESTATE_LOAD	gate	SS1	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:OMF1,TK37,TK38	keep
+PS2X_SAVESTATE_PATH	gate	SS1	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:OMF1,TK37	keep
+PS2X_SAVESTATE_SAVE_AT	gate	SS1	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:OMF1,TK37	keep
 PS2X_SAVESTATE_STRICT	gate	SS1	tests/det/boot/ssx3_boot.py; lanes:FH26,OMF1	keep
 PS2X_SBR_MODE	dead	SB1	no setter	B4d
 PS2X_SESSION_LOG	play-default	TEL2	dir; session-<session>.log: append-only build/env hash/knobs header, race start/stop/resume/end (event, mode), hitches >=50 ms with stage maxima, error lines, pause/resume, 5-min heartbeat; budgeted to a few KB/hour; output-only (reads guest RAM), det IDENTICAL; lanes:TEL2	keep
-PS2X_SHOW_WINDOWS_CONSOLE	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:744 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
-PS2X_SKIP_MOVIE	play-default	E29	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_profile.py; local/tooling/k	keep
+PS2X_SHOW_WINDOWS_CONSOLE	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:744 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_SKIP_MOVIE	play-default	E29	ps2_knobs.h compiled default; ios bundled ps2x.env; approved toggle (brief §1b); tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/odin_profile.py; lab archive tooling/k	keep
 PS2X_SND_DUMP_DIR	dead	AU2	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_SND_KEYON_LOG	dead	FH13	no setter	B3
 PS2X_SND_LOG	gate	AU2	tests/det/boot/ssx3_boot.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
@@ -246,21 +246,21 @@ PS2X_SND_TAG1	dead	AU5	KNC6: absent from runtime/adapter at d51e1821 and vendor 
 PS2X_SND_VARIANTS_DIR	dead	AU13	no setter	P2
 PS2X_SND_VOICES	dead	AU9	no setter	B4d
 PS2X_SND_WAV_OUT	active-lane	AT1	lanes:AU17,AU18,TK25,TK25b,TK25c	keep
-PS2X_SOUND	play-default	AU3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_profile.py; tests/det/knob_matrix.py; local/tooling/	keep
+PS2X_SOUND	play-default	AU3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/odin_profile.py; tests/det/knob_matrix.py; lab archive tooling/	keep
 PS2X_SOUND_WAV	active-lane	AU3	lanes:AU17,AU18	keep
 PS2X_SPU_INTERP	diag	AU13	tests/det/knob_matrix.py; lanes:AU19,CFG1	keep
 PS2X_SSX3_COURSE_MANIFEST	play-default	TK2	odin tricky.env; tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,RRV1,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TK3	keep
 PS2X_SSX3_COURSE_PICKER	play-default	TK7	odin tricky.env; approved toggle (brief §1b); tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,	keep
 PS2X_SSX3_DRAWTABLE_GUARD	play-default	TK15c	odin tricky.env; tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,PB17,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TK3	keep
 PS2X_SSX3_DRAWTABLE_STATS	dead	TK22	KNC2 B2: deleted at 03cbc22e; evidence in inventory.tsv	KNC2-B2 (removed)
-PS2X_SSX3_DRAW_HZ	gate	DL1	lab-archive:local/tooling/bench/knobs.tsv; lanes:PB17	keep
-PS2X_SSX3_FULL120	play-default	FH1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/knob_matri	keep
+PS2X_SSX3_DRAW_HZ	gate	DL1	lab archive tooling/bench/knobs.tsv; lanes:PB17	keep
+PS2X_SSX3_FULL120	play-default	FH1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/knob_matri	keep
 PS2X_SSX3_FULL120_EE_X	dead	FH1	no setter	B4d
-PS2X_SSX3_FULL120_FASTHOOKS	play-default	GT3	odin full120.env; fork ios/full120.env; fork ps2xRuntime/ios/full120.env; lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab-archive:local/tooling/perf/eebenc	keep
-PS2X_SSX3_FULL120_FIX	play-default	FH1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/knob_matri; value 'flare' opt-in, not in all (FLK2 Part 3, fork flk3 9a8b30ec: odd-update skip of probe loop 0x2e3130, flare visibility held per stock period; guest-affecting where probes occur)	keep
+PS2X_SSX3_FULL120_FASTHOOKS	play-default	GT3	odin full120.env; fork ios/full120.env; fork ps2xRuntime/ios/full120.env; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/perf/eebenc	keep
+PS2X_SSX3_FULL120_FIX	play-default	FH1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/knob_matri; value 'flare' opt-in, not in all (FLK2 Part 3, fork flk3 9a8b30ec: odd-update skip of probe loop 0x2e3130, flare visibility held per stock period; guest-affecting where probes occur)	keep
 PS2X_SSX3_FULL120_HOOKS	active-lane	HK1	lanes:FH27,HK1	keep
 PS2X_SSX3_JCAM2_SCRATCH	play-default	EEP1	odin PB38 full120.env=full (HMS1 §6); PB40: env line removed, lazy code default (EEP3); =full stays the exact path	keep
-PS2X_SSX3_LOD_SCALE	user-toggle	LOD1	approved toggle (brief §1b); lab-archive:local/tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lanes:AU19,CFG1,PB17	keep
+PS2X_SSX3_LOD_SCALE	user-toggle	LOD1	approved toggle (brief §1b); lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lanes:AU19,CFG1,PB17	keep
 PS2X_SSX3_PATCH_CACHE_GROW	play-default	TK34	odin tricky.env; tests/det/knob_matrix.py; lanes:AU19,CFG1,LT1b,PB17,TK34,TK37,TK37b,TK38,TK39,TKP3	keep
 PS2X_SSX3_PATCH_CACHE_GROW_BASE	active-lane	TK34	lanes:TK34	keep
 PS2X_SSX3_PATCH_CACHE_GUARD	play-default	TK15	odin tricky.env; tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,PB17,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TK3	keep
@@ -280,10 +280,10 @@ PS2X_STRETCH_FEED	play-default	AU16	odin full120.env; fork ios/full120.env; fork
 PS2X_STRETCH_LEAVE	active-lane	AU12	lanes:IPR1	keep
 PS2X_STRETCH_REJOIN_MS	active-lane	AU12	lanes:IPR1	keep
 PS2X_STRETCH_SUSTAIN_MS	active-lane	AU12	lanes:IPR1	keep
-PS2X_STRETCH_TRACE	diag	AU12	local/tooling/odin_run.py; lanes:IPR1	keep
-PS2X_STRICT_RETURN_DIAGNOSTICS	active-lane	not found	lab-archive:local/research/EQG1/part2-diff-categories.json:220 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_STRETCH_TRACE	diag	AU12	tools/bench/bench-android.py; lanes:IPR1	keep
+PS2X_STRICT_RETURN_DIAGNOSTICS	active-lane	not found	lab archive research/EQG1/part2-diff-categories.json:220 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_TEST_DEFERRED	diag	E53	no setter (test-only)	reader retained; no shipped setter (MNT2 current-tip census)
-PS2X_THREAD_CPU_LOG	gate	HR1	lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py	keep
+PS2X_THREAD_CPU_LOG	gate	HR1	lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py	keep
 PS2X_TIMEZONE_MINUTES	dead	LX1	no setter (test-only)	B4c
 PS2X_TK12_AP_DPAD_DEG	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TKP2,TKP3	keep
 PS2X_TK12_AP_FROM	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TKP2,TKP3	keep
@@ -300,9 +300,9 @@ PS2X_TS2_CASE_COUNT	dead	TS3	no setter	B3
 PS2X_TS2_HALFLOAD_COUNT	dead	HL1	no setter	B3
 PS2X_TS3_NOFIX	dead	TS3	no setter	B4d
 PS2X_UNIT_WAIT_CENSUS	dead	MQ4 / GE1	KNC2 B2: deleted at 03cbc22e; evidence in inventory.tsv	KNC2-B2 (removed)
-PS2X_UNPACED	gate	FP1	tests/det/boot/ssx3_boot.py; local/tooling/odin_bench.sh; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_run.py; local/tooling/odin_profile.py; lab-archive:local/tooling/perf/eebench/eebench.py; l	keep
-PS2X_VIF1_REVERSE_DMA	play-default	RB1	ps2_knobs.h compiled default; odin ps2x.env; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/padrec_replay_env.py; local/tooling/knob_matri	keep
-PS2X_VIRTUAL_PAD	user-toggle	I26	fork ps2xRuntime/ios/Settings.bundle/Root.plist; fork src/lib/ps2_ios_runtime.mm; local/tooling/odin_run.py; lanes:IN3	keep
+PS2X_UNPACED	gate	FP1	tests/det/boot/ssx3_boot.py; tools/bench/bench-android.sh; lab archive research/EBN1/tooling/eebench.py; tools/bench/bench-android.py; lab archive tooling/odin_profile.py; lab archive tooling/perf/eebench/eebench.py; l	keep
+PS2X_VIF1_REVERSE_DMA	play-default	RB1	ps2_knobs.h compiled default; odin ps2x.env; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tools/replay/padrec_replay_env.py; lab archive tooling/knob_matri	keep
+PS2X_VIRTUAL_PAD	user-toggle	I26	fork ps2xRuntime/ios/Settings.bundle/Root.plist; fork src/lib/ps2_ios_runtime.mm; tools/bench/bench-android.py; lanes:IN3	keep
 PS2X_VITA_CREATE_PACKAGE	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VITA_LIB_	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VPAD_SHOULDER_BAND	active-lane	VT3	lanes:VT3	keep
@@ -318,50 +318,50 @@ PS2X_VR3_VU0_CENSUS	dead	VR3	no setter	B3
 PS2X_VR3_VU0_IMAGE_DUMP	dead	VR3	no setter	B3
 PS2X_VSYNC_LOCK	play-default	PX1	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; fork src/lib/ps2_ios_runtime.mm; tests/det/knob_matrix.py; lanes:AU19,CFG1,IN3,IOSR1,IP7,IPB8	keep
 PS2X_VSYNC_LOCK_AUDIO	play-default	AU15	odin full120.env; fork ios/full120.env; approved toggle (brief §1b); fork ps2xRuntime/ios/full120.env; tests/det/knob_matrix.py; lanes:AU17,AU19,CFG1,IOSR1,IPR1,IV1,IV1b,MQ4	keep
-PS2X_VSYNC_RATE_INTERVAL_S	gate	GE1	lab-archive:local/research/EBN1/tooling/eebench.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:AU17,AU18,GKV1,HK1,IHP1,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1	keep
-PS2X_VSYNC_RATE_LOG	gate	E58	tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; local/tooling/odin_run.py; local/tooling/odin_profile.py; lab-archive:local/tooling/perf/eebench/eebench.py; lanes:AU17,AU18,ECR1,GKV1,HK1,	keep
-PS2X_VU0_BLOCKS	diag	VBK1	local/tooling/build/android.json; lanes:VBK1	keep
-PS2X_VU0_DIRECT	play-default	VR3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooli	keep
+PS2X_VSYNC_RATE_INTERVAL_S	gate	GE1	lab archive research/EBN1/tooling/eebench.py; lab archive tooling/perf/eebench/eebench.py; lanes:AU17,AU18,GKV1,HK1,IHP1,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1	keep
+PS2X_VSYNC_RATE_LOG	gate	E58	tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tools/bench/bench-android.py; lab archive tooling/odin_profile.py; lab archive tooling/perf/eebench/eebench.py; lanes:AU17,AU18,ECR1,GKV1,HK1,	keep
+PS2X_VU0_BLOCKS	diag	VBK1	lab archive tooling/build/android.json; lanes:VBK1	keep
+PS2X_VU0_DIRECT	play-default	VR3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lab archive/tooli	keep
 PS2X_VU0_LEAN_ENTRY	active-lane	VZ1	lanes:VBK1,VZ1	keep
-PS2X_VU0_RECOMP	play-default	VR3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab-archive:local/research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab-archive:local/tooling/build/ios/ps2x.env; local/tooli	keep
+PS2X_VU0_RECOMP	play-default	VR3	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; tests/det/knob_matrix.py; lab archive tooling/build/ios/ps2x.env; lab archive/tooli	keep
 PS2X_VU0_RECOMP_DUMP	active-lane	VR3	lanes:VBK1	keep
-PS2X_VU1_ENGINE	play-default	IR1b	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; local/tooling/padrec_replay_env.py; local/tooling/knob_m	keep
-PS2X_VU1_FMAC_SIMD	active-lane	not found	lab-archive:local/research/XUP1/fork-evidence.txt:266; lab-archive:local/research/XUP2/source-evidence.txt:10 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
+PS2X_VU1_ENGINE	play-default	IR1b	ps2_knobs.h compiled default; ios bundled ps2x.env; tests/det/boot/ssx3_boot.py; tests/det/boot/baseline.py; tests/det/mac_gate.sh; tools/replay/padrec_replay_env.py; lab archive tooling/knob_m	keep
+PS2X_VU1_FMAC_SIMD	active-lane	not found	lab archive research/XUP1/fork-evidence.txt:266; lab archive research/XUP2/source-evidence.txt:10 (recent evidence mention; exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_VU1_MUSTTAIL	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VU1_NOINLINE	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VU1_RECOMP_STATS	gate	VR1	tests/det/boot/ssx3_boot.py; lanes:OMF1,VBK1	keep
-PS2X_VU_FLOAT	diag	VF1	local/tooling/padrec_replay_env.py; tests/det/knob_matrix.py; lanes:AU19,CFG1,OBE1,VFA1	keep
+PS2X_VU_FLOAT	diag	VF1	tools/replay/padrec_replay_env.py; tests/det/knob_matrix.py; lanes:AU19,CFG1,OBE1,VFA1	keep
 PS2X_VU_MUSTTAIL	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VU_NOINLINE	diag	not found	not found (execution not established)	KNC2 inventory (keep pending review)
 PS2X_VU_TELEMETRY	play-default	TEL1	dir; vu1-<stamp>.tsv: VU1 microVU program census per 10 s window + first-run wall per new (image, start PC) entry (JIT proxy); output-only, det IDENTICAL; lanes:TEL1	keep
 PS2X_WIDESCREEN	diag	W1	tests/det/knob_matrix.py; lanes:AU19,CFG1,OBE1	keep
-PS2X_APP_PACK	active-lane	BND1	infra/output-only; internal Android launcher-to-native bundled pack handoff; lab-archive:local/research/BND1/REPORT.md; ps2xRuntime/src/lib/ps2_android_runtime.cpp:43	keep
-PS2X_SSX3_ANIM_PICK_GUARD	play-default	HNG2	default on (bug fix: zero-weight anim-variant pick returns anim 0 instead of the break-7 freeze); =0 restores the stock trap for reference; det IDENTICAL on all three keys; lab-archive:local/research/HNG2/REPORT.md Part 2	keep
-PS2X_SSX3_TRICKY_LOD_SCALE	user-toggle	TLS1	Tricky-only draw-distance scale (same range/refusal rules as LOD1); PB44 0.8 on the Tricky layer; det IDENTICAL on all three keys; lab-archive:local/research/TLS1/REPORT.md	keep
-PS2X_GS_GIF_BATCH	play-default	GSB1	one GS-queue command per batch of GIF packets (exact host transport, same packets/order; Elysium +7.7 %, MTVU-GIF queue-full blocks -70 %); PB45 on for every Odin entry; det IDENTICAL on all three keys knob off/on; lab-archive:local/research/GSB1/REPORT.md	keep
-PS2X_SSX3_REPLAY_RATE	play-default	RPL1	default on (bug fix: under FULL120=events replays follow the recorded per-sample 60/120 rate and retrace the live run); =0 = the old events rule in playback; det IDENTICAL; lab-archive:local/research/RPL1/REPORT.md	keep
-PS2X_SSX3_NATIVE_WORLD	play-default	NRT1	compiled default off; play env value terrain,instances (Brad 10-09, PB48/IPB25 via the play env); guest-affecting in vu1Data only (key 3d2b791-full120events-nativeinst-arm64-fr1r1-t4800-snd1-1x-2dbf84ed); lab-archive:local/research/NRT1/REPORT.md	keep
+PS2X_APP_PACK	active-lane	BND1	infra/output-only; internal Android launcher-to-native bundled pack handoff; lab archive research/BND1/REPORT.md; ps2xRuntime/src/lib/ps2_android_runtime.cpp:43	keep
+PS2X_SSX3_ANIM_PICK_GUARD	play-default	HNG2	default on (bug fix: zero-weight anim-variant pick returns anim 0 instead of the break-7 freeze); =0 restores the stock trap for reference; det IDENTICAL on all three keys; lab archive research/HNG2/REPORT.md Part 2	keep
+PS2X_SSX3_TRICKY_LOD_SCALE	user-toggle	TLS1	Tricky-only draw-distance scale (same range/refusal rules as LOD1); PB44 0.8 on the Tricky layer; det IDENTICAL on all three keys; lab archive research/TLS1/REPORT.md	keep
+PS2X_GS_GIF_BATCH	play-default	GSB1	one GS-queue command per batch of GIF packets (exact host transport, same packets/order; Elysium +7.7 %, MTVU-GIF queue-full blocks -70 %); PB45 on for every Odin entry; det IDENTICAL on all three keys knob off/on; lab archive research/GSB1/REPORT.md	keep
+PS2X_SSX3_REPLAY_RATE	play-default	RPL1	default on (bug fix: under FULL120=events replays follow the recorded per-sample 60/120 rate and retrace the live run); =0 = the old events rule in playback; det IDENTICAL; lab archive research/RPL1/REPORT.md	keep
+PS2X_SSX3_NATIVE_WORLD	play-default	NRT1	compiled default off; play env value terrain,instances (Brad 10-09, PB48/IPB25 via the play env); guest-affecting in vu1Data only (key 3d2b791-full120events-nativeinst-arm64-fr1r1-t4800-snd1-1x-2dbf84ed); lab archive research/NRT1/REPORT.md	keep
 PS2X_SSX3_NATIVE_WORLD_CHECK	diag	NRT1	routes nothing; compares the terrain/instance models with microVU byte for byte (receipts/check-mode*.txt); the exactness net for new content (Tricky courses)	keep (diag)
-PS2X_GS_GIF_ARENA	active-lane	GSB2	one copy per GIF packet into pooled 64 KiB arenas, views instead of vectors (exact host transport; MTVU-GIF -65 %, GsWorker alloc 11.5->1.9 %); needs PS2X_GS_GIF_BATCH=1; det IDENTICAL on all three keys knob off/on; play default from PB50/IPB26 (Brad 10-09 exact-defaults rule); lab-archive:local/research/GSB2/REPORT.md	keep
-GE1_MERGE_SKIP	active-lane	OUT1	skip the single-circuit merge (borrow the display target when MMOD=1/ALP=255/one Dirty target/EN2=0; exact, thread-gated); default off; exact-default candidate; lab-archive:local/research/OUT1/REPORT.md	keep
-GE1_EXPORT_DIRECT	active-lane	OUT1	render the export stretch straight into the AHB (exact; removes vkCmdCopyImage); default off; exact-default candidate; lab-archive:local/research/OUT1/REPORT.md	keep
-PS2X_PRESENT_PREROTATE	active-lane	OUT1	pre-rotate the AHB (1=CCW/180-off, 2=CW/upright) + ROT_270 layer transform; DEVICE composition, -0.87 ms SF share; default off; device behaviour, Brad feels; lab-archive:local/research/OUT1/REPORT.md	keep
-PS2X_PRESENT_AHB_POOL	active-lane	OUT2	Android AHB pool depth 4..8 (default 4 = today); N=6 removes the ~2.3 ms/frame pick fence-wait under DEVICE/prerotate (gs.busy +3 ms -> 0, latched 110 -> 121); +~8 MB/buffer; output-only; lab-archive:local/research/OUT2/REPORT.md	keep
+PS2X_GS_GIF_ARENA	active-lane	GSB2	one copy per GIF packet into pooled 64 KiB arenas, views instead of vectors (exact host transport; MTVU-GIF -65 %, GsWorker alloc 11.5->1.9 %); needs PS2X_GS_GIF_BATCH=1; det IDENTICAL on all three keys knob off/on; play default from PB50/IPB26 (Brad 10-09 exact-defaults rule); lab archive research/GSB2/REPORT.md	keep
+GE1_MERGE_SKIP	active-lane	OUT1	skip the single-circuit merge (borrow the display target when MMOD=1/ALP=255/one Dirty target/EN2=0; exact, thread-gated); default off; exact-default candidate; lab archive research/OUT1/REPORT.md	keep
+GE1_EXPORT_DIRECT	active-lane	OUT1	render the export stretch straight into the AHB (exact; removes vkCmdCopyImage); default off; exact-default candidate; lab archive research/OUT1/REPORT.md	keep
+PS2X_PRESENT_PREROTATE	active-lane	OUT1	pre-rotate the AHB (1=CCW/180-off, 2=CW/upright) + ROT_270 layer transform; DEVICE composition, -0.87 ms SF share; default off; device behaviour, Brad feels; lab archive research/OUT1/REPORT.md	keep
+PS2X_PRESENT_AHB_POOL	active-lane	OUT2	Android AHB pool depth 4..8 (default 4 = today); N=6 removes the ~2.3 ms/frame pick fence-wait under DEVICE/prerotate (gs.busy +3 ms -> 0, latched 110 -> 121); +~8 MB/buffer; output-only; lab archive research/OUT2/REPORT.md	keep
 PS2X_MTVU_VBLANK_GRACE_US	dead	RSK2	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_TLS_CACHE	dead	TLS2	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_MTVU_KICK_CENSUS	dead	TRM1	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_TRICKY_HUD_CACHE	dead	HUD2	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_TRICKY_HUD_DIAG_DUMP	dead	HUD4	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
-PS2X_SSX3_TRICKY_RESETVOL	play-default	RSV1	Tricky-only donor ResetZone surface reset via SSX 3 path; default off; Odin tricky.env + iOS Tricky set (Brad 10-11); lab-archive:local/research/RSV1/REPORT.md	keep
-PS2X_SSX3_TRICKY_RESETVOL_TABLE	play-default	RSV1	Donor triangle sidecar path (tricky-resetvol.tsv 77acce03); read only with the reset knob on; lab-archive:local/research/RSV1/REPORT.md	keep
-PS2X_SSX3_MEGA_LAPS	play-default	MGX1	Megaplex 3 laps + return to top, Tricky MEGA course 15 only; default off; Tricky layers (Brad 10-11); lab-archive:local/research/MGX1/REPORT.md	keep
-PS2X_QUICKSTATE_AUTO	user-toggle	QSA1	Race-start auto snapshot + RETRY; default off (Brad 10-11: stutter at GO); ps2_runtime.cpp; lab-archive:local/research/QSA1/REPORT.md	keep
-PS2X_INPUT_MARKER	play-default	LIM1	L3+R3 lost-input marker (host-only; Odin toast + padrec mark, iOS Documents/markers/); play-on (Brad 10-11); lab-archive:local/research/LIM1/REPORT.md	keep
-PS2X_TURBO_BOOT	play-default	BTS1	lab-archive:local/research/BTS1/REPORT.md (unpaced+muted boot, yield at title latch+400/input/cap; default off; guest det-hash IDENTICAL turbo-vs-paced; iOS/Odin play envs set later by PB58/IPB30)	keep
-PS2X_SETTINGS_OVERLAY	user-toggle	SET2	lab-archive:local/research/SET2/REPORT.md	PB61
-PS2X_SETTINGS_PERF	user-toggle	SET2	lab-archive:local/research/SET2/REPORT.md	PB61
-PS2X_SET2_TEST_PAD	diag	SET2	lab-archive:local/research/SET2/REPORT.md	SET2
-PS2X_SET2_SHOT	diag	SET2	lab-archive:local/research/SET2/REPORT.md	SET2
+PS2X_SSX3_TRICKY_RESETVOL	play-default	RSV1	Tricky-only donor ResetZone surface reset via SSX 3 path; default off; Odin tricky.env + iOS Tricky set (Brad 10-11); lab archive research/RSV1/REPORT.md	keep
+PS2X_SSX3_TRICKY_RESETVOL_TABLE	play-default	RSV1	Donor triangle sidecar path (tricky-resetvol.tsv 77acce03); read only with the reset knob on; lab archive research/RSV1/REPORT.md	keep
+PS2X_SSX3_MEGA_LAPS	play-default	MGX1	Megaplex 3 laps + return to top, Tricky MEGA course 15 only; default off; Tricky layers (Brad 10-11); lab archive research/MGX1/REPORT.md	keep
+PS2X_QUICKSTATE_AUTO	user-toggle	QSA1	Race-start auto snapshot + RETRY; default off (Brad 10-11: stutter at GO); ps2_runtime.cpp; lab archive research/QSA1/REPORT.md	keep
+PS2X_INPUT_MARKER	play-default	LIM1	L3+R3 lost-input marker (host-only; Odin toast + padrec mark, iOS Documents/markers/); play-on (Brad 10-11); lab archive research/LIM1/REPORT.md	keep
+PS2X_TURBO_BOOT	play-default	BTS1	lab archive research/BTS1/REPORT.md (unpaced+muted boot, yield at title latch+400/input/cap; default off; guest det-hash IDENTICAL turbo-vs-paced; iOS/Odin play envs set later by PB58/IPB30)	keep
+PS2X_SETTINGS_OVERLAY	user-toggle	SET2	lab archive research/SET2/REPORT.md	PB61
+PS2X_SETTINGS_PERF	user-toggle	SET2	lab archive research/SET2/REPORT.md	PB61
+PS2X_SET2_TEST_PAD	diag	SET2	lab archive research/SET2/REPORT.md	SET2
+PS2X_SET2_SHOT	diag	SET2	lab archive research/SET2/REPORT.md	SET2
 PS2X_GS_GIF_BATCH_BYTES	active-lane	GSB1	KNC6 registry reconciliation: ps2xRuntime/src/lib/ps2_runtime.cpp:352; tools/ssx3/knobs.tsv	keep
 PS2X_GS_WAKE_LOWWATER	active-lane	GSW2	KNC6 registry reconciliation: ps2xRuntime/src/lib/gs/gs_worker.cpp:62; tools/ssx3/knobs.tsv	keep
 PS2X_MTVU_GS_BATCH	active-lane	GPK1	KNC6 registry reconciliation: ps2xRuntime/src/lib/ps2_runtime.cpp:333; tools/ssx3/knobs.tsv	keep
@@ -370,47 +370,47 @@ PS2X_TRICKY_HUD_ASYNC	active-lane	GSW1	KNC6 registry reconciliation: ps2xRuntime
 PS2X_TRICKY_HUD_GPU	active-lane	HUD5	KNC6 registry reconciliation: ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:410; tools/ssx3/knobs.tsv	keep
 PS2X_TRICKY_HUD_GPU_DIAG	diag	HUD5	KNC6 registry reconciliation: ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:420; tools/ssx3/knobs.tsv	keep
 PS2X_VIF_UNPACK_FAST	active-lane	VUP1	KNC6 registry reconciliation: ps2xRuntime/src/lib/ps2_memory.cpp:411; tools/ssx3/knobs.tsv	keep
-PS2X_NET	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_SERVER	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_LOGIN	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_PORT_BASE	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_PEER_PORT	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_LOCKSTEP120	active-lane	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_CAPTURE	diag	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_QUIET_POLLS	diag	ONL6	lab-archive:local/research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
-PS2X_NET_RELAY_REGISTER	active-lane	LOB1	fork lob1-hle ps2xRuntime/src/lib/ps2_net_dirtysock.cpp relayRegister() (net-domain knob; default ON, =0 restores stock: listen-side SSX3RLY1+token registration to spec peer until peer-learned, 250ms/30s; relay learns+drops, peer HLE discards); lab-archive:local/research/LOB1/REPORT.md §10	keep
-PS2X_NET_QUICKPLAY	active-lane	ONL9	fork onl10-land 405f60de + a3b8fa90 (HLE prefill + submit-window authoritative fill; inert when off/ unset); lab-archive:local/research/ONL9/REPORT.md	keep
-PS2X_NET_QUICKPLAY_FILE	active-lane	ONL9	stored-login path override for PS2X_NET_QUICKPLAY (default ~/.config/ssx3-quickplay-login); inert when off; lab-archive:local/research/ONL9/REPORT.md	keep
-PS2X_NET_QUICKPLAY_NAV	active-lane	ONL11	arming mode: =1 launch-flag (ONL10) or =online (dormant until Online entry, re-arms after back-out; stops at filter #14, inert unless QUICKPLAY=1); fork onl11 4c2134cc; lab-archive:local/research/ONL11/REPORT.md	keep
+PS2X_NET	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_SERVER	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_LOGIN	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_PORT_BASE	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_PEER_PORT	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_LOCKSTEP120	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_CAPTURE	diag	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_QUIET_POLLS	diag	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NET_RELAY_REGISTER	active-lane	LOB1	fork lob1-hle ps2xRuntime/src/lib/ps2_net_dirtysock.cpp relayRegister() (net-domain knob; default ON, =0 restores stock: listen-side SSX3RLY1+token registration to spec peer until peer-learned, 250ms/30s; relay learns+drops, peer HLE discards); lab archive research/LOB1/REPORT.md §10	keep
+PS2X_NET_QUICKPLAY	active-lane	ONL9	fork onl10-land 405f60de + a3b8fa90 (HLE prefill + submit-window authoritative fill; inert when off/ unset); lab archive research/ONL9/REPORT.md	keep
+PS2X_NET_QUICKPLAY_FILE	active-lane	ONL9	stored-login path override for PS2X_NET_QUICKPLAY (default ~/.config/ssx3-quickplay-login); inert when off; lab archive research/ONL9/REPORT.md	keep
+PS2X_NET_QUICKPLAY_NAV	active-lane	ONL11	arming mode: =1 launch-flag (ONL10) or =online (dormant until Online entry, re-arms after back-out; stops at filter #14, inert unless QUICKPLAY=1); fork onl11 4c2134cc; lab archive research/ONL11/REPORT.md	keep
 PS2X_PUBLIC_APP	active-lane	PUB2	public app mode; ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:123	keep
 PS2X_PUBLIC_PANEL	active-lane	PUB2	public panel; ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:128	keep
 PS2X_PUBLIC_RAM_BYTES	active-lane	PUB2	public RAM limit; ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:133	keep
-PS2X_NETPLAY_CANON	active-lane	NP0A	lab-archive:local/research/NP0A/REPORT.md; canonical cycle scheduling, readback and oracle	keep
-PS2X_NETPLAY_CANON_DIR	diag	NP0A	lab-archive:local/research/NP0A/REPORT.md; diagnostic transcript/oracle output directory	keep
-PS2X_NETPLAY_CANON_HASH	active-lane	np-checksum-1	np-checksum-1: incremental selects schema 3 bounded partition sweep plus periodic full audit; default off (opt-in guest-affecting deterministic dispatcher reuse); lab-archive:local/research/np-checksum-1/REPORT.md	keep
-PS2X_NETPLAY_SEED	diag	NP0A	lab-archive:local/research/NP0A/REPORT.md; manifest field only, no guest seeding yet	keep
-PS2X_NETPLAY_EPOCH	diag	NP0A	lab-archive:local/research/NP0A/REPORT.md; manifest field only, no guest clock setting yet	keep
-PS2X_SSX3_SIM_MODE	active-lane	NP0A	lab-archive:local/research/NP0A/REPORT.md; read for the canonical netplay manifest; Odin bench envs set stock	keep
-PS2X_AUTOSAVE	active-lane	ASV1	lab-archive:local/research/ASV1/REPORT.md; auto-snapshot on background/lock (Brad 10-14: resume <10 min silent, else ask)	keep
-PS2X_AUTOSAVE_AUTORESUME_S	active-lane	ASV1	lab-archive:local/research/ASV1/REPORT.md; silent-resume window seconds (default 600)	keep
-PS2X_AUTOSAVE_PATH	active-lane	ASV1	lab-archive:local/research/ASV1/REPORT.md; snapshot slot path	keep
-PS2X_AUTOSAVE_TEST_AT	diag	ASV1	lab-archive:local/research/ASV1/REPORT.md; scripted save tick for harness legs	keep
-PS2X_NP_RIDER_ENABLE	diag	np-rider-1	lab-archive:local/research/np-rider-1/REPORT.md; master switch for tick-stamped remote-script rider override, default off	keep
-PS2X_NP_RIDER_SLOT	diag	np-rider-1	lab-archive:local/research/np-rider-1/REPORT.md; roster slot driven by the remote script	keep
-PS2X_NP_RIDER_SCRIPT	diag	np-rider-1	lab-archive:local/research/np-rider-1/REPORT.md; tick-stamped remote command script file	keep
-PS2X_NP_RIDER_DROP_TICK	diag	np-rider-1	lab-archive:local/research/np-rider-1/REPORT.md; first tick that reverts the slot to AI	keep
-PS2X_NP_LINK_ENABLE	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; master switch for delay-lockstep client, default off	keep
-PS2X_NP_LINK_ROLE	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; lockstep role A or B (slot-0 driver vs AI-slot driver)	keep
-PS2X_NP_LINK_RELAY	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; ordered relay host:port (loopback)	keep
-PS2X_NP_LINK_FIRST_TICK	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; first commit-gated tick	keep
-PS2X_NP_LINK_DELAY	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; fixed input delay in ticks	keep
-PS2X_NP_LINK_A_SCRIPT	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; role-A per-tick pad script file	keep
-PS2X_NP_LINK_B_SCRIPT	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; role-B per-tick rider command script file	keep
-PS2X_NP_LINK_RIDER_SLOT	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; AI roster slot driven by role-B commits	keep
-PS2X_NP_LINK_DIR	diag	np-link-1	lab-archive:local/research/np-link-1/REPORT.md; link commit/sent log directory	keep
-GE1_ONDEVICE_UPSCALE	user-toggle	REM3	lab-archive:local/research/REM3/REPORT.md; on-device upscale (classes 1–5, Lanczos/raster-edge, no ML), settings-panel row 'On-device upscale', live toggle (Brad 10-14)	keep
-PS2X_ZC_PRODUCER_CONTEXT	active-lane	zc-impl-1	zc-impl-1 T: cached GsWorker producer context, one resolution per public entry instead of per-touch TLS lookups (exact host transport, same commands/order); default off; lab-archive:local/research/zc-impl-1/REPORT.md	keep
-PS2X_ZC_CLOCK	active-lane	zc-impl-1	zc-impl-1 C: stop/tail pre-check before starting the MTVU-GIF/VIF empty-queue spin timer, one fewer clock per quick wake (exact host timing); default off; lab-archive:local/research/zc-impl-1/REPORT.md	keep
-PS2X_ZC_GIF_VIEW	active-lane	zc-impl-1	zc-impl-1 H1: standalone GifPacket arena-view handoff for unbatchable views (exact host transport); default off; lab-archive:local/research/zc-impl-1/REPORT.md	keep
-PS2X_ZC_NATIVE_OWNER	active-lane	zc-impl-1	zc-impl-1 H2: owned native Kicks record through GifOp/arbiter/GS commands (exact host transport, no model change); default off; lab-archive:local/research/zc-impl-1/REPORT.md	keep
-PS2X_SSX3_TRICKY_DJ_GATE	active-lane	tk-audio-1	tk-audio-1 step 3: drop DJ_Artist_Intro (0x20cf) and PA_Venue_Intro (0x20bb) speech posts on Tricky courses; default off; lab-archive:local/research/tk-audio-1/REPORT.md	keep
+PS2X_NETPLAY_CANON	active-lane	NP0A	lab archive research/NP0A/REPORT.md; canonical cycle scheduling, readback and oracle	keep
+PS2X_NETPLAY_CANON_DIR	diag	NP0A	lab archive research/NP0A/REPORT.md; diagnostic transcript/oracle output directory	keep
+PS2X_NETPLAY_CANON_HASH	active-lane	np-checksum-1	np-checksum-1: incremental selects schema 3 bounded partition sweep plus periodic full audit; default off (opt-in guest-affecting deterministic dispatcher reuse); lab archive research/np-checksum-1/REPORT.md	keep
+PS2X_NETPLAY_SEED	diag	NP0A	lab archive research/NP0A/REPORT.md; manifest field only, no guest seeding yet	keep
+PS2X_NETPLAY_EPOCH	diag	NP0A	lab archive research/NP0A/REPORT.md; manifest field only, no guest clock setting yet	keep
+PS2X_SSX3_SIM_MODE	active-lane	NP0A	lab archive research/NP0A/REPORT.md; read for the canonical netplay manifest; Odin bench envs set stock	keep
+PS2X_AUTOSAVE	active-lane	ASV1	lab archive research/ASV1/REPORT.md; auto-snapshot on background/lock (Brad 10-14: resume <10 min silent, else ask)	keep
+PS2X_AUTOSAVE_AUTORESUME_S	active-lane	ASV1	lab archive research/ASV1/REPORT.md; silent-resume window seconds (default 600)	keep
+PS2X_AUTOSAVE_PATH	active-lane	ASV1	lab archive research/ASV1/REPORT.md; snapshot slot path	keep
+PS2X_AUTOSAVE_TEST_AT	diag	ASV1	lab archive research/ASV1/REPORT.md; scripted save tick for harness legs	keep
+PS2X_NP_RIDER_ENABLE	diag	np-rider-1	lab archive research/np-rider-1/REPORT.md; master switch for tick-stamped remote-script rider override, default off	keep
+PS2X_NP_RIDER_SLOT	diag	np-rider-1	lab archive research/np-rider-1/REPORT.md; roster slot driven by the remote script	keep
+PS2X_NP_RIDER_SCRIPT	diag	np-rider-1	lab archive research/np-rider-1/REPORT.md; tick-stamped remote command script file	keep
+PS2X_NP_RIDER_DROP_TICK	diag	np-rider-1	lab archive research/np-rider-1/REPORT.md; first tick that reverts the slot to AI	keep
+PS2X_NP_LINK_ENABLE	diag	np-link-1	lab archive research/np-link-1/REPORT.md; master switch for delay-lockstep client, default off	keep
+PS2X_NP_LINK_ROLE	diag	np-link-1	lab archive research/np-link-1/REPORT.md; lockstep role A or B (slot-0 driver vs AI-slot driver)	keep
+PS2X_NP_LINK_RELAY	diag	np-link-1	lab archive research/np-link-1/REPORT.md; ordered relay host:port (loopback)	keep
+PS2X_NP_LINK_FIRST_TICK	diag	np-link-1	lab archive research/np-link-1/REPORT.md; first commit-gated tick	keep
+PS2X_NP_LINK_DELAY	diag	np-link-1	lab archive research/np-link-1/REPORT.md; fixed input delay in ticks	keep
+PS2X_NP_LINK_A_SCRIPT	diag	np-link-1	lab archive research/np-link-1/REPORT.md; role-A per-tick pad script file	keep
+PS2X_NP_LINK_B_SCRIPT	diag	np-link-1	lab archive research/np-link-1/REPORT.md; role-B per-tick rider command script file	keep
+PS2X_NP_LINK_RIDER_SLOT	diag	np-link-1	lab archive research/np-link-1/REPORT.md; AI roster slot driven by role-B commits	keep
+PS2X_NP_LINK_DIR	diag	np-link-1	lab archive research/np-link-1/REPORT.md; link commit/sent log directory	keep
+GE1_ONDEVICE_UPSCALE	user-toggle	REM3	lab archive research/REM3/REPORT.md; on-device upscale (classes 1–5, Lanczos/raster-edge, no ML), settings-panel row 'On-device upscale', live toggle (Brad 10-14)	keep
+PS2X_ZC_PRODUCER_CONTEXT	active-lane	zc-impl-1	zc-impl-1 T: cached GsWorker producer context, one resolution per public entry instead of per-touch TLS lookups (exact host transport, same commands/order); default off; lab archive research/zc-impl-1/REPORT.md	keep
+PS2X_ZC_CLOCK	active-lane	zc-impl-1	zc-impl-1 C: stop/tail pre-check before starting the MTVU-GIF/VIF empty-queue spin timer, one fewer clock per quick wake (exact host timing); default off; lab archive research/zc-impl-1/REPORT.md	keep
+PS2X_ZC_GIF_VIEW	active-lane	zc-impl-1	zc-impl-1 H1: standalone GifPacket arena-view handoff for unbatchable views (exact host transport); default off; lab archive research/zc-impl-1/REPORT.md	keep
+PS2X_ZC_NATIVE_OWNER	active-lane	zc-impl-1	zc-impl-1 H2: owned native Kicks record through GifOp/arbiter/GS commands (exact host transport, no model change); default off; lab archive research/zc-impl-1/REPORT.md	keep
+PS2X_SSX3_TRICKY_DJ_GATE	active-lane	tk-audio-1	tk-audio-1 step 3: drop DJ_Artist_Intro (0x20cf) and PA_Venue_Intro (0x20bb) speech posts on Tricky courses; default off; lab archive research/tk-audio-1/REPORT.md	keep

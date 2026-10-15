@@ -2,7 +2,7 @@
 """Compare [det-hash:v1] lines between two det runs.
 
 Provenance: verbatim logic from the lab gate's GB8 gb8_hashdiff.py
-(ssx3-lab local/research/GB8/gb8_hashdiff.py); only the module docstring
+(the lab GB8 hash comparator); only the module docstring
 changed. tests/det/compare.py ports the same logic for shipped keys.
 """
 

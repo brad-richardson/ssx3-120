@@ -11,8 +11,8 @@ reviewable diffs on top).
 | Source | Pin | Content |
 | --- | --- | --- |
 | Engine `brad-richardson/PS2Recomp` (`ssx3`) | `35cfdcdd…ffca` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
-| `ssx3-lab` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
-| Public infra tree (staged, never committed anywhere) | `~/dev/ssx3-work/online-open-1/public-infra/` per `online-open-plan-2026-10-15` §8 | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
+| `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
+| Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `03c10b5aeccd4fb673fecaea3cf4a5f5064afe14` | drives `prepare`; never repinned implicitly |
 | Vendor `brad-richardson/armsx2` | `afad5a04c2668a10e12adadaa51d54c46f832236` | renderer/VU source; support-archive identity in `deps.lock.json` |
 | Turnip (optional Vulkan driver) | `turnip-ssx3-ad094bb9` (`tools/ssx3/turnip.json`) | hashes in `deps.lock.json` |
@@ -21,7 +21,7 @@ reviewable diffs on top).
 
 - `android/` → `apps/android/` (Gradle native-build source made explicit via `-Pps2xEngineCMakeLists`; see below).
 - `tools/ssx3/presets/*.env` → `presets/*.env` (`stage` reads the new location).
-- Lab `local/tooling/*` → `tests/det/*`, `tools/replay/*`, `tools/bench/*` (generalized; see commit message).
+- Lab tooling copies → `tests/det/*`, `tools/replay/*`, `tools/bench/*` (generalized; see commit message).
 
 ## Composition edits (not verbatim; reviewed in the step-2 commit)
 

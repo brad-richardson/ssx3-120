@@ -8,8 +8,8 @@ Key dir (tests/det/keys/<key>/): manifest.json (pins), hashes.bin (raw
 Candidate run dir: boot.log + snd.log from tests/det/boot/ssx3_boot.py.
 
 The three comparisons below are logic-verbatim ports of the canonical lab
-gate (provenance: ssx3-lab local/tooling/boot/baseline.py
-parse_snd_log/snd_bound_ok/coverage_lines and GB8 gb8_hashdiff.py
+gate (provenance: the lab gate baseline comparator
+(parse/snd-bound/coverage) and the lab GB8 hash comparator
 HASH_LINE/INTERLEAVE/same), so a public IDENTICAL means the canonical gate
 would say IDENTICAL on the same bytes. Prints a final
 `compare <key> vs <cand>: IDENTICAL|DIFFER` line.
