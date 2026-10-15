@@ -1,0 +1,36 @@
+[Unit]
+Description=SSX 3 Rust quick-play lobby (matchmaker + UDP relay)
+Documentation=file:///srv/ssx3-lobby/compose.yaml
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated non-root user, created by infra/deploy-lobby-rust.sh.
+User=ssx3-lobby
+Group=ssx3-lobby
+ExecStart=/usr/local/bin/ssx3-lobby /etc/ssx3-lobby/lobby.toml
+Restart=on-failure
+RestartSec=5
+
+# Hardened profile (DEP1; fits the Oracle free tier):
+# static musl binary, no capabilities (all ports are above 1024),
+# no filesystem writes (the lobby keeps everything in memory).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6
+MemoryMax=512M
+TasksMax=256
+
+# Config is read-only under /etc; logs go to the journal.
+ReadOnlyPaths=/etc/ssx3-lobby
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ssx3-lobby
+
+[Install]
+WantedBy=multi-user.target

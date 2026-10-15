@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TKO1: simple shapes only: snow mountain + "T" (Tricky) badge. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M22,70 L46,30 L58,50 L64,42 L86,70 Z" />
+    <path android:fillColor="#B8D4F0" android:pathData="M46,30 L58,50 L50,56 L44,48 L40,54 Z" />
+    <path android:fillColor="#FFD21F" android:strokeColor="#202020" android:strokeWidth="1.5"
+        android:pathData="M44,58 H84 A4,4 0 0 1 88,62 V80 A4,4 0 0 1 84,84 H44 A4,4 0 0 1 40,80 V62 A4,4 0 0 1 44,58 Z" />
+    <path android:strokeColor="#202020" android:strokeWidth="3" android:strokeLineCap="butt"
+        android:strokeLineJoin="miter" android:pathData="M56,64 H72 M64,64 V78" />
+</vector>

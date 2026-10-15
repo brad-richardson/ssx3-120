@@ -1,0 +1,63 @@
+# ssx3-lobby production config (Oracle lobby host, DEP1).
+# Source of truth; deployed by infra/deploy-lobby-rust.sh.
+# Same TCP ports as MComm, relay=always, session token on.
+[lobby]
+bind = "0.0.0.0"
+# The IP clients dial AND the IP named in +ses/news (never 0.0.0.0).
+# Set to the public IPv4 clients dial (never 0.0.0.0).
+advertise_ip = "203.0.1.10"
+motd = "WIP Server"
+
+[ports]
+lobby = 11000
+game = 10901
+buddy = 13505
+
+# Room directory pushed after auth (name + peak id each).
+[[rooms]]
+name = "Beginner"
+peak = 1
+[[rooms]]
+name = "Advanced"
+peak = 2
+[[rooms]]
+name = "Elite"
+peak = 3
+[[rooms]]
+name = "Intermediate"
+peak = 4
+
+# SEC1 connection-churn caps, pinned explicitly (= the lobby code
+# defaults: per-IP connection + message rate limits, caps on
+# connections/sessions/queue; see LOB2 REPORT).
+[limits]
+max_connections = 512
+max_per_ip = 16
+msg_per_sec_per_ip = 60
+max_sessions = 256
+max_queue = 128
+waiter_timeout_secs = 600
+idle_probe_secs = 90
+idle_close_secs = 240
+
+[auth]
+# Anonymous requested names receive numeric suffixes on collision. The
+# random per-install DID binds the buddy connection; PASS is ignored.
+mode = "open"
+
+[relay]
+mode = "always"
+# Range includes the game's well-known P2P port 3658: the first pair
+# gets 3658, so relay=always works with no client change.
+port_start = 3658
+port_end = 3757
+idle_timeout_secs = 120
+
+[session]
+# Session token required so the relay learns the listen side from a
+# NON-game registration (LOB1 §10; relay drops mismatches).
+token = true
+quick_track = 2
+quick_mode = 0
+# Fixed server SKEY hex; empty = minted once at startup.
+server_key = ""

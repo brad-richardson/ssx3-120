@@ -1,0 +1,90 @@
+#cloud-config
+# Rendered by instance.tf via templatefile() with var.lobby_tcp_ports
+# and the relay UDP range (var.relay_udp_start/end).
+# The OCI security list is the single source of truth for WHO can connect;
+# the host firewall is static and permissive for the service ports, so a
+# later allowlist change can never lock the operator out of SSH.
+hostname: ssx3-lobby
+manage_etc_hosts: true
+
+# SEC2 (M10): explicit SSH hardening. The stock file relied on the Ubuntu
+# cloud image default (60-cloudimg-settings.conf sets PasswordAuthentication
+# no). Say it outright so a future image change can't silently open password
+# SSH (or root SSH) to the whole internet when allowed_cidrs is 0.0.0.0/0.
+ssh_pwauth: false
+disable_root: true
+
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - unattended-upgrades
+  - ufw
+
+# `default` keeps the image's ubuntu user, which receives the instance
+# metadata SSH key. Without it, a users: list REPLACES the default user and
+# no account gets the key (locked out on first boot, 10-13).
+users:
+  - default
+  - name: ssx3
+    gecos: SSX3 lobby
+    shell: /bin/bash
+    groups: [sudo, docker]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+runcmd:
+  # NOTE ordering: the iptables flush and ufw setup come BEFORE Docker's
+  # first start. Flushing after would delete Docker's own DOCKER and
+  # DOCKER-USER chains, breaking published container ports until restart.
+  - [ usermod, -aG, docker, ssx3 ]
+  - [ mkdir, -p, /srv/ssx3-lobby ]
+  - [ chown, ssx3:ssx3, /srv/ssx3-lobby ]
+  # SEC2 (M10): explicit unattended-upgrades config. The stock file installed
+  # the package and relied on the image default (20auto-upgrades enables it on
+  # Ubuntu cloud images). Pin it: security updates daily, reboot only for
+  # kernels between 03:00-04:00 (lobby is stateless across restarts except
+  # active races; container has restart: unless-stopped).
+  - sh -c 'cat > /etc/apt/apt.conf.d/20auto-upgrades <<EOF
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF'
+  - sh -c 'cat > /etc/apt/apt.conf.d/50unattended-upgrades-local <<EOF
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+EOF'
+  # Oracle's Ubuntu images ship iptables REJECT rules
+  # (/etc/iptables/rules.v4 via netfilter-persistent) that block everything
+  # but 22. Flush those and rely on ufw instead, so the lobby ports stay
+  # reachable. Literal paths per repo rule; guarded so image variance
+  # can't fail first boot.
+  - sh -c 'systemctl disable --now netfilter-persistent 2>/dev/null || true'
+  - [ iptables, -F ]
+  - [ iptables, -X ]
+  - [ ip6tables, -F ]
+  - [ ip6tables, -X ]
+  - [ rm, -f, /etc/iptables/rules.v4 ]
+  - [ rm, -f, /etc/iptables/rules.v6 ]
+  - [ ufw, --force, reset ]
+  - [ ufw, default, deny, incoming ]
+  - [ ufw, default, allow, outgoing ]
+  - [ ufw, allow, 22/tcp ]
+%{ for port in lobby_ports ~}
+  - [ ufw, allow, "${port}/tcp" ]
+%{ endfor ~}
+  # DEP1: Rust lobby relay UDP range (static port rule; sources stay in
+  # the security list, same as the TCP ports above).
+  - [ ufw, allow, "${relay_udp_start}:${relay_udp_end}/udp" ]
+  - [ ufw, --force, enable ]
+  # Docker starts only after the flush and ufw are in place, so its chains
+  # survive; the trailing restart re-creates them in case a later package
+  # step perturbs iptables, and the final status shows the booted state.
+  - [ systemctl, enable, --now, docker ]
+  - [ ufw, status, verbose ]
+  # SEC2 (M10): belt-and-braces sshd check on first boot: fail loudly in the
+  # cloud-init log if password auth or root login is somehow enabled.
+  - sh -c 'sshd -T | grep -Ei "^(passwordauthentication|permitrootlogin) " || true'
+  - [ systemctl, restart, docker ]

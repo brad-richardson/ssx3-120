@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+# Auth stays in ~/.oci/config (DEFAULT profile); nothing secret goes here
+# except paths and OCIDs, and the state file stays local (see backup-state.sh).
+
+config_profile       = "DEFAULT"
+region               = "us-phoenix-1"   # must be the tenancy home region for Always Free
+compartment_ocid     = "ocid1.compartment.oc1..REPLACE"
+availability_domain  = "XXXX-1"
+ssh_public_key_path  = "~/.ssh/id_ed25519.pub"
+
+# Admin SSH access. Keep restricted to the operator's home or VPN.
+# World-open values (0.0.0.0/0, ::/0) are rejected by validation.
+admin_cidrs = [
+  # "192.0.2.10/32",
+]
+
+# Player access to the lobby TCP ports (default 11000/10901/13505) and the
+# relay UDP range. Empty = no player ingress. Stages:
+#   home IP only -> named friend CIDRs -> 0.0.0.0/0 (public, only after limits/alerts/rollback rehearsal).
+player_cidrs = [
+  # "192.0.2.10/32",
+]
+
+ocpus          = 1
+memory_gb      = 6
+boot_volume_gb = 50
+instance_name  = "ssx3-lobby"
+budget_alert_email = "you@example.com"

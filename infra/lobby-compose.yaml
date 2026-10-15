@@ -1,0 +1,24 @@
+name: ssx3-lobby
+services:
+  lobby:
+    image: ssx3-onl6-mcomm:quickplay
+    container_name: ssx3-lobby-mcomm
+    mem_limit: 512m
+    memswap_limit: 512m
+    # SEC2 (M9): bound CPU and process count alongside the memory/no-swap
+    # caps. The lobby spawns one thread per client plus per-client buddy
+    # tasks with no in-app cap; the churn bound that matters on this shape
+    # is pids_limit (thread explosion), with cpus set to the shape size
+    # (1 OCPU here; raise both with the shape).
+    cpus: "1.0"
+    pids_limit: 256
+    oom_score_adj: 500
+    restart: unless-stopped
+    environment:
+      MCOMM_ADVERTISE_IP: ${MCOMM_ADVERTISE_IP:?Set the host public IPv4}
+    ports:
+      - "11000:11000/tcp"
+      - "10901:10901/tcp"
+      - "13505:13505/tcp"
+    volumes:
+      - /srv/ssx3-lobby/data:/data

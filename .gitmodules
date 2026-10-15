@@ -1,0 +1,3 @@
+[submodule "deps/PS2Recomp"]
+	path = deps/PS2Recomp
+	url = https://github.com/brad-richardson/PS2Recomp.git

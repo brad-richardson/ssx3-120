@@ -1,0 +1,184 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Override with: gradlew assembleRelease -Pps2xBootElf=/absolute/path/on/device.elf
+def ps2xGameCodegenDir = project.findProperty('ps2xGameCodegenDir') ?: ''
+def ps2xJobs = (project.findProperty('ps2xJobs') ?: '4').toString().toInteger()
+if (ps2xJobs < 1 || ps2xJobs > 16) {
+    throw new GradleException('ps2xJobs must be 1..16')
+}
+def ps2xNativeBuildDir = project.findProperty('ps2xNativeBuildDir') ?: ''
+def ps2xPrebuiltDir = project.findProperty('ps2xPrebuiltDir') ?: ''
+def ps2xJniLibsDir = project.findProperty('ps2xJniLibsDir') ?: ''
+def ps2xPublicNoticesDir = project.findProperty('ps2xPublicNoticesDir') ?: ''
+// Private game-derived assets enter only at build time, outside the source tree.
+def ps2xPackDir = project.findProperty('ps2xPackDir') ?: ''
+// VR3: generated VU0 images (vu0_<hash>.cpp); used only with PS2X_VU0_RECOMP=1 at run time.
+def ps2xVu0RecompDir = project.findProperty('ps2xVu0RecompDir') ?: ''
+// VR4 D1: vector FMAC core (CMake PS2X_VU1_FMAC_SIMD), ON/OFF (default ON).
+def ps2xVu1FmacSimd = project.findProperty('ps2xVu1FmacSimd') ?: 'ON'
+// PG5 (PG2 GEN lineage): PGO instrumented build, ON/OFF (default OFF; never
+// passed by main_apk.sh). ON = -fprofile-generate + wrap.sh (profile path) +
+// debuggable (wrap.sh and the run-as profile pull need it) + versionName
+// suffix "-pgogen", so an instrumented APK names itself. Never ships.
+def ps2xPgoGenerate = project.findProperty('ps2xPgoGenerate') ?: 'OFF'
+def ps2xPgoGen = ps2xPgoGenerate == 'ON'
+// PG5: build-host dir holding the external pgo_flush.c (empty = no helper).
+def ps2xPgoHelperDir = project.findProperty('ps2xPgoHelperDir') ?: ''
+// OF1 (PG1 USE lineage): PGO use build (absolute path to the merged
+// .profdata on the build host; empty = off).
+def ps2xPgoData = project.findProperty('ps2xPgoData') ?: ''
+// MV2: diagnostic Android guest hash tap; speed APKs leave it OFF.
+def ps2xDetHashTap = project.findProperty('ps2xDetHashTap') ?: 'OFF'
+// GE1 M: bounded event-clock/unit-wait census, diagnostic APK only.
+def ps2xDiagTaps = project.findProperty('ps2xDiagTaps') ?: 'OFF'
+// PL1: fork SHA baked into the binary (padrec header + PS2X-BUILD-ID marker);
+// empty = CMake auto-detects from git (worktree builds).
+def ps2xBuildId = project.findProperty('ps2xBuildId') ?: ''
+// GRADLE_USER_HOME persists between remote build pool jobs (one home per APK
+// slot). An explicit empty property disables the linker cache for controls.
+def ps2xThinLtoCacheDir = project.hasProperty('ps2xThinLtoCacheDir')
+        ? project.property('ps2xThinLtoCacheDir')
+        : new File(gradle.gradleUserHomeDir, 'ps2x-thinlto-cache').absolutePath
+// BF2b: release flags are Android defaults now (Mac CMake default stays
+// OFF). Override with --gradle-prop (e.g. ps2xGameIpo=OFF for a control).
+def ps2xGameIpo = project.findProperty('ps2xGameIpo') ?: 'ON'
+def ps2xAndroidMarch = project.findProperty('ps2xAndroidMarch') ?: 'armv8.2-a+fp16+dotprod'
+// PUB1: per-user signing supplied by tools/ssx3/build.py (keystore created
+// once in the caller's work dir, monotonic versionCode from a work-dir
+// counter). Direct Gradle invocations without these properties keep the
+// previous behaviour (debug key, versionCode 1).
+def ps2xVersionCode = (project.findProperty('ps2xVersionCode') ?: '1').toString().toInteger()
+def ps2xKeystoreFile = project.findProperty('ps2xKeystoreFile') ?: ''
+def ps2xKeystorePassword = project.findProperty('ps2xKeystorePassword') ?: ''
+def ps2xKeyAlias = project.findProperty('ps2xKeyAlias') ?: ''
+def ps2xKeyPassword = project.findProperty('ps2xKeyPassword') ?: ''
+// Signed public builder invocations use their own package. The existing
+// maintainer/debug Gradle recipe supplies no keystore property and retains
+// its installed package and card directory.
+def ps2xAppId = project.findProperty('ps2xAppId') ?: (ps2xKeystoreFile ? 'com.ssx3.recomp' : 'com.ps2x.runner')
+def ps2xBootElf = project.findProperty('ps2xBootElf') ?: "/storage/emulated/0/Android/data/${ps2xAppId}/files/game.elf"
+
+android {
+    androidResources {
+        noCompress 'png'
+    }
+    if (ps2xPackDir) {
+        sourceSets.main.assets.srcDirs += [ps2xPackDir]
+    }
+    namespace 'com.ps2x.runner'
+    compileSdk 34
+    ndkVersion '28.2.13676358'
+
+    defaultConfig {
+        applicationId ps2xAppId
+        minSdk 29
+        targetSdk 34
+        versionCode ps2xVersionCode
+        versionName '0.1.0'
+        if (ps2xPgoGen) {
+            versionNameSuffix '-pgogen'
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DCMAKE_JOB_POOLS=ps2x_compile=${ps2xJobs};ps2x_link=1",
+                        '-DCMAKE_JOB_POOL_COMPILE=ps2x_compile',
+                        '-DCMAKE_JOB_POOL_LINK=ps2x_link',
+                        '-DPS2X_BUILD_RECOMP=OFF',
+                        '-DPS2X_BUILD_ANALYZER=OFF',
+                        '-DPS2X_BUILD_TEST=OFF',
+                        '-DPS2X_BUILD_STUDIO=OFF',
+                        '-DPS2X_ENABLE_SCCACHE=OFF',
+                        '-DPS2X_RUNNER_UNITY_BUILD_BATCH_SIZE=32',
+                        '-DANDROID_CPP_FEATURES=rtti exceptions',
+                        '-DPS2X_ENABLE_DIAG_TAPS=OFF',
+                        '-DPS2X_ENABLE_DIAG_WATCH=OFF',
+                        '-DPS2X_ENABLE_TS2_DIAG=OFF',
+                        '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
+                        '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF',
+                        '-DPS2X_ENABLE_IOP_RPC_TRACE=OFF',
+                        '-DPS2X_ENABLE_DEBUG_UI=OFF',
+                        "-DPS2X_BUILD_ID=${ps2xBuildId}",
+                        "-DPS2X_THINLTO_CACHE_DIR=${ps2xThinLtoCacheDir}",
+                        "-DPS2X_DEFAULT_BOOT_ELF=${ps2xBootElf}",
+                        "-DPS2X_GAME_CODEGEN_DIR=${ps2xGameCodegenDir}",
+                        "-DPS2X_PREBUILT_DIR=${ps2xPrebuiltDir}",
+                        "-DPS2X_VU0_RECOMP_DIR=${ps2xVu0RecompDir}",
+                        "-DPS2X_VU1_FMAC_SIMD=${ps2xVu1FmacSimd}",
+                        "-DPS2X_PGO_GENERATE=${ps2xPgoGen ? 'ON' : 'OFF'}",
+                        "-DPS2X_PGO_HELPER_DIR=${ps2xPgoHelperDir}",
+                        "-DPS2X_PGO_DATA=${ps2xPgoData}",
+                        "-DPS2X_ENABLE_DET_HASH_TAP=${ps2xDetHashTap}",
+                        "-DPS2X_GAME_IPO=${ps2xGameIpo}",
+                        "-DPS2X_ANDROID_MARCH=${ps2xAndroidMarch}",
+                        '-DCMAKE_C_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG',
+                        '-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG'
+                targets 'ps2EntryRunner'
+                if (!ps2xPrebuiltDir) {
+                    targets 'hardware'
+                }
+            }
+        }
+
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    if (ps2xPgoGen) {
+        sourceSets.main.resources.srcDirs += ['src/pgogen/resources']
+    }
+
+    if (ps2xJniLibsDir) {
+        sourceSets.main.jniLibs.srcDirs = [ps2xJniLibsDir]
+        // HAL1: libhardware.so is built from source (android/hwcompat) by the
+        // 'hardware' cmake target above. A jniLibs copy must never silently
+        // win the merge, so it is a hard error: strip it from the jniLibs dir.
+        def halDup = new File(ps2xJniLibsDir, 'arm64-v8a/libhardware.so')
+        if (halDup.exists() && !ps2xPrebuiltDir) {
+            throw new GradleException("libhardware.so is now built from source (android/hwcompat); remove ${halDup} from ps2xJniLibsDir")
+        }
+    }
+    if (ps2xPublicNoticesDir) {
+        sourceSets.main.assets.srcDirs += [ps2xPublicNoticesDir]
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../CMakeLists.txt'
+            if (ps2xNativeBuildDir) {
+                buildStagingDirectory file(ps2xNativeBuildDir)
+            }
+            version '3.22.1'
+        }
+    }
+
+    if (ps2xKeystoreFile) {
+        signingConfigs {
+            ssx3Local {
+                storeFile file(ps2xKeystoreFile)
+                storePassword ps2xKeystorePassword
+                keyAlias ps2xKeyAlias
+                keyPassword ps2xKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
+                }
+            }
+        }
+        release {
+            minifyEnabled false
+            signingConfig ps2xKeystoreFile ? signingConfigs.ssx3Local : signingConfigs.debug
+            // PG5 GEN only (see ps2xPgoGenerate): wrap.sh + run-as profile pull.
+            debuggable ps2xPgoGen
+        }
+    }
+}
