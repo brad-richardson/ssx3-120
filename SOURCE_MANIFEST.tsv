@@ -1,5 +1,5 @@
 new_path	origin	old_path	sha256	bytes	status
-.github/workflows/product-checks.yml	authored:ci	-	ca350ff766d39bd964298dc4c55cea667f2ec3e61c4ccc6d9b9c0847a6302a19	1642	new
+.github/workflows/product-checks.yml	authored:ci	-	4d3525aff57486c6e774be602c549f83adcb78cd3fd7c1cccbb9db27f64a268f	1694	new
 .gitignore	authored:hygiene	-	0b981472ce7c632e03522910ed4e32d9bbf94b1064ba9cadac80425d445debf0	107	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
@@ -98,7 +98,7 @@ tests/det/knob_registry.py	lab@ed718e09	local/tooling/knob_registry.py	a27e08cbc
 tests/det/knob_registry.tsv	lab@ed718e09	local/tooling/knob_registry.tsv	4301831fc8395048d066a54795d48bddbf85ca0f7661fb7d9e03ebc192229bef	56847	composition:scrubbed-evidence-paths
 tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	225088c99789bbf11a4c5799f49f8c79e3b33b2f4cdc92379b6dd550b0da17e1	10619	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
-tests/test_contract_stable.py	authored:composition-test	-	6399a4ca7c372108674594a5abb0e9e65e3a2ed8ca34814effdee0604bd1ef8b	1543	new
+tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
 tools/bench/README.md	authored:bench-docs	-	ef41c4517f77577788b6906b409efa8778581bf060a95ca10c1f189ed70cedc0	2410	new
 tools/bench/bench-android.py	lab@ed718e09	local/tooling/odin_run.py	7a0f1ed94229fe8f8d8cb3e1dd74aa7dee97c8eb506d55083cc2f9e45895a403	80879	composition:generic-device-layer
 tools/bench/bench-android.sh	lab@ed718e09	local/tooling/odin_bench.sh	43434ce837b6674940e3d2f7a56adffd4aa7237226ccdbe02d2d19e55be05aa8	10765	composition:rewritten-generic-driver
