@@ -495,8 +495,7 @@ COURSES = {
         oracle_c='b1bb68d2cdf2a01b02517b336efbf40d33bd744867bc2184aa560d9a1693560d',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         # A-bind on the -c world with the -b scenery (TKP2 census: 3 rows;
-        # specific Mdl_LcdscanRed run gave 161ff820, generic A pending check
-        # against the same oracle at runtime).
+        # generic A == specific Mdl_LcdscanRed: 161ff820 both ways, run6).
         bind_base='c',
         bind_scenery='alaska-b-scenery.json',
         oracle_bound='161ff820b26c35418853f998424b6aaea7d908199fd171b2ca4eea61e4c5968e',
@@ -960,7 +959,11 @@ class Chain:
         if 'scenery' in order:
             bbig = self.rung_scenery(c, r, sbig, bdir, ddir)
         if 'terrain' in order:
-            cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
+            if r.get('terrain_tool'):
+                cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
+            else:
+                print(f'{c} terrain skipped (mega-h/u2/c pending tex20)',
+                      flush=True)
         if 'cand' in order:
             if r.get('cand_extra'):
                 cbig = self.rung_cand(c, r, sbig, bdir, ddir)
