@@ -213,10 +213,8 @@ COURSES = {
         # Staged TK49 1850bc0e is a TK42c blend/materialize gate (middle
         # ladder), NOT a make_composite30 product; wired when that rung lands.
         oracle_tk49='1850bc0e0ba74cecbc60f56b281997ac81391c50c09e31af701fc4da9cf24878',
-        cand_extra=['--soft-u0zero',
-                    '--split-hull', '54:1254', '--split-hull', '55:1254',
-                    '--split-hull', '56:1254', '--split-hull', '119:1254'],
-        oracle_cand='ada8ba3e',
+        # No cand rung: gari-cand rebuilds -c (TK33b gari-candt == ada8ba3e)
+        # and feeds nothing (bind runs on sgt). The sg rung below covers it.
         sg_show=[136, 138],
         bind_base='sgt',
         bind_scenery='sg',
@@ -267,7 +265,7 @@ COURSES = {
         oracle_c='14b3daf3',
         # mesa-finalw: cand2 flags + start-gate show (63/64) + bridge
         # unprotect (463/475), rails, mesa terrain flags, waterfall bind.
-        oracle_cand='14b3daf3',
+        # (No cand rung: mesa-candt2 == -c, gated above; bind runs on finalw.)
         finalw_show=[63, 64],
         finalw_unprotect=[463, 475],
         finalw_bind_names=['Mdl_Big_Waterfall', 'Mdl_Mini_Waterfall',
@@ -787,16 +785,20 @@ class Chain:
     # soft-u0zero + keep-file + the course trims, then rails + the course
     # terrain flags. Proven: merq (60e1f21c -> e5394e3c), elys (ef001690 ->
     # 60e1b402, lowercase terrain stem).
-    def rung_cand(self, c, r, rbig, bdir, ddir):
+    def rung_cand(self, c, r, sbig, bdir, ddir):
         w = self.W / f'w-{c}-cand'
         (w / 'sc').mkdir(parents=True, exist_ok=True)
         sc = w / 'sc' / f'{c.upper()}.BIG'
         out = w / f'{c.upper()}.BIG'
         fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
         extra = [a.format(**fmt) for a in r['cand_extra']]
+        ff = (r.get('fence_file') or '').format(c=c)
+        if ff:
+            for n in (self.T / 'data' / ff).read_text().split():
+                extra += ['--no-collision-instance', n]
         stem = r.get('cand_stem_scenery', c)
         run('cand-scenery', sys.executable, self.T / 'tk33b' / 'make_scenery33.py',
-            rbig, bdir / 'experiment.json',
+            sbig, bdir / 'experiment.json',
             ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
             stem, sc, '--receipt', w / 'scenery.json', *extra,
@@ -959,7 +961,7 @@ class Chain:
             cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
         if 'cand' in order:
             if r.get('cand_extra'):
-                cbig = self.rung_cand(c, r, rbig, bdir, ddir)
+                cbig = self.rung_cand(c, r, sbig, bdir, ddir)
             else:
                 print(f'{c} cand skipped (not wired)', flush=True)
         if 'sg' in order:
