@@ -1,11 +1,11 @@
 new_path	origin	old_path	sha256	bytes	status
-.github/workflows/product-checks.yml	authored:ci	-	4d3525aff57486c6e774be602c549f83adcb78cd3fd7c1cccbb9db27f64a268f	1694	new
+.github/workflows/product-checks.yml	authored:ci	-	c5c6e263df98826a6e0d806ada04c624a87efaa50b6dd4d069cd1a2ee15e9863	2282	new
 .gitignore	authored:hygiene	-	ed0b10d7361ac2de553e2a6cb62ef93d6a8f7bd8e8a8d35967af3df6a049db07	234	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
 LICENSE	fork@f7a96f23	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c71fd3712bdb44a	34903	verbatim
 README.md	authored:readme	-	613962f544180b893d2a99f1aa4053e85d8f5113c2b1e1a823d893d59c76a615	5108	new
-SOURCE_PROVENANCE.md	authored:provenance	-	dd95644ca339439363c3a4c90468a2de06e2b5b0b0ad967cf766005b52c47593	4336	new
+SOURCE_PROVENANCE.md	authored:provenance	-	faa84a28872295b7c6b1a4fba9df4082a74b99f542162669f2677b6ad1d36257	5105	new
 THIRD_PARTY_NOTICES.md	authored:notices	-	df62c88211cd273d108ce692e7e785b87ddc4d427b1000a40a358818cd5b362f	2152	new
 apps/android/README.md	fork@f7a96f23	android/README.md	b9306de582f19343587c3209ea97c1ad3032807ba93d5a158814c45c953b81bc	6974	composition:product-paths-and-host-support
 apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	1c4b6cbfa6c5b7db60be44820054230c066d2013437924f7356f7dfe856fa567	9306	composition:explicit-engine-cmake-path
@@ -46,7 +46,7 @@ docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe
 docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
 games/ssx3/ssx3.toml	fork@f7a96f23	games/ssx3/ssx3.toml	c0c02d5809713fa7a2cd03a473dc02d6c3e0a579f79b942ea04587ed0b91f8d5	57898	verbatim
-infra/README.md	infra-staged	public-infra/README.md	cafb40ad49eb6fc9eea9988360b821ec48e5b5de7b5541c20b4bdef01cdf727b	4277	verbatim
+infra/README.md	infra-staged	public-infra/README.md	415c8cf5d368745bcbd6e09c3a8c11e979cc318a653746af139d15b42c5feb85	4472	verbatim
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	5cf8c8b5aa4603ff9e4374e3f1ce6792944f690c0e7a39b5bc3ec49c1da9bd15	1339	verbatim
 infra/backup-state.sh	infra-staged	public-infra/backup-state.sh	f6022aa0d3e4cbae0aa3e78d555425be4d3ddf8843fa799e051f217677f7dff3	545	verbatim
 infra/check-cloud-init.sh	infra-staged	public-infra/check-cloud-init.sh	d153bd54b8d6029fa72d4b44adb97e8f1d128e9a70dc023c7ba2046178de2224	3076	verbatim
@@ -54,7 +54,7 @@ infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	42f4a8
 infra/deploy-lobby.sh	infra-staged	public-infra/deploy-lobby.sh	00acd5ccaff67fb6c974986b4a0d303615d0db0b9767e05ae4537e594a28b19c	3951	verbatim
 infra/harden-host.sh	infra-staged	public-infra/harden-host.sh	d013cfdfb16c7607881d79962250d4da9e68dfd2565bc2f565b67192c3c521d2	1761	verbatim
 infra/lobby-compose.yaml	infra-staged	public-infra/lobby-compose.yaml	896d59b5f0c86765fec3462602ccade52c91da9f55906e4d0bcaffbf5f29f622	811	verbatim
-infra/lobby-rust/lobby.toml	infra-staged	public-infra/lobby-rust/lobby.toml	7c1fe50cfaab8c911eb8a756043cd9e04030ae1a35a8b2a1ef3c6fbad169fccb	1612	verbatim
+infra/lobby-rust/lobby.toml	infra-staged	public-infra/lobby-rust/lobby.toml	5d74f9f2cdd0aeb0a9cc37d78097ed80d3218011c1c621f5a03b174cc52b8e22	2517	verbatim
 infra/lobby-rust/ssx3-lobby.service	infra-staged	public-infra/lobby-rust/ssx3-lobby.service	54e28e95fcae068b415c8b9664673e0e67bba3dc6dd95494e4c0a60eef44e2cd	964	verbatim
 infra/oci/.terraform.lock.hcl	infra-staged	public-infra/oci/.terraform.lock.hcl	5a98238fecc5fae00a98afb3a2a1c221ec3181f2af66b293a522911f79d12adf	2113	verbatim
 infra/oci/budget.tf	infra-staged	public-infra/oci/budget.tf	74be240ff605a257edb75f5520581d77d7c2be9c7301677660c3d91f44b09344	1356	verbatim
@@ -106,7 +106,7 @@ tools/bench/collate.py	authored:bench-collator	-	b10cffdc695cdcbde22cd363fa62970
 tools/bench/legs.example.json	authored:bench-template	-	0c9553b492a3032ac0c44a38c6b071d2a2c084b0a6e959dc257e5cb6f338f6da	840	new
 tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17dc54ab2a6d511238945fcd4999767e5d90d74168a76722f72c3cbce121a8c1	6842	verbatim
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
-tools/ssx3/README.md	fork@f7a96f23	tools/ssx3/README.md	e7cc477d2ba8fe0823e1182f459f72ef9f50f959b7f616d0048bab3c1eb27a96	20740	composition:product-paths-and-host-support
+tools/ssx3/README.md	fork@f7a96f23	tools/ssx3/README.md	4e3143707efa0a4023109a3097c65138ed2a286c89fcfe6183c35c14e69fdfcb	20750	composition:product-paths-and-host-support
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
 tools/ssx3/build.py	fork@f7a96f23	tools/ssx3/build.py	e30dbcb7bf9a001d4e2ea3e8b147941e49eafda9be6ccfc4fdcf581e783f4b43	53663	composition:explicit-product-engine-roots
 tools/ssx3/knobs.tsv	fork@f7a96f23	tools/ssx3/knobs.tsv	d95826b268f0ed10d9b8ed6ff98c356ca07cb9c7a2593a901d886c61146a0e4e	7275	verbatim
@@ -120,7 +120,7 @@ tools/ssx3/pgo/pgo_flush.c	fork@f7a96f23	tools/ssx3/pgo/pgo_flush.c	8727f02037e1
 tools/ssx3/prebuilt-consumer.cmake	fork@f7a96f23	tools/ssx3/prebuilt-consumer.cmake	64d7ded79f7f64fa484f7a5d157a3cf37eac764c9693afc9f14011e0bae0dfae	3687	removed:duplicate-of-engine-copy
 tools/ssx3/prebuilt.py	fork@f7a96f23	tools/ssx3/prebuilt.py	8b7f2b5904743d86089fbbe4f78a95c5c07141ab6040f537086b2da1ff24a68a	45708	composition:engine-pinned-contract
 tools/ssx3/remaster_font.py	fork@f7a96f23	tools/ssx3/remaster_font.py	c8ad4cf729002ff19a2671eb93f1a77d243d22964c039e68be6baecb2f199366	14254	verbatim
-tools/ssx3/test_prebuilt.py	fork@f7a96f23	tools/ssx3/test_prebuilt.py	fae26113c78b8b180556db1a78592c71dcf31368b05ccd2c0453ea9f71d2835b	24572	composition:contract-tests-read-the-engine-checkout
+tools/ssx3/test_prebuilt.py	fork@f7a96f23	tools/ssx3/test_prebuilt.py	596b6e7a35af440e06fc36fc1598218860c09364ebb8f004803024b276de724a	25807	composition:contract-tests-read-the-engine-checkout
 tools/ssx3/tests/test_public_install_stage.py	fork@f7a96f23	tools/ssx3/tests/test_public_install_stage.py	813fa2b912e0a259226f2451fdac0206f4f974c17b7b3f56dae553f830d66fe5	3715	composition:product-apps-layout-apk-path
 tools/ssx3/tests/test_remaster_font.py	fork@f7a96f23	tools/ssx3/tests/test_remaster_font.py	618c6f3e7df4c5cebb3909cc157f255295c9cda081cb6bc31dcac88d8996b43c	7875	verbatim
 tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a7525057ba5003705f95729d5d273d3ba8c8b43634672822525b8d3a5f3a2368	1242	verbatim
