@@ -485,7 +485,9 @@ COURSES = {
         # mega-h/u2/c rungs pending (need tk21/tk23 scenery/terrain wiring).
         scenery_tool='tk16/make_scenery16.py',
         scenery_extra=['--drop-instances', '{data}/mega-drop.txt'],
-        rails_tool='tk16/make_rails16.py',
+        # No rails at this rung (TK18: Megaplex has no rails); 1bae15bf is
+        # the scenery output. Rails arrive with TK21's mega-g.
+        rails_tool=None,
         oracle_b='1bae15bf7868b9b6d8364576d2aa3bf4b85a884010d64cfe44db850b0fc617c2',
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
         floor_group=94,
@@ -643,6 +645,13 @@ class Chain:
             cwd=self.W, log=self.log(c, 'scenery'))
         if r.get('oracle_sc'):
             check(sc, r['oracle_sc'], f'{c} sc')
+        # Some courses ship scenery-only at this rung (Megaplex has no
+        # rails: DBC2 carries no rail-class spline to template; TK21 adds
+        # rails later via make_rails21 + another host's receipt).
+        if not r.get('rails_tool'):
+            if r.get('oracle_b'):
+                check(sc, r['oracle_b'], f'{c} -b')
+            return sc
         run('rails', sys.executable, self.T / r['rails_tool'],
             sc, bdir / 'experiment.json',
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
