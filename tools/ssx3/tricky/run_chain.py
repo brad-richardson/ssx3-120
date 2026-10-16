@@ -221,7 +221,9 @@ COURSES = {
     'mesa': dict(
         big='MESA.BIG', donor='mesa', ps2_tool='tk16/ps2_as_gc.py',
         donor_extra=['mesa_L.ssh'],
-        build_env={},
+        # TK10_SURFACE=0 (TK14 canonical): the resets rung requires template
+        # surface 0; without it make_resets refuses (mesa run4).
+        build_env={'TK10_SURFACE': '0'},
         build_args=build_world_args(
             'CRA3', 6, '-402.73553466796875,-372.3375549316406,4066.28466796875',
             '-135497.29947916666,-58447.231119791664,212157.515625',
@@ -263,7 +265,7 @@ COURSES = {
         big='MERQUER.BIG', donor='merquer', ps2_tool='tk16/ps2_as_gc.py',
         # NOTE truncated stem: merque_L.ssh (verified in donor extract).
         donor_extra=['merque_L.ssh'],
-        build_env={'TK10_KEEP_RESET': '68'},
+        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '68'},
         build_args=build_world_args(
             'ERA5', 51, '-88.97691345214844,-19928.7578125,17058.09765625',
             '-351954.6822916667,110245.00911458333,490273.6875',
@@ -304,7 +306,7 @@ COURSES = {
         big='ELYSIUM.BIG', donor='elysium', ps2_tool='tk16/ps2_as_gc.py',
         # NOTE truncated stem: TK20/src/elysium/elysiu_L.ssh, not elysium_L.
         donor_extra=['elysiu_L.ssh'],
-        build_env={'TK10_KEEP_RESET': '42'},
+        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '42'},
         build_args=build_world_args(
             'EBC3', 27, '-428.06982421875,-3996.297119140625,12520.1640625',
             '-360652.0,319398.140625,739730.0',
@@ -343,7 +345,7 @@ COURSES = {
     'aloha': dict(
         big='ALOHA.BIG', donor='aloha', ps2_tool='tk16/ps2_as_gc.py',
         donor_extra=['aloha_L.ssh'],
-        build_env={'TK10_KEEP_RESET': '48'},
+        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '48'},
         build_args=build_world_args(
             'ABC1', 30, '-688.0489501953125,-2878.951416015625,58693.38671875',
             '1982.6675415039062,-46116.931640625,96339.8046875',
