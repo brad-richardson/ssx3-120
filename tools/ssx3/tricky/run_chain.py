@@ -141,12 +141,183 @@ COURSES = {
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
         bind_scenery='snow-cand-scenery.json',
-        oracle_bound='4eae74011c8aa2b0e9b6b6b0e9b0e9b0e9b0e9b0e9b0e9b0e9b0e9b0',
+        oracle_bound='4eae7401996002a38b524fa54350585fd234441d12b0837ce3a965321719960d',
         floor_group=56,
         oracle_final='c850d63e5324a7d85957da9fa14f87270f5cd5394286d0029a14e7702b31e8c3',
         fix_group=56,
-        oracle_fix='62dd04f3b8b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0',
+        oracle_fix='3df07de95bea6050b4f41be6f83c325dc549d79b20ce49433c3595867b02e54a',
         preview_loc='BRA2',
+    ),
+    'gari': dict(
+        big='GARI.BIG', donor='gari', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['gari_L.ssh'],
+        # 09-11 run-gari-010 recipe: raw replace_terrain (no race relocation)
+        build_tool='shared/replace_terrain.py',
+        build_env={},
+        build_args=build_world_args(
+            'ARA1', 1673, '-1214.8,-195.5,-768.547891',
+            '-118613.68,15753.8,-228880.14',
+            73, .55, 32, ['--reset-aip', '{donor}/gari.aip',
+                           '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--hide', 'A_ARA1'],
+        race_aip='gc/gari.aip',
+        resets_nbd='gari.nbd',
+        fence_receipt='TK28/gari-fence.txt',
+        fence_count=349,
+        oracle_fc='a4684e615aa5ba79ac4d9ce988b018b18038d76e6d5b650567bd67cdb22',
+        cand_extra=['--soft-u0zero',
+                    '--split-hull', '54:1254', '--split-hull', '55:1254',
+                    '--split-hull', '56:1254', '--split-hull', '119:1254'],
+        oracle_cand='ada8ba3e',
+        oracle_sg_scenery='d833fa45',
+        oracle_sgt='72ed9d93b994a188bc79206859867a06fcff173c67760308b2af6e5750126aa0',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
+                    'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
+        bind_scenery='gari-sg-scenery.json',
+        oracle_bound='58897da7e81e873115d75f07e72b37bf26206ef523b21aac966fa6e025868f38',
+        floor_group=33,
+        oracle_final='2ba912b3e95f428c8d9ac539e0cd8e18793171f668562141cfb4e8a6c324733a',
+        fix_group=33,
+        oracle_fix='3e714aca99403fc8350dfa3e6ac81835174cd77b37d20cba4279275f0c0cc5ce',
+        preview_loc='ARA1',
+    ),
+    'mesa': dict(
+        big='MESA.BIG', donor='mesa', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['mesa_L.ssh'],
+        build_env={},
+        build_args=build_world_args(
+            'CRA3', 6, '-402.73553466796875,-372.3375549316406,4066.28466796875',
+            '-135497.29947916666,-58447.231119791664,212157.515625',
+            261.3, .55, 78, ['--reset-aip', '{donor}/mesa.aip',
+                              '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--base-race-starts', '--gate-chain', '0,1,2,3,4'],
+        resets_nbd='mesa.nbd',
+        oracle_c='fd9400d086fc750661679ce6d634eabbfd6b58a1f46d66a242c196e748253d20',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
+                    'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
+        bind_scenery='mesa-final-scenery.json',
+        oracle_bound='fe35aa1881eebf6eda0392cb43531b53ae2ffa513688a66fb306e262c5f6f8a4',
+        floor_group=80,
+        oracle_final='93668ecfb8ebad07d958d8a0c7f8e7cf55c4312476a0c7c612009e29b3e0702d',
+        fix_group=80,
+        oracle_fix='ab8325d74363f91a88d6156e5a7f4431ca18d113fbb563f09b6b2d98178b58f6',
+        preview_loc='CRA3',
+    ),
+    'merq': dict(
+        big='MERQUER.BIG', donor='merquer', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['merquer_L.ssh'],
+        build_env={'TK10_KEEP_RESET': '68'},
+        build_args=build_world_args(
+            'ERA5', 51, '-88.97691345214844,-19928.7578125,17058.09765625',
+            '-351954.6822916667,110245.00911458333,490273.6875',
+            271.4, .55, 141, ['--reset-aip', '{donor}/merquer.aip',
+                               '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--base-race-starts', '--keep-reset', '68',
+                   '--gate-chain', '0,4,5,1,2,3'],
+        resets_nbd=None,
+        oracle_c='60830bffafbf9c46a542a99c6218506d8ab1b6d6412be01db3fc4f5eb212f997',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        bind_scenery='merq-cand-scenery.json',
+        oracle_bound='021b9b1a0d27499f3bae6e299a0299e373e925b1eb71aa5635a7135ca4568b20',
+        floor_group=148,
+        oracle_final='9fcced315bf5d0f9a8ab4b7232dc1f6a2a2d4386748332ef479aea99c967998c',
+        fix_group=148,
+        oracle_fix='b88422281a8138e6960316a7a4fc5e239f6309752a3c021da14df161af3368d7',
+        preview_loc='ERA5',
+    ),
+    'elys': dict(
+        big='ELYSIUM.BIG', donor='elysium', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['elysium_L.ssh'],
+        build_env={'TK10_KEEP_RESET': '42'},
+        build_args=build_world_args(
+            'EBC3', 27, '-428.06982421875,-3996.297119140625,12520.1640625',
+            '-360652.0,319398.140625,739730.0',
+            169.9, .55, 131, ['--reset-aip', '{donor}/elysium.aip',
+                               '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--base-race-starts', '--keep-reset', '42',
+                   '--gate-chain', '0,1,2,3,4'],
+        resets_nbd=None,
+        oracle_bound='b9df59d3ee19532927eb35d07e1132f2aab8a3410ace7a577d44bfe5d2a9b212',
+        floor_group=135,
+        oracle_final='169a8cf4ef60020e1604f82cb059c1ab7c140fe3a6ba2cf870a46c24afae3fd4',
+        fix_group=135,
+        oracle_fix='8d9e9f86e5a85e548834b20aaf8921782ee61b215d61a7c9112bb174e52b660f',
+        preview_loc='EBC3',
+    ),
+    'aloha': dict(
+        big='ALOHA.BIG', donor='aloha', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['aloha_L.ssh'],
+        build_env={'TK10_KEEP_RESET': '48'},
+        build_args=build_world_args(
+            'ABC1', 30, '-688.0489501953125,-2878.951416015625,58693.38671875',
+            '1982.6675415039062,-46116.931640625,96339.8046875',
+            345.5, .55, 15, ['--reset-aip', '{donor}/aloha.aip',
+                              '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--base-race-starts', '--keep-reset', '48',
+                   '--gate-chain', '0,1,2,3'],
+        race_aip='gc/aloha.aip',
+        resets_nbd='aloha.nbd',
+        oracle_c='0c35368056f406eb1698aba45bb3b0ae97b4bc0677e22d03ce4b1daef3b87691',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        bind_scenery='aloha-b-scenery.json',
+        oracle_bound='6ca2bca62db08d2d9e068b522e5e5fa6de567edde1d7a028546a839143d4c8b9',
+        floor_group=22,
+        oracle_final='11e6b9f8ac5ef2dcc7080a57c4f34d96aa56376fb2320588069c48f13a388bf5',
+        fix_group=22,
+        oracle_fix='10109cbcb9767e402b07e959bebddc380c4e5b26b542c453e937f2fac4de2abd',
+        preview_loc='ABC1',
+    ),
+    'alaska': dict(
+        big='ALASKA.BIG', donor='alaska', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['alaska_L.ssh'],
+        build_env={'TK10_KEEP_RESET': '87'},
+        build_args=build_world_args(
+            'DSS2', 12, '-18650.419921875,4959.109375,7784.38916015625',
+            '128772.49739583333,-145501.33854166666,-29729.162109375',
+            154.1, .55, 113, ['--reset-aip', '{donor}/alaska.aip',
+                               '--relocate-freeride-start']),
+        race_tool='tk18/make_race_world.py',
+        race_args=['--base-race-starts', '--keep-reset', '87',
+                   '--race-line-kind', 'slopestyle',
+                   '--markers', '0.275798,0.653856', '--chain-tolerance', '1500'],
+        resets_nbd=None,
+        route_tol=['1500', '{lane}/TK18/routes/alaska3d-b.txt', '--z'],
+        oracle_c='b1bb68d2cdf2a01b02517b336efbf40d33bd744867bc2184aa560d9a1693560d',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        bind_scenery='alaska-b-scenery.json',
+        oracle_bound='161ff820b26c35418853f998424b6aaea7d908199fd171b2ca4eea61e4c5968e',
+        floor_group=115,
+        oracle_final='50e5b4db09598d18baa4a96570ec7ece7dd1336fbe1c7acf60de02ee342303f1',
+        fix_group=115,
+        oracle_fix='3a8b00dd4de23ccbf53b2c91427d5c4f0f43391a0f8169c5687718ec7024a005',
+        preview_loc=None,
+    ),
+    'mega': dict(
+        big='MEGAPLE.BIG', donor='megaple', ps2_tool='tk16/ps2_as_gc.py',
+        donor_extra=['megapl_L.ssh'],
+        lap_patch=True,
+        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '42'},
+        build_args=build_world_args(
+            'DBC2', 75, '1630.64453125,196.73287963867188,12.964978218078613',
+            '47827.451171875,-244658.3515625,278105.828125',
+            279.4, .55, 90, ['--reset-aip', '{donor}/megaple.aip',
+                              '--relocate-freeride-start']),
+        race_tool='tk12/make_race_world.py',
+        race_args=['--base-race-starts', '--keep-reset', '42',
+                   '--gate-chain', '1,2,3,4,5'],
+        race_aip='gc/megaple.aip',
+        resets_nbd=None,
+        oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
+        floor_group=94,
+        oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
+        fix_group=None,
+        oracle_fix=None,
+        preview_loc=None,
     ),
 }
 
@@ -216,10 +387,21 @@ class Chain:
             cwd=self.W, log=self.log(c, 'ps2'))
         return ddir
 
+    # -- rung: lap-start patch (megaplex single-lap donor AIP) ----------------
+    def rung_lap(self, c, r, ddir):
+        out = self.W / f'{c}-lap.aip'
+        run('lap', sys.executable, self.T / 'tk18' / 'lap_start.py',
+            ddir / f"{r['donor']}.aip", out, '12,13,14,15,13,15',
+            cwd=self.W, log=self.log(c, 'lap'))
+        return out
+
     # -- rung: build -------------------------------------------------------
-    def rung_build(self, c, r, ddir):
+    def rung_build(self, c, r, ddir, aip=None):
         out = self.W / f'build-{c}'
         args = [a.format(donor=ddir) for a in r['build_args']]
+        if aip:
+            args = [str(aip) if a == str(ddir / f"{r['donor']}.aip") else a
+                    for a in args]
         tool = self.T / r.get('build_tool', 'tk10/build_world.py')
         cmd = [sys.executable, tool,
                self.a.host_bam, '--world-report', self.W / 'ssx3-world.json',
@@ -228,10 +410,15 @@ class Chain:
         return out
 
     # -- rung: race --------------------------------------------------------
-    def rung_race(self, c, r, bdir, ddir):
+    def rung_race(self, c, r, bdir, ddir, aip=None):
         out = self.W / f'{c}-r.BIG'
+        if aip is None:
+            if r.get('race_aip', '').startswith('gc/'):
+                aip = Path('/Users/brad/dev/ssx3/local/source/gamecube/tricky') / r['race_aip'][3:]
+            else:
+                aip = ddir / f"{r['donor']}.aip"
         run('race', sys.executable, self.T / r['race_tool'],
-            bdir / 'BAM.BIG', self.a.host_bam, ddir / f"{r['donor']}.aip",
+            bdir / 'BAM.BIG', self.a.host_bam, aip,
             bdir / 'experiment.json', c, out, *r['race_args'],
             cwd=self.W, log=self.log(c, 'race'))
         return out
@@ -290,16 +477,20 @@ class Chain:
         if upto != 'all':
             order = order[:order.index(upto) + 1]
         ddir = bdir = rbig = bbig = cbig = None
+        aip = None
         if 'extract' in order:
             ddir = self.rung_extract(c, r)
         if 'ps2' in order:
             ddir = ddir or self.donor / r['donor']
             self.rung_ps2(c, r, ddir)
+        if r.get('lap_patch'):
+            ddir = ddir or self.donor / r['donor']
+            aip = self.rung_lap(c, r, ddir)
         if 'build' in order:
             ddir = ddir or self.donor / r['donor']
-            bdir = self.rung_build(c, r, ddir)
+            bdir = self.rung_build(c, r, ddir, aip)
         if 'race' in order:
-            rbig = self.rung_race(c, r, bdir, ddir)
+            rbig = self.rung_race(c, r, bdir, ddir, aip)
         if 'scenery' in order:
             bbig = self.rung_scenery(c, r, rbig, bdir, ddir)
         if 'terrain' in order:
