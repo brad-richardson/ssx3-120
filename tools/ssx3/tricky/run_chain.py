@@ -557,7 +557,7 @@ class Chain:
         out = self.W / f'{c}-r.BIG'
         if aip is None:
             if r.get('race_aip', '').startswith('gc/'):
-                aip = Path('/Users/brad/dev/ssx3/local/source/gamecube/tricky') / r['race_aip'][3:]
+                aip = Path(self.a.gc_dir) / r['race_aip'][3:]
             else:
                 aip = ddir / f"{r['donor']}.aip"
         run('race', sys.executable, self.T / r['race_tool'],
@@ -576,9 +576,11 @@ class Chain:
     def rung_resets(self, c, r, rbig, bdir, ddir):
         if not r.get('resets_nbd'):
             return rbig
+        # Reset surfaces come from the GameCube originals (local/source),
+        # not from the PS2-derived donor tree.
         out = self.W / f'ov-s-{c.upper()}.BIG'
         run('resets', sys.executable, self.T / 'tk12' / 'make_resets.py',
-            rbig, bdir / 'experiment.json', ddir / r['resets_nbd'],
+            rbig, bdir / 'experiment.json', Path(self.a.gc_dir) / r['resets_nbd'],
             c, out, cwd=self.W, log=self.log(c, 'resets'))
         if r.get('oracle_ovs'):
             check(out, r['oracle_ovs'], f'{c} ov-s')
@@ -693,6 +695,8 @@ def main():
     ap.add_argument('--rung', default='all')
     ap.add_argument('--lane-dir', default='/Users/brad/dev/ssx3/local/research')
     ap.add_argument('--pins', default='/Users/brad/dev/ssx3-work/pinned/tricky')
+    ap.add_argument('--gc-dir',
+                    default='/Users/brad/dev/ssx3/local/source/gamecube/tricky')
     a = ap.parse_args()
     ch = Chain(a)
     ensure_world_report(ch)
