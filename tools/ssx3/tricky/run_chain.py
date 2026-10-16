@@ -279,7 +279,8 @@ COURSES = {
     ),
     'elys': dict(
         big='ELYSIUM.BIG', donor='elysium', ps2_tool='tk16/ps2_as_gc.py',
-        donor_extra=['elysium_L.ssh'],
+        # NOTE truncated stem: TK20/src/elysium/elysiu_L.ssh, not elysium_L.
+        donor_extra=['elysiu_L.ssh'],
         build_env={'TK10_KEEP_RESET': '42'},
         build_args=build_world_args(
             'EBC3', 27, '-428.06982421875,-3996.297119140625,12520.1640625',
@@ -298,6 +299,17 @@ COURSES = {
                        '--collision-radius', '1500',
                        '--drop-instances', '{data}/elys-drop.txt'],
         rails_tool='tk20/make_rails20.py',
+        # TK26 elys-eb1 terrain (TK19c tool): --mips 4 --mips-only
+        # elys-line-tex20 --prune --prune-kinds 10 --compact-ids --lm 1.0
+        # --offline-tex-max 32. eb1 68207cc0; candt 60e1b402 path after eb1
+        # pending recon.
+        terrain_tool='tk19c/make_terrain_tex.py',
+        terrain_extra=['--mips', '4', '--mips-only',
+                       '{data}/elys-line-tex20.txt', '--prune',
+                       '--prune-kinds', '10', '--compact-ids',
+                       '--lm-alpha-scale', '1.0', '--offline-tex-max', '32'],
+        terrain_L='elysiu_L.ssh',
+        oracle_c='68207cc0',
         oracle_bound='b9df59d3ee19532927eb35d07e1132f2aab8a3410ace7a577d44bfe5d2a9b212',
         floor_group=135,
         oracle_final='169a8cf4ef60020e1604f82cb059c1ab7c140fe3a6ba2cf870a46c24afae3fd4',
