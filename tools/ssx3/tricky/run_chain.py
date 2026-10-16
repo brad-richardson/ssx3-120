@@ -136,6 +136,7 @@ COURSES = {
                               '--relocate-freeride-start']),
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts'],
+        oracle_r='8b203740',
         resets_nbd='snow.nbd',
         # TK33b build_snow33.sh: make_scenery33 (no flags) + 521 fence drops
         scenery_tool='tk33b/make_scenery33.py',
@@ -176,6 +177,9 @@ COURSES = {
         race_args=['--hide', 'A_ARA1'],
         race_aip='gc/gari.aip',
         resets_nbd='gari.nbd',
+        # Machine receipt, run1 ov-s-gari.log.
+        oracle_ovs='a314cbd5ea2d2d89e8000fd7b5bfdde42dceb34e50d0ccd2a87b18058afe571a',
+        oracle_r='4066438d9a3a7944cdd370c9931d9038da4bacc69ca13ddb132819163b22fa51',
         # TK33b build_course33.sh gari-cand: make_scenery33 + soft + splitZ
         # + 349 fence drops, then rails16, then terrain19c --mips-only.
         scenery_tool='tk33b/make_scenery33.py',
@@ -347,6 +351,7 @@ COURSES = {
                    '--gate-chain', '0,1,2,3'],
         race_aip='gc/aloha.aip',
         resets_nbd='aloha.nbd',
+        oracle_r='368a76e0',
         # TK20 build_course.sh aloha-b: TK16 make_scenery16 + 4 race-line
         # crossing drops; rails20. -b SHA pending; -c 0c353680 carried.
         scenery_tool='tk16/make_scenery16.py',
@@ -559,6 +564,8 @@ class Chain:
             bdir / 'BAM.BIG', self.a.host_bam, aip,
             bdir / 'experiment.json', c, out, *r['race_args'],
             cwd=self.W, log=self.log(c, 'race'))
+        if r.get('oracle_r'):
+            check(out, r['oracle_r'], f'{c} -r')
         return out
 
     # -- rung: resets (ov-s) -------------------------------------------------
