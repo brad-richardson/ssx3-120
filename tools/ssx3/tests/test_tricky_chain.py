@@ -166,6 +166,38 @@ class RecipeTableTest(unittest.TestCase):
                             f'{course} {key} missing file {rendered}')
 
 
+class ResetsRungTest(unittest.TestCase):
+    """The ov-s rung sits between race and scenery (regression cover).
+
+    Gari scenery once ran directly on the race world and missed its oracle;
+    the resets rung routes through ov-s wherever GC reset data exists.
+    """
+
+    def test_order_runs_resets_between_race_and_scenery(self):
+        order = run_chain.RUN_ORDER
+        self.assertLess(order.index('race'), order.index('resets'))
+        self.assertLess(order.index('resets'), order.index('scenery'))
+
+    def test_resets_tool_present_where_needed(self):
+        tool = TRICKY / 'tk12' / 'make_resets.py'
+        for course, recipe in run_chain.COURSES.items():
+            if recipe.get('resets_nbd'):
+                self.assertTrue(tool.exists(), course)
+
+    def test_passthrough_without_reset_data(self):
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp)
+            chain = run_chain.Chain(args)
+            for course, recipe in run_chain.COURSES.items():
+                if not recipe.get('resets_nbd'):
+                    sentinel = Path(temp) / 'race.BIG'
+                    self.assertEqual(
+                        chain.rung_resets(course, recipe, sentinel,
+                                          Path(temp), Path(temp)),
+                        sentinel)
+
+
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""
 

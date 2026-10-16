@@ -62,6 +62,13 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
         ['--pin-texture-group', str(pin)] + list(extra)
 
 
+# Rung order. 'resets' must stay between 'race' and 'scenery': the ov-s
+# output (not the race output) is the scenery base wherever GC reset data
+# exists (regression: gari scenery once ran on the race world and missed).
+RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
+             'terrain', 'composite']
+
+
 COURSES = {
     'pipe': dict(
         big='PIPE.BIG', donor='pipe', ps2_tool='tk30/ps2_as_gc30.py',
@@ -247,7 +254,8 @@ COURSES = {
     ),
     'merq': dict(
         big='MERQUER.BIG', donor='merquer', ps2_tool='tk16/ps2_as_gc.py',
-        donor_extra=['merquer_L.ssh'],
+        # NOTE truncated stem: merque_L.ssh (verified in donor extract).
+        donor_extra=['merque_L.ssh'],
         build_env={'TK10_KEEP_RESET': '68'},
         build_args=build_world_args(
             'ERA5', 51, '-88.97691345214844,-19928.7578125,17058.09765625',
@@ -259,14 +267,22 @@ COURSES = {
                    '--gate-chain', '0,4,5,1,2,3'],
         resets_nbd=None,
         # TK16 build_course.sh merq-d: make_scenery16 + route/radius/drop.
-        # merq-c re-scenery (--corridor-top-exempt 100, 69d27aa4) + terrain
-        # (--mips-only merq-line-tex5, MISSING file) pending TK19c recon.
+        # merq-c (--corridor-top-exempt 100, 69d27aa4) was a race-feasibility
+        # variant; the texture candidate runs TK19c terrain on merq-d.
         scenery_tool='tk16/make_scenery16.py',
         scenery_extra=['--collision-route', '{data}/merq3d.txt',
                        '--collision-radius', '1500',
                        '--drop-instances', '{data}/merq-drop.txt'],
         rails_tool='tk16/make_rails16.py',
         oracle_f='ef3ed5be',
+        # TK19 m5 recipe via TK19c: --mips 4 --prune --compact-ids
+        # --mips-only merq-line-tex5 --offline-tex-max 64 --lm 1.0/0.5.
+        terrain_tool='tk19c/make_terrain_tex.py',
+        terrain_extra=['--mips', '4', '--prune', '--compact-ids',
+                       '--mips-only', '{data}/merq-line-tex5.txt',
+                       '--offline-tex-max', '64',
+                       '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
+        terrain_L='merque_L.ssh',
         oracle_c='60830bffafbf9c46a542a99c6218506d8ab1b6d6412be01db3fc4f5eb212f997',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='merq-cand-scenery.json',
@@ -339,6 +355,16 @@ COURSES = {
                        '--no-collision-instance', '451',
                        '--no-collision-instance', '1846'],
         rails_tool='tk20/make_rails20.py',
+        # TK20 aloha-b rails gate (machine receipt, TK19c): 23ac9638.
+        oracle_b='23ac963810f89a6a4a60cbaab2db3464fa51347a25474a48d4611f9cfc8be11c',
+        # TK19 a2 recipe via TK19c: --mips 4 --mips-only aloha-line-tex20
+        # --offline-tex-max 64 --prune --compact-ids --lm 1.0/0.5.
+        terrain_tool='tk19c/make_terrain_tex.py',
+        terrain_extra=['--mips', '4', '--mips-only',
+                       '{data}/aloha-line-tex20.txt',
+                       '--offline-tex-max', '64', '--prune', '--compact-ids',
+                       '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
+        terrain_L='aloha_L.ssh',
         oracle_c='0c35368056f406eb1698aba45bb3b0ae97b4bc0677e22d03ce4b1daef3b87691',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='aloha-b-scenery.json',
@@ -371,6 +397,16 @@ COURSES = {
         scenery_extra=[],
         rails_tool='tk16/make_rails16.py',
         oracle_b='b840713463e715de6adb545a6393f176e148585856ba8b638852bf49a532c7e2',
+        # TK19c alaska-c: --mips-only top-10 2,0,26,11,3,143,1,10,147,165 (=
+        # data/alaska-line-tex10.txt content) + --offline-tex-max 32.
+        # --mips 4 inferred from every sibling TK19c terrain row; the b1bb68d2
+        # oracle decides at runtime.
+        terrain_tool='tk19c/make_terrain_tex.py',
+        terrain_extra=['--mips', '4', '--mips-only',
+                       '{data}/alaska-line-tex10.txt',
+                       '--offline-tex-max', '32', '--prune', '--compact-ids',
+                       '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
+        terrain_L='alaska_L.ssh',
         oracle_c='b1bb68d2cdf2a01b02517b336efbf40d33bd744867bc2184aa560d9a1693560d',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='alaska-b-scenery.json',
@@ -515,6 +551,22 @@ class Chain:
             cwd=self.W, log=self.log(c, 'race'))
         return out
 
+    # -- rung: resets (ov-s) -------------------------------------------------
+    # Applies the GameCube reset-surface donor (resets_nbd) to the race
+    # world. The ov-s output (not the race output) is the scenery base on
+    # every course that has GC reset data. Courses without it pass the race
+    # world through unchanged.
+    def rung_resets(self, c, r, rbig, bdir, ddir):
+        if not r.get('resets_nbd'):
+            return rbig
+        out = self.W / f'ov-s-{c.upper()}.BIG'
+        run('resets', sys.executable, self.T / 'tk12' / 'make_resets.py',
+            rbig, bdir / 'experiment.json', ddir / r['resets_nbd'],
+            c, out, cwd=self.W, log=self.log(c, 'resets'))
+        if r.get('oracle_ovs'):
+            check(out, r['oracle_ovs'], f'{c} ov-s')
+        return out
+
     # -- rung: scenery + rails ---------------------------------------------
     def rung_scenery(self, c, r, rbig, bdir, ddir):
         w = self.W / f'w-{c}-b'
@@ -576,10 +628,10 @@ class Chain:
     def run_course(self, c, upto='all'):
         assert c in COURSES, c
         r = COURSES[c]
-        order = ['extract', 'ps2', 'build', 'race', 'scenery', 'terrain', 'composite']
+        order = RUN_ORDER
         if upto != 'all':
             order = order[:order.index(upto) + 1]
-        ddir = bdir = rbig = bbig = cbig = None
+        ddir = bdir = rbig = sbig = bbig = cbig = None
         aip = None
         if 'extract' in order:
             ddir = self.rung_extract(c, r)
@@ -594,8 +646,10 @@ class Chain:
             bdir = self.rung_build(c, r, ddir, aip)
         if 'race' in order:
             rbig = self.rung_race(c, r, bdir, ddir, aip)
+        if 'resets' in order:
+            sbig = self.rung_resets(c, r, rbig, bdir, ddir)
         if 'scenery' in order:
-            bbig = self.rung_scenery(c, r, rbig, bdir, ddir)
+            bbig = self.rung_scenery(c, r, sbig, bdir, ddir)
         if 'terrain' in order:
             cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
         if 'composite' in order:
