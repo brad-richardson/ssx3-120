@@ -151,7 +151,10 @@ COURSES = {
         terrain_extra=['--mips', '1', '--prune', '--compact-ids',
                        '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
         terrain_L='snow_L.ssh',
-        oracle_c='55ddafcf7ff9c4aa4d5c992b06c1ecc8dfd52f30be3241056bb7cf9e08d76',
+        # Full SHA doubly confirmed: TK28b REPORT + fresh run4 (the previous
+        # value 55ddafcf7ff9c4aa... was a mistranscription; the driver
+        # caught it at the terrain gate).
+        oracle_c='55ddafcf126d2a749e6679b1ffa200415cf5ce1e4fed2934448700e19ab58be1',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
         bind_scenery='snow-cand-scenery.json',
