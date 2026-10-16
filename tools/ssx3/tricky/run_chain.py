@@ -105,7 +105,7 @@ COURSES = {
                    '--markers', '0.3364442,0.6784675', '--chain-tolerance', '5000'],
         resets=None,
         scenery_tool='tk30/make_scenery30.py',
-        scenery_extra=['--drop-instances', '{lane}/TK31/untrack-drop.txt'],
+        scenery_extra=['--drop-instances', '{data}/untrack-drop.txt'],
         rails_tool='tk30/make_rails30.py',
         oracle_b=None,
         terrain_tool='tk30/make_terrain_tex30.py',
