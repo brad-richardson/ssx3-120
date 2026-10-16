@@ -165,8 +165,10 @@ COURSES = {
         oracle_c='55ddafcf126d2a749e6679b1ffa200415cf5ce1e4fed2934448700e19ab58be1',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
-        bind_base='candt',
-        bind_scenery='cand',
+        # Snowdream has no separate cand: snow-cand == snow-b content (same
+        # tool/flags/base), so snow-c == snow-candt (55ddafcf both). Bind the
+        # -c world with the -b scenery (proven: 4eae7401 in run4/run5).
+        bind_base='c',
         oracle_bound='4eae7401996002a38b524fa54350585fd234441d12b0837ce3a965321719960d',
         floor_group=56,
         oracle_final='c850d63e5324a7d85957da9fa14f87270f5cd5394286d0029a14e7702b31e8c3',
