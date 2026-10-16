@@ -432,10 +432,20 @@ COURSES = {
                    '--gate-chain', '1,2,3,4,5'],
         # NOTE: no race_aip: TK18 build+race use the lap-patched donor aip.
         resets_nbd=None,
-        # TK18 build_course.sh mega-b: TK16 make_scenery16 + rails16 with the
-        # mega drop list. TK23 reworks this into mega-h (scenery23 +
-        # solidify/slab/split-hull/boost); mega-c 3c97fa33 is the TK26 terrain
-        # gate on that path. mega-b oracle below; TK23 step pending recon.
+        # TK18 mega-b (checkpoint, superseded branch): TK16 make_scenery16 +
+        # rails16 with the TK18 drop list. The FINAL path skips mega-b:
+        # mega2-r -> mega-h = scenery23 on the race world with TK21 extras
+        # (--drop-instances data/mega-d-drop.txt, --no-collision-file
+        # data/mega-d-nocollide.txt, --pose 292:5/57:5, --boost-json
+        # data/boost-all-g.json) + TK23 extras (--solidify-file
+        # data/fence-solidify.txt, --slab 20, --split-hull 163:750,
+        # --boost-json data/boost-tk23.json), oracle 261ed4ef; then terrain23
+        # mega-u2 (TK23c recipe: --mips 4 --prune --prune-orphans
+        # --exact-bounds --mips-only data/mega-line-tex15.txt
+        # --offline-tex-max 64, no compact-ids), oracle 969158da; then TK26
+        # mega-c re-terrain (--mips 4 ... --mips-only <MISSING
+        # mega-line-tex20> --offline-tex-max 64), oracle 3c97fa33.
+        # mega-h/u2/c rungs pending (need tk21/tk23 scenery/terrain wiring).
         scenery_tool='tk16/make_scenery16.py',
         scenery_extra=['--drop-instances', '{data}/mega-drop.txt'],
         rails_tool='tk16/make_rails16.py',

@@ -1,0 +1,277 @@
+[
+ {
+  "name": "exhaust up",
+  "instances": [
+   44,
+   64,
+   65,
+   210,
+   310,
+   314,
+   1005,
+   1232,
+   1253,
+   1256,
+   1259,
+   1262
+  ],
+  "mode": 1,
+  "amount": 800,
+  "dir": [
+   0,
+   0,
+   1
+  ]
+ },
+ {
+  "name": "exhaust Volume1_100",
+  "instances": [
+   95
+  ],
+  "mode": 1,
+  "amount": 800,
+  "dir": [
+   -0.194,
+   0.439,
+   0.877
+  ]
+ },
+ {
+  "name": "exhaust Volume2_101",
+  "instances": [
+   96
+  ],
+  "mode": 1,
+  "amount": 800,
+  "dir": [
+   -0.283,
+   -0.387,
+   0.877
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   102
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.908,
+   0.278,
+   -0.315
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   139
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.662,
+   -0.662,
+   -0.35
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   145,
+   168
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.681,
+   -0.644,
+   -0.35
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   155
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.605,
+   -0.716,
+   -0.349
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   188
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.852,
+   -0.389,
+   -0.352
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   253
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.902,
+   0.276,
+   -0.331
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   254
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.897,
+   0.274,
+   -0.348
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   265
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.936,
+   0.349,
+   -0.055
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   266
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.933,
+   0.348,
+   -0.091
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   267
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.883,
+   0.46,
+   0.092
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   268
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.886,
+   0.461,
+   0.055
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   282,
+   298
+  ],
+  "mode": 1,
+  "amount": 1600,
+  "dir": [
+   0.789,
+   0.382,
+   0.481
+  ]
+ },
+ {
+  "name": "conveyor x8",
+  "instances": [
+   292
+  ],
+  "mode": 1,
+  "amount": 480,
+  "dir": [
+   0.88,
+   0.458,
+   0.128
+  ]
+ },
+ {
+  "name": "tube x8",
+  "instances": [
+   140
+  ],
+  "mode": 1,
+  "amount": 640,
+  "dir": [
+   0.845,
+   -0.367,
+   0.389
+  ]
+ },
+ {
+  "name": "tube x8",
+  "instances": [
+   169
+  ],
+  "mode": 1,
+  "amount": 640,
+  "dir": [
+   0.443,
+   -0.808,
+   0.388
+  ]
+ },
+ {
+  "name": "trick-boost pad 256 (speed pad, route tangent)",
+  "instances": [
+   256
+  ],
+  "mode": 1,
+  "amount": 100,
+  "dir": [
+   0.883,
+   0.468,
+   0
+  ],
+  "flags": "0x210000"
+ },
+ {
+  "name": "trick-boost pad 698 (speed pad, route tangent)",
+  "instances": [
+   698
+  ],
+  "mode": 1,
+  "amount": 100,
+  "dir": [
+   0.033,
+   -0.949,
+   0
+  ],
+  "flags": "0x210000"
+ }
+]
