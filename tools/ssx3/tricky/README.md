@@ -1,4 +1,4 @@
-# tools/ssx3/tricky/ — Tricky audio, HUD and sidecar converters (tk-port-2)
+# tools/ssx3/tricky/ — Tricky world + audio/HUD/sidecar converters (tk-port-1, tk-port-2)
 
 Port of the private TK-lane converter scripts into the public
 bring-your-own-disc builder (`build.py tricky`, see the tk-public plan
@@ -56,10 +56,9 @@ Deliberately NOT ported (with reason):
   (`wlib.py`, `tricky_pbd.py` + `ps2mdr.py`, `replace_terrain.py`,
   `gamecube_scenery.py`, `ps2_as_gc30.py`, `big.py`/`extract_big.py`,
   `donor_inventory.py`, TK10 `plan-all.json` full text, TK18
-  `alaska-b-scenery-summary.json`) belong to the tk-port-1 world-pipeline
-  port into this same directory. Until that lands, these scripts resolve
-  those names against this directory; the golden runs below used the
-  private originals read-only via `PYTHONPATH`.
+  `alaska-b-scenery-summary.json`) are the tk-port-1 world-pipeline
+  port below in this same directory; all scripts resolve those names
+  against this directory.
 
 Pipelines (all read the user's own discs; all writes go to `--work`,
 never into the repo):
@@ -128,3 +127,84 @@ supplies donor bytes. tk-audio-1's speech-step2 Big Air curation
 (`speech-step2-big fc9192da…`) is provisional (pending Brad audition +
 Odin) and is NOT part of this port — recorded here so the delta can be
 applied later without disturbing today's pipeline.
+## Tricky world pipeline (lane tk-port-1)
+
+Faithful port of the private TK-lane world converters (extract, world build,
+chain, preview) for the public bring-your-own-disc builder. Plan of record:
+`docs/research/tk-public-plan-2026-10-15.md` (private `ssx3-lab` checkout, §1
+inventory, §4 test plan, §5 lane 1).
+
+### Provenance
+
+Every `.py` here is byte-identical to its source in the private checkout
+**except** `sys.path` bootstrap lines and root-variable definitions, which are
+re-rooted from `~/dev/ssx3` (`local/research/*`, `tools/`) to this package
+(`tools/ssx3/tricky/<sub>/`). Two behavior-neutral accommodations:
+
+- `R = HERE.parents[1]` / `REPO = HERE.parents[3]` become `HERE.parent`: the
+  package is one level flatter than `local/research/<LANE>/tooling/`, so the
+  grandparent step lands one level too high otherwise.
+- A missing `from pathlib import Path` is added ahead of first use where a
+  rewritten bootstrap line needs it (one file gets a duplicate import).
+
+No converter logic, defaults, CLI shapes, constants or data paths change.
+Equivalence evidence (lane scratch, not committed):
+`audit_paths.py` (all 89 bootstraps evaluate to the mapped original entries,
+in order) and `equiv.py` (identical load outcomes old vs new on all 89).
+
+### Layout (source lane in parentheses)
+
+- `shared/` — `tools/*.py` closure the converters import (`inspect_disc`,
+  `inventory_tricky`, `probe_worlds`, `replace_terrain`, `course_route`,
+  `verify_inputs`, plus transitive `build_world_experiment`, `import_terrain`,
+  `relayout_stream`, `location_inventory`, `gamecube_*`, `grow_group`,
+  `paths`, `patch_geometry`, `race_course`, `refpack_encode`,
+  `refpack_optimal`).
+- `tk6/` (`TK6/retrack.py`, `members_of`), `tk12/` (`wlib`, race/rails/resets/
+  route builders), `tk13/` (ps2col/ps2mdr/ps2swz/survey/tricky_pbd/mapnames).
+- `tk10/` (build_world, make_composite), `tk16/` (ps2_as_gc, scenery16,
+  rails16), `tk18/` (extract_big, make_race_world, make_route_tol).
+- `tk19c/` (make_terrain_tex; the TK26/TK28b/TK33b copies are byte-identical),
+  `tk20/` (rails20, near_keep, world_table), `tk21/` (luno_survey).
+- `tk24c/` (bind_effects; TK24/TK33b copies identical),
+  `tk26/` (terrain_tex23, route_textures),
+  `tk28b/` (breakaway_passes, classify, scenery16 snapshot),
+  `tk30/` (pipe builders: race/rails/scenery/terrain/ps2_as_gc30).
+- `tk33b/` (make_scenery33, rails16 copy, terrain_tex19c copy, u0zero),
+  `tk37/` (aabb_floor), `tk42c/` (blend builders incl. patch_blend).
+- Chain: `tk56/` (fix_binds + survey/verify/table), `tk53/` (trigger_step,
+  break_step), `tk57/` (interact_step), `tk51/` (patch_hidden_colliders,
+  patch_source_bridge), `tk58/` (fix_hulls, hull).
+- `tkp5/` (relocate_step, preview_step lane copy, verify_chain, stage,
+  event_refs), `tk52/` (preview_step, menu_assets).
+- `tkroutes/` (`route_step.py`: tk-routes-1 world-data patches — Aloha
+  covers3, Merqury wall2819, Megaplex tube94s2; proven by byte-identical
+  rerun of the three tk-routes outputs).
+- `run_chain.py` (this lane's validation driver; new glue, not a port): replays
+  the recorded lane commands end to end from the two ISOs, plus the
+  post-s5 `routes` rung (tk-routes-2 follow-up) on aloha/merq/mega.
+
+### Deliberately not ported here
+
+- `collect.py`, `donor_inventory.py`, `world_inventory.py` —
+  tk-port-2's (audio/HUD/sidecar) territory. (`TK52/gem_step.py` and
+  `tkp4_speech.py` are now ported by tk-port-2 above in this same
+  directory.)
+- `TK33/make_scenery33.py` — superseded ancestor; the chain runs TK33b's copy
+  (resolved via `patch_source_bridge`'s path order, as upstream).
+- `TK42/bind_effects.py` — older variant; the TKP3 binds used TK24c's.
+- `TK16`/`TK18`/`TK20`/`TK28b`/`TK30`/`TK33b` `build_*.sh` drivers — hardcoded
+  lane workdir paths; superseded by `run_chain.py`.
+- Lane `boot*.sh`/`leg.sh` (device/harness), receipts, sheets, pad files.
+
+### Runtime inputs (never committed)
+
+Two disc images plus lane-authored recipe data that lives outside git:
+SSX 3 USA ISO, Tricky USA ISO, donor extracts, `scenery-effects` JSONs,
+`glass-targets.json` values (passed as CLI args by the driver), fence/
+breakaway flag lists (reproducible via `classify.py`/`breakaway_passes.py`).
+Only SHA-256 hex digests of outputs are committed (golden tests).
+
+Dependencies: Python 3 stdlib only, except `tk28b/breakaway_passes.py`
+(numpy, recipe-census use only).
+
