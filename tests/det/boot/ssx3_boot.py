@@ -274,6 +274,7 @@ def main():
         raise SystemExit('missing register_functions.cpp in --codegen %s' % codegen)
     pins = {str(iso): ISO_SHA, str(elf): ELF_SHA}
     big = [runner, iso, elf]
+    lib_paths = []
     if args.codegen_register_sha:
         pins[str(register)] = args.codegen_register_sha
     ge1_lib = Path(args.ge1_lib).resolve() if args.ge1_lib else None
@@ -281,6 +282,7 @@ def main():
         if ge1_lib is None or not ge1_lib.is_file():
             raise SystemExit('--backend external needs --ge1-lib')
         big.append(ge1_lib)
+        lib_paths.append(ge1_lib)
         if args.ge1_lib_sha:
             pins[str(ge1_lib)] = args.ge1_lib_sha
     microvu_lib = Path(args.microvu_lib).resolve() if args.microvu_lib else None
@@ -288,6 +290,7 @@ def main():
         if microvu_lib is None or not microvu_lib.is_file():
             raise SystemExit('--profile %s needs --microvu-lib' % args.profile)
         big.append(microvu_lib)
+        lib_paths.append(microvu_lib)
         if args.microvu_lib_sha:
             pins[str(microvu_lib)] = args.microvu_lib_sha
     reads = [{str(p): sha_of(p) for p in big} for _ in range(2)]
@@ -296,8 +299,7 @@ def main():
     for path, want in pins.items():
         if reads[0].get(path) != want:
             raise SystemExit('SHA mismatch for %s' % path)
-    lib_shas = {str(p): reads[0][str(p)] for p in
-                ([ge1_lib] if ge1_lib else []) + ([microvu_lib] if microvu_lib else [])}
+    lib_shas = {str(p): reads[0][str(p)] for p in lib_paths}
 
     env = {k: v for k, v in os.environ.items() if not k.startswith('PS2X_')}
     env.update(PS2X_CD_IMAGE=str(iso), PS2X_SKIP_MOVIE='1', PS2X_DETERMINISTIC='1',

@@ -1,11 +1,12 @@
 #!/bin/bash
 # Public determinism gate (Mac host): four det keys against your own disc.
 #
-# Usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles reference,play,full120events,play120] [--engine DIR] [--jobs N]
+# Usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles reference,play,full120events,play120] [--engine DIR] [--jobs N] [--suffix S]
 #   --work      external private work dir (prepare/mac-libs/mac outputs live here)
 #   --iso       own supported USA disc image (prepare step only)
 #   --elf       boot ELF (default: DIR/SLUS_207.72 from a previous prepare)
 #   --engine    engine checkout (default: this repo's deps/PS2Recomp submodule)
+#   --suffix    appended to the gate dir name (parallel gates; default empty)
 #
 # Steps (one PASS/FAIL table at the end; exit 0 iff all PASS):
 #   0. Knob checks (matrix signed-off set + registry coverage).
@@ -22,7 +23,7 @@
 # and coverage can fail the gate.
 set -u
 
-WORK=""; ISO=""; ELF=""; PROFILES="reference,play,full120events,play120"; ENGINE=""; JOBS=4
+WORK=""; ISO=""; ELF=""; PROFILES="reference,play,full120events,play120"; ENGINE=""; JOBS=4; SUFFIX=""
 while [ $# -gt 0 ]; do
   case $1 in
     --work) WORK=$2; shift;;
@@ -31,7 +32,8 @@ while [ $# -gt 0 ]; do
     --profiles) PROFILES=$2; shift;;
     --engine) ENGINE=$2; shift;;
     --jobs) JOBS=$2; shift;;
-    -*) echo "usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles ...] [--engine DIR] [--jobs N]" >&2; exit 2;;
+    --suffix) SUFFIX=$2; shift;;
+    -*) echo "usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles ...] [--engine DIR] [--jobs N] [--suffix S]" >&2; exit 2;;
     *) echo "unknown arg: $1" >&2; exit 2;;
   esac
   shift
@@ -56,7 +58,7 @@ LOCK_SHA="$(python3 -c "import json; print(json.load(open('$ROOT/deps.lock.json'
 [ "$ENGINE_SHA" = "$LOCK_SHA" ] || { echo "engine $ENGINE_SHA != deps.lock.json $LOCK_SHA" >&2; exit 2; }
 [ -z "$(git -C "$ENGINE" status --porcelain)" ] || { echo "engine checkout is dirty" >&2; exit 2; }
 mkdir -p "$WORK"
-GATE="$WORK/det-gate-$SHA7"
+GATE="$WORK/det-gate-$SHA7$SUFFIX"
 mkdir -p "$GATE"
 echo "== mac_gate engine $ENGINE_SHA work $WORK"
 echo "   gate dir: $GATE"
@@ -100,13 +102,13 @@ if [ ! -f "$GE1_DYLIB" ] || [ ! -f "$MVU_DYLIB" ]; then
   python3 "$BUILD" mac-libs --work "$WORK" --engine "$ENGINE" --jobs "$JOBS" > "$GATE/mac-libs.log" 2>&1 \
     || { fail "build" "mac-libs failed (see $GATE/mac-libs.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
 fi
-RUNNER_BUILD="$WORK/runner-build"
+RUNNER_BUILD="$WORK/runner-build-det"
 if [ ! -x "$RUNNER_BUILD/ps2xRuntime/ps2EntryRunner" ]; then
-  python3 "$BUILD" mac --work "$WORK" --engine "$ENGINE" --jobs "$JOBS" --suite > "$GATE/mac.log" 2>&1 \
-    || { fail "build" "mac failed (see $GATE/mac.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
+  python3 "$BUILD" mac --work "$WORK" --engine "$ENGINE" --jobs "$JOBS" --suite --det > "$GATE/mac-det.log" 2>&1 \
+    || { fail "build" "mac --det failed (see $GATE/mac-det.log)"; echo ""; cat "$RESULTS"; echo "GATE FAIL ($FAIL_N)"; exit 1; }
 fi
 if [ -x "$RUNNER_BUILD/ps2xRuntime/ps2EntryRunner" ]; then
-  pass "build" "prepare + mac-libs + mac (logs in $GATE)"
+  pass "build" "prepare + mac-libs + mac --det (logs in $GATE)"
 else
   fail "build" "runner missing after build"; FAIL_N=$((FAIL_N+1))
 fi
@@ -203,7 +205,7 @@ for PROF in "$@"; do
     ENVS+=(--env "PS2X_VU1_ENGINE=microvu" --env "PS2X_MTVU=1")
   fi
   if python3 "$BOOT" --mode det --backend "$BACKEND" --runner "$RUNNER" \
-    --label "mac-gate-$SHA7-$PROF" --out "$OUTD" --iso "$ISO" --elf "$ELF" \
+    --label "mac-gate-$SHA7$SUFFIX-$PROF" --out "$OUTD" --iso "$ISO" --elf "$ELF" \
     --codegen "$WORK/codegen" \
     --ge1-lib "$GE1_DYLIB" --microvu-lib "$MVU_DYLIB" \
     --stop-tick "$STOP" --sound "$SOUND" --route "$ROUTE" --profile "$PROF" \

@@ -1,6 +1,6 @@
 new_path	origin	old_path	sha256	bytes	status
 .github/workflows/product-checks.yml	authored:ci	-	4d3525aff57486c6e774be602c549f83adcb78cd3fd7c1cccbb9db27f64a268f	1694	new
-.gitignore	authored:hygiene	-	0b981472ce7c632e03522910ed4e32d9bbf94b1064ba9cadac80425d445debf0	107	new
+.gitignore	authored:hygiene	-	ed0b10d7361ac2de553e2a6cb62ef93d6a8f7bd8e8a8d35967af3df6a049db07	234	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
 LICENSE	fork@35cfdcdd	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c71fd3712bdb44a	34903	verbatim
@@ -36,7 +36,7 @@ apps/android/hwcompat/hwcompat.c	fork@35cfdcdd	android/hwcompat/hwcompat.c	f6eee
 apps/android/settings.gradle	fork@35cfdcdd	android/settings.gradle	2f4f5b2d5b58af92d12119a82755f326d1d48b6b55ae3aa5a284d882853b183f	263	verbatim
 build.py	authored:product-entrypoint	-	f4fa82d6935f6ec3acf5d43c21590c57580897719675226ae2367686f10d1058	795	new
 cmake/EnginePin.cmake	authored:composition	-	dd6a37b0c7d5238c3cc5c561ecbcb5b9f9f823058152b9bfd94c1f4b29cbcc15	1364	new
-deps.lock.json	authored:pins	-	b8cb49d93057bb88690c7e2d8f55796f22d23d87f94062a814a30468881a3694	1828	new
+deps.lock.json	authored:pins	-	d63ca1d246faecc1b1c9154884985bd43c589b1626bebb3693422f9f0b0e3fcc	1981	new
 docs/advantages.md	lab@ed718e09	docs/advantages.md	c9157311a5605e2109dfa3080cb7d0a885682a335ec4b5c43e6b9523a7b59665	2874	composition:curated-evidence-grades
 docs/facts.md	lab@ed718e09	docs/facts.md	4ea59fed4164d9fb4707408ca6659d805a7601e920d3286a9927ef3236c3f312	10189	composition:curated-public-reference
 docs/research/gamecube-learnings.md	lab@ed718e09	docs/research/gamecube-learnings.md	109e880d1684b14ced746b8aac305d5b3ff2111ffd1765a54ff6804b38dad582	37013	composition:public-safe-archive-pointers
@@ -74,7 +74,7 @@ presets/ps2x.env	fork@35cfdcdd	tools/ssx3/presets/ps2x.env	230bc97e055728b3ab3df
 tests/det/README.md	authored:gate-docs	-	969575962403b75f84fb1797231697694d862a9b4e59f868b2889107ce38e114	2778	new
 tests/det/boot/baseline.py	lab@ed718e09	local/tooling/boot/baseline.py	d1b7fb9849051592771701513f68cc967691442f96235695af484d41f3743a42	39073	composition:generalized-key-store
 tests/det/boot/pm1_macthreads.c	lab@ed718e09	local/tooling/boot/pm1_macthreads.c	cce19a7656211f23269bfac1616e368be0a08c4e296ad28bd65142639c149ac4	2512	verbatim
-tests/det/boot/ssx3_boot.py	lab@ed718e09	local/tooling/boot/ssx3_boot.py	6287070815545865dc5ec11b5fb2e7004a9a2024a31cb786d75f102de614b776	25392	composition:generalized-inputs-and-optional-lease
+tests/det/boot/ssx3_boot.py	lab@ed718e09	local/tooling/boot/ssx3_boot.py	963fc4321f88859cb2e807701d929d36b9e970cc0c7835d9f04c3f1f8560eb95	25405	composition:generalized-inputs-and-optional-lease
 tests/det/compare.py	authored:canonical-port	-	ca9e995e6d9bb211b13af745d2cc48f5af07b7bbd0f636290b2149da8ce0c793	7012	new
 tests/det/hashdiff.py	authored:verbatim-lab-logic	-	79534198aff823509502b5b58365441d17b6f45a1b84ed480dd7550661f456fd	2970	new
 tests/det/keys/299a648-reference-native-arm64-fr1r1-t2400-snd1-1x-dfd20025/coverage.txt	authored:key-extraction	-	1c7c8a5abd23ac8e243cb97c5f2a33c4c074b9f5e88a80fe8e96f19b031cca85	368	new
@@ -96,7 +96,7 @@ tests/det/keys/fe5b4b8-play120-native-arm64-fr1r1-t4800-snd1-1x-531408ff/snd.txt
 tests/det/knob_matrix.py	lab@ed718e09	local/tooling/knob_matrix.py	e40ceb5b00b8c3ecd882abe971fc3f0dd2b1f6a4cdf6ea3a00c1fc24b1504fea	29874	composition:generalized-profiles-and-sources
 tests/det/knob_registry.py	lab@ed718e09	local/tooling/knob_registry.py	a27e08cbca241da0fed93b40b8851f2af333a2fe21ea33142f5d61b9eb011f2a	5196	composition:dual-root-scan
 tests/det/knob_registry.tsv	lab@ed718e09	local/tooling/knob_registry.tsv	032dbaba15468f0ec6b53c6264d122f7f99851226b006d0ee84d263cadb9df2f	55848	composition:scrubbed-evidence-paths
-tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	225088c99789bbf11a4c5799f49f8c79e3b33b2f4cdc92379b6dd550b0da17e1	10619	composition:rewritten-public-gate
+tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	7fa7cf436d92246c16dbe6fe08e47a8e1bbb5242496efe696fb83a9ed3a7222c	10811	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
 tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
 tools/bench/README.md	authored:bench-docs	-	ef41c4517f77577788b6906b409efa8778581bf060a95ca10c1f189ed70cedc0	2410	new
@@ -108,7 +108,7 @@ tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
 tools/ssx3/README.md	fork@35cfdcdd	tools/ssx3/README.md	1e5cbc478cf75bbd217a7a344ea2f05087cf0622bb0984166c27803c4b83361a	18491	composition:product-paths-and-host-support
 tools/ssx3/android-libs/CMakeLists.txt	fork@35cfdcdd	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@35cfdcdd	tools/ssx3/build.py	cd18bc1fc5b62dd2df859561a12f54747e4eaa3c8d866704bc881ba50060826c	46462	composition:explicit-product-engine-roots
+tools/ssx3/build.py	fork@35cfdcdd	tools/ssx3/build.py	3ac2d17c2e64712333862892ea4b3d9b00887fcbd108b730c86761580a4e01cc	47396	composition:explicit-product-engine-roots
 tools/ssx3/knobs.tsv	fork@35cfdcdd	tools/ssx3/knobs.tsv	c6066668d8c487ce2489f8a53b87f092c2257c13885795c9c180ae5a95d0b054	7225	verbatim
 tools/ssx3/mac-libs/CMakeLists.txt	fork@35cfdcdd	tools/ssx3/mac-libs/CMakeLists.txt	4c424127104bab98cb841f66447a28dd241064fb523ffe5b22dc31577d5152a0	2927	verbatim
 tools/ssx3/offline-core/OM1StubHost.cpp	fork@35cfdcdd	tools/ssx3/offline-core/OM1StubHost.cpp	15f36302ded2b8c984a61ab8b99185de95c7dda849d6a1b624aed67ac560d5be	672	verbatim

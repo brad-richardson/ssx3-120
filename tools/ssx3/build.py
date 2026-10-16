@@ -23,7 +23,14 @@ ROOT = Path(__file__).resolve().parents[2]
 # deps/PS2Recomp submodule and can be overridden with --engine (or
 # SSX3_ENGINE_DIR) for engine-lane worktrees.
 ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
-GENERATOR = '03c10b5aeccd4fb673fecaea3cf4a5f5064afe14'
+# Generator source pin: the LANDED linux-host-1 commit (in fork/ssx3
+# history, publicly resolvable). Its ps2xRecomp/ tree is byte-identical to
+# the original lane commit 03c10b5a (verified by diff; that commit is not an
+# ancestor of any public ref and GitHub refuses it as "not our ref", so a
+# fresh clone could never fetch it). The generator binary is a pure function
+# of ps2xRecomp/ + version-pinned FetchContent deps, so the outputs are
+# identical; each prepare re-proves it via the register SHA.
+GENERATOR = '467e86e85fee4dd73c8252f40a02c6394116888e'
 FORK = 'https://github.com/brad-richardson/PS2Recomp.git'
 ISO_SHA = '3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5'
 ELF_SHA = '1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc'
@@ -382,12 +389,17 @@ def prepare(a):
 
 def mac(a):
     extra = 'ON' if a.suite else 'OFF'
-    configure(ENGINE, a.work / 'runner-build', '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+    det = 'ON' if a.det else 'OFF'
+    # Det flavor carries the VBlank XXH64 tap (gate boots + tap unit tests);
+    # play builds keep it off. Separate dirs so flavors never mix.
+    build_dir = a.work / ('runner-build-det' if a.det else 'runner-build')
+    configure(ENGINE, build_dir, '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
         '-DPS2X_VU0_RECOMP_DIR=', '-DPS2X_BUILD_RECOMP=' + extra, '-DPS2X_BUILD_ANALYZER=' + extra,
         '-DPS2X_BUILD_TEST=' + extra, '-DPS2X_ENABLE_DEBUG_UI=OFF', '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
         '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
-        '-DPS2X_ENABLE_DIAG_WATCH=OFF', '-DPS2X_ENABLE_TS2_DIAG=OFF')
-    run('cmake', '--build', a.work / 'runner-build', '--parallel', a.jobs,
+        '-DPS2X_ENABLE_DIAG_WATCH=OFF', '-DPS2X_ENABLE_TS2_DIAG=OFF',
+        '-DPS2X_ENABLE_DET_HASH_TAP=' + det)
+    run('cmake', '--build', build_dir, '--parallel', a.jobs,
         '--target', 'ps2EntryRunner', *(['ps2x_tests'] if a.suite else []))
 
 
@@ -884,6 +896,7 @@ def main():
     p.add_argument('--skip-fonts', action='store_true', help='skip the default raster-edge font pack build in play')
     p.add_argument('--ndk', type=Path, help='local Android NDK 28.2.13676358')
     p.add_argument('--suite', action='store_true', help='also build optional Mac development suite and its analyzer/recompiler fixtures')
+    p.add_argument('--det', action='store_true', help='mac flavor with the VBlank det-hash tap (gate boots + tap unit tests; separate runner-build-det dir)')
     p.add_argument('--jobs', type=int, default=8)
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
     p.add_argument('--engine', type=Path, default=None,

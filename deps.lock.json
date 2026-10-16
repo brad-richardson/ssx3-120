@@ -10,7 +10,8 @@
   },
   "generator": {
     "repo": "https://github.com/brad-richardson/PS2Recomp.git",
-    "pin": "03c10b5aeccd4fb673fecaea3cf4a5f5064afe14"
+    "pin": "467e86e85fee4dd73c8252f40a02c6394116888e",
+    "note": "landed linux-host-1 commit; ps2xRecomp/ tree byte-identical to lane commit 03c10b5a (unresolvable publicly)"
   },
   "vendor": {
     "armsx2": {
@@ -27,7 +28,12 @@
   },
   "toolchains": {
     "ndk": "28.2.13676358",
-    "sdk": ["platforms;android-34", "build-tools;34.0.0", "cmake;3.22.1", "platform-tools"],
+    "sdk": [
+      "platforms;android-34",
+      "build-tools;34.0.0",
+      "cmake;3.22.1",
+      "platform-tools"
+    ],
     "android_api": 29,
     "android_abi": "arm64-v8a"
   },

@@ -3,3 +3,8 @@ __pycache__/
 *.py[cod]
 .DS_Store
 *.orig
+# Gradle / Xcode build outputs (the builder writes these inside apps/).
+.gradle/
+build/
+*.xcworkspace/xcuserdata/
+DerivedData/
