@@ -3,7 +3,7 @@
   "engine": {
     "repo": "https://github.com/brad-richardson/PS2Recomp.git",
     "ref": "ssx3",
-    "pin": "35cfdcddeeec9319e278a0c92ce10caa058bffca",
+    "pin": "f7a96f233a7e66928271dbf447ed511616c51453",
     "submodule": "deps/PS2Recomp",
     "runner_invariant_base": "c5a9d02573410a2085a4b4b831b0b68ba3515440",
     "upstream_base": "2c5fbb9389e11dd95693385969490c9e8e6f57b4"
@@ -38,7 +38,7 @@
     "android_abi": "arm64-v8a"
   },
   "archive_identity": {
-    "contract": "39faf513d0b57a2c0138ca42ccb8ee8e6bfe1b9de50e19d33805a249313fe5cc",
+    "contract": "140b4176d99fe1c05477275e8bee7123998cc618cb89a3f3c60b031338403945",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
   },
   "inputs": {
@@ -48,6 +48,6 @@
   },
   "pool": {
     "key_35cfdcdd": "566c222baceb04f5",
-    "note": "private canonical-build cache key for the pinned engine; product SHA joins the key after the step-1 adapter lands"
+    "note": "private canonical-build cache keys per pinned engine; product SHA joins the key after the step-1 adapter lands; the f7a96f23 key is cut on the first canonical build"
   }
 }

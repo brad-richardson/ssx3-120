@@ -23,24 +23,25 @@ git clone --recurse-submodules <this-repo> ssx3-120
 cd ssx3-120
 python3 build.py doctor --target android   # or: prepare, mac
 python3 build.py prepare --work ~/ssx3-work --iso ~/SSX3.iso
-python3 build.py android-libs --work ~/ssx3-work        # or skip: verified prebuilt support libraries are used automatically
+python3 build.py android-libs --work ~/ssx3-work
 python3 build.py android --work ~/ssx3-work
 ```
 
 Keep the work directory outside this checkout and private: it holds your
-disc image, generated game code, cards and signing keys. First-time cold
-build on a Mac mini (M5 Pro, 4 jobs, empty caches): prepare ~80 s, Mac
-libraries ~170 s, Android libraries ~600 s, APK link+package ~260 s
-(resumed link). The verified-prebuilt path skips the library builds
-(~910 s end-to-end vs ~1160 s from source). Your machine will differ;
-`build.py` prints per-stage timing.
+disc image, generated game code, cards and signing keys. The support
+libraries build from source by default: first-time cold build on a Mac
+mini (M5 Pro, 4 jobs, empty caches) is prepare ~80 s, Android libraries
+~600 s, APK link+package ~260 s (resumed link). Your machine will differ;
+`build.py` prints per-stage timing. A verified prebuilt release, when one
+matches this checkout, is tried first and falls back to source
+automatically; details in [tools/ssx3](tools/ssx3/README.md).
 
 What the builder does with your disc: validates the ISO/ELF hashes, writes
 a slim image plus a hole table into `--work`, generates EE code with the
 pinned generator into `--work/codegen` (never into this repo), and links it
 with the pinned runtime. Game-free support libraries (runtime, renderer,
-microVU) can come from verified release archives instead of source; a
-checksum mismatch or missing archive falls back to source automatically.
+microVU) build from source; a checksum mismatch or missing prebuilt
+archive falls back to source automatically.
 
 ## Layout
 
@@ -90,10 +91,12 @@ hashes don't prove graphics or cost: pair them with fixed captures
 
 ## Online (rudimentary)
 
-Quick Matchup connects to a lobby server you (or a friend) operate: match +
-UDP relay, no direct peer IPs. The lobby source lives in its own repo; this
-repo holds the operator side (`infra/`: one small cloud host, deploy,
-harden, backup, rollback). Default off.
+Online is on: Quick Matchup connects to a lobby server you (or a friend)
+operate — match + UDP relay, no direct peer IPs. The default server is
+`ssx.bradr.dev`; the lobby source lives in its own repo, and this repo
+holds the operator side (`infra/`: one small cloud host, deploy, harden,
+backup, rollback). To play offline, just don't pick Online in the menu;
+the in-game settings panel also has an Online row that turns it off.
 
 ## Provenance and licence
 

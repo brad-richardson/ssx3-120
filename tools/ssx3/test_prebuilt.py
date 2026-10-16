@@ -3,6 +3,7 @@
 import io
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -22,6 +23,14 @@ class PrebuiltTests(unittest.TestCase):
         self.bundle.mkdir(parents=True)
         self.contract_patch = patch.object(prebuilt, 'contract', return_value=STAMP)
         self.contract_patch.start()
+        self.drift_patch = patch.object(prebuilt, 'contract_drift', return_value=[])
+        self.drift_patch.start()
+        self.pin_entry = {'tag': 'android-prebuilt-' + STAMP,
+                          'asset': 'android-arm64-' + STAMP + '.zip',
+                          'sha256': '0' * 64}
+        self.pins_patch = patch.object(prebuilt, 'release_pins',
+                                       return_value={STAMP: self.pin_entry})
+        self.pins_patch.start()
         paths = ['lib/' + x for x in prebuilt.ARCHIVES]
         paths += ['jniLibs/arm64-v8a/' + x for x in prebuilt.SHARED]
         paths += ['include/sse2neon.h', 'runtime-definitions.txt', 'notices/PS2Recomp-LICENSE', 'notices/SOURCES.json']
@@ -35,6 +44,8 @@ class PrebuiltTests(unittest.TestCase):
 
     def tearDown(self):
         self.contract_patch.stop()
+        self.drift_patch.stop()
+        self.pins_patch.stop()
         self.tmp.cleanup()
 
     def write_manifest(self):
@@ -122,9 +133,353 @@ class PrebuiltTests(unittest.TestCase):
         asset = 'android-arm64-' + STAMP + '.zip'
         responses = [io.BytesIO((sha + '  ' + asset + '\n').encode()), io.BytesIO(data)]
         cache = self.root / 'download-cache'
-        with patch.object(prebuilt.urllib.request, 'urlopen', side_effect=responses):
+        pins = {STAMP: dict(self.pin_entry, sha256=sha)}
+        with patch.object(prebuilt.urllib.request, 'urlopen', side_effect=responses), \
+             patch.object(prebuilt, 'release_pins', return_value=pins):
             self.assertEqual(prebuilt.fetch(cache), cache / STAMP)
         prebuilt.verify(cache / STAMP)
+
+    def _bundle_payload(self):
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, 'w') as z:
+            for p in sorted(self.bundle.rglob('*')):
+                if p.is_file():
+                    z.write(p, p.relative_to(self.bundle).as_posix())
+        return payload.getvalue()
+
+    def test_unpinned_release_refuses_download(self):
+        data = self._bundle_payload()
+        sha = prebuilt.hashlib.sha256(data).hexdigest()
+        asset = 'android-arm64-' + STAMP + '.zip'
+        responses = [io.BytesIO((sha + '  ' + asset + '\n').encode()), io.BytesIO(data)]
+        cache = self.root / 'unpinned-cache'
+        with patch.object(prebuilt.urllib.request, 'urlopen', side_effect=responses), \
+             patch.object(prebuilt, 'release_pins', return_value={}):
+            self.assertIsNone(prebuilt.fetch(cache))
+        self.assertFalse((cache / STAMP).exists())
+
+    def test_pin_mismatch_refuses_download(self):
+        data = self._bundle_payload()
+        sha = prebuilt.hashlib.sha256(data).hexdigest()
+        asset = 'android-arm64-' + STAMP + '.zip'
+        responses = [io.BytesIO((sha + '  ' + asset + '\n').encode()), io.BytesIO(data)]
+        cache = self.root / 'mismatch-cache'
+        pins = {STAMP: dict(self.pin_entry, sha256='f' * 64)}
+        with patch.object(prebuilt.urllib.request, 'urlopen', side_effect=responses), \
+             patch.object(prebuilt, 'release_pins', return_value=pins):
+            self.assertIsNone(prebuilt.fetch(cache))
+        self.assertFalse((cache / STAMP).exists())
+
+    def test_junk_names_are_filtered(self):
+        for name in ('.DS_Store', 'Thumbs.db', 'desktop.ini', '._AppleDouble', 'notes~'):
+            self.assertTrue(prebuilt._is_junk(Path(name)), name)
+        for name in ('hwcompat.c', 'CMakeLists.txt', 'libps2_runtime.a'):
+            self.assertFalse(prebuilt._is_junk(Path(name)), name)
+
+    def test_stray_files_do_not_move_contract(self):
+        # M3: Finder droppings and editor backups under the contract paths
+        # must not move the stamp or appear as drift.
+        self.contract_patch.stop()
+        self.drift_patch.stop()
+        try:
+            before = prebuilt.contract()
+            strays = [prebuilt.ENGINE / 'ps2xRuntime/.DS_Store',
+                      prebuilt.ENGINE / 'ps2xRuntime/._AppleDouble',
+                      prebuilt.ENGINE / 'ps2xIOP/junk~']
+            for p in strays:
+                p.write_bytes(b'synthetic stray, no game input\n')
+            try:
+                self.assertEqual(prebuilt.contract(), before)
+                drift = prebuilt.contract_drift()
+                for p in strays:
+                    self.assertNotIn(p.relative_to(prebuilt.ENGINE).as_posix(), drift)
+            finally:
+                for p in strays:
+                    p.unlink(missing_ok=True)
+        finally:
+            self.contract_patch.start()
+            self.drift_patch.start()
+
+    def test_release_miss_names_contract_and_drift(self):
+        import contextlib
+        err = io.StringIO()
+        with patch.object(prebuilt.urllib.request, 'urlopen',
+                          side_effect=urllib.error.HTTPError('url', 404, 'missing', {}, None)), \
+             patch.object(prebuilt, 'contract_drift',
+                          return_value=['ps2xRuntime/edited.cpp']), \
+             contextlib.redirect_stderr(err):
+            self.assertIsNone(prebuilt.fetch(self.root / 'miss-cache'))
+        output = err.getvalue()
+        self.assertIn(STAMP, output)
+        self.assertIn('ps2xRuntime/edited.cpp', output)
+
+    def test_cache_drift_falls_back_without_network(self):
+        with patch.object(prebuilt, 'contract_drift',
+                          return_value=['ps2xRuntime/edited.cpp']), \
+             patch.object(prebuilt.urllib.request, 'urlopen',
+                          side_effect=AssertionError('network used')):
+            self.assertIsNone(prebuilt.fetch(self.cache))
+
+
+
+class ContractInputsTests(unittest.TestCase):
+    """prebuilt-contract-1: the stamp covers exactly the archived-output inputs.
+
+    TU table: exact link edges of the Android export configure at 902a7645
+    (configure-only probe; see REPORT tables 1-2) plus the five
+    android-libs adapter TUs mapped back to their in-repo origins.
+    """
+
+    # Every in-repo source linked into the shipped archives and shims.
+    ARCHIVED_TUS = frozenset((
+        'android/hwcompat/hwcompat.c',
+        'ps2xIOP/src/emulator/core/iop_cpu.cpp',
+        'ps2xIOP/src/emulator/core/iop_kernel.cpp',
+        'ps2xIOP/src/emulator/core/iop_memory.cpp',
+        'ps2xIOP/src/emulator/imports/iop_cdvd.cpp',
+        'ps2xIOP/src/emulator/imports/iop_heaplib.cpp',
+        'ps2xIOP/src/emulator/imports/iop_imports.cpp',
+        'ps2xIOP/src/emulator/imports/iop_intrman.cpp',
+        'ps2xIOP/src/emulator/imports/iop_ioman.cpp',
+        'ps2xIOP/src/emulator/imports/iop_loadcore.cpp',
+        'ps2xIOP/src/emulator/imports/iop_stdio.cpp',
+        'ps2xIOP/src/emulator/imports/iop_sysclib.cpp',
+        'ps2xIOP/src/emulator/imports/iop_sysmem.cpp',
+        'ps2xIOP/src/emulator/imports/iop_timrman.cpp',
+        'ps2xIOP/src/emulator/imports/iop_vblank.cpp',
+        'ps2xIOP/src/emulator/iop_emulator.cpp',
+        'ps2xIOP/src/emulator/services/iop_module_loader.cpp',
+        'ps2xIOP/src/emulator/services/iop_rpc.cpp',
+        'ps2xIOP/src/iop_module_manager.cpp',
+        'ps2xIOP/src/iop_subsystem.cpp',
+        'ps2xIOP/src/modules/dbcman.cpp',
+        'ps2xIOP/src/modules/libsd.cpp',
+        'ps2xIOP/src/modules/mcserv.cpp',
+        'ps2xIOP/src/ps2_path.cpp',
+        'ps2xRuntime/src/lib/Kernel/EeScheduler.cpp',
+        'ps2xRuntime/src/lib/Kernel/EeSchedulerSavestate.cpp',
+        'ps2xRuntime/src/lib/Kernel/Fh1Savestate.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Audio.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/CD.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Compatibility.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/DMA.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Deci2.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/FileIO.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Font.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/GS.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/IPU.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/LibC.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/MPEG.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/MemoryCard.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Pad.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/RPC.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/SIF.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Ssx3Movie.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/System.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/TTY.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Unimplemented.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/VU.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Deci2.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Dispatcher.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/FileIO.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Interrupt.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/RPC.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Savestate.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Sync.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/System.cpp',
+        'ps2xRuntime/src/lib/Kernel/Syscalls/Thread.cpp',
+        'ps2xRuntime/src/lib/game_module_none.cpp',
+        'ps2xRuntime/src/lib/game_overrides.cpp',
+        'ps2xRuntime/src/lib/games_database.cpp',
+        'ps2xRuntime/src/lib/gs/gs_cpu_backend.cpp',
+        'ps2xRuntime/src/lib/gs/gs_frontend.cpp',
+        'ps2xRuntime/src/lib/gs/gs_headless_backend.cpp',
+        'ps2xRuntime/src/lib/gs/gs_replay_core.cpp',
+        'ps2xRuntime/src/lib/gs/gs_stream_capture.cpp',
+        'ps2xRuntime/src/lib/gs/gs_worker.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_gif_arbiter.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_gs_memory.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_present_owner.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_present_share.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_present_vk_android.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_present_vk_ledger.cpp',
+        'ps2xRuntime/src/lib/ps2_ach.cpp',
+        'ps2xRuntime/src/lib/ps2_adpf.cpp',
+        'ps2xRuntime/src/lib/ps2_android_runtime.cpp',
+        'ps2xRuntime/src/lib/ps2_android_toast.cpp',
+        'ps2xRuntime/src/lib/ps2_audio.cpp',
+        'ps2xRuntime/src/lib/ps2_audio_vag.cpp',
+        'ps2xRuntime/src/lib/ps2_build_id.cpp',
+        'ps2xRuntime/src/lib/ps2_codegen_abi_guard.cpp',
+        'ps2xRuntime/src/lib/ps2_input_diag.cpp',
+        'ps2xRuntime/src/lib/ps2_iop_host.cpp',
+        'ps2xRuntime/src/lib/ps2_memory.cpp',
+        'ps2xRuntime/src/lib/ps2_net_dirtysock.cpp',
+        'ps2xRuntime/src/lib/ps2_net_link.cpp',
+        'ps2xRuntime/src/lib/ps2_net_nolink.cpp',
+        'ps2xRuntime/src/lib/ps2_pad.cpp',
+        'ps2xRuntime/src/lib/ps2_perf_log.cpp',
+        'ps2xRuntime/src/lib/ps2_prebuilt_abi_guard.cpp',
+        'ps2xRuntime/src/lib/ps2_rom_device.cpp',
+        'ps2xRuntime/src/lib/ps2_runtime.cpp',
+        'ps2xRuntime/src/lib/ps2_savestate.cpp',
+        'ps2xRuntime/src/lib/ps2_session_telemetry.cpp',
+        'ps2xRuntime/src/lib/ps2_snd_audio_output.cpp',
+        'ps2xRuntime/src/lib/ps2_ssx3_vis_native.cpp',
+        'ps2xRuntime/src/lib/ps2_telemetry.cpp',
+        'ps2xRuntime/src/lib/ps2_vfs.cpp',
+        'ps2xRuntime/src/lib/ps2_vif1_interpreter.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_microvu.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_native_world.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu0.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu1.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu_core.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu_lower.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu_recomp.cpp',
+        'ps2xRuntime/src/lib/vu/ps2_vu_upper.cpp',
+        'ps2xRuntime/src/main.cpp',
+        'ps2xRuntime/third_party/rcheevos/src/rapi/rc_api_common.c',
+        'ps2xRuntime/third_party/rcheevos/src/rapi/rc_api_editor.c',
+        'ps2xRuntime/third_party/rcheevos/src/rapi/rc_api_info.c',
+        'ps2xRuntime/third_party/rcheevos/src/rapi/rc_api_runtime.c',
+        'ps2xRuntime/third_party/rcheevos/src/rapi/rc_api_user.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_client.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_client_compat_ach2.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_client_external.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_client_raintegration.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_compat.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_util.c',
+        'ps2xRuntime/third_party/rcheevos/src/rc_version.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/alloc.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/condition.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/condset.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/consoleinfo.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/format.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/lboard.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/memref.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/operand.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/rc_validate.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/richpresence.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/runtime.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/runtime_progress.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/trigger.c',
+        'ps2xRuntime/third_party/rcheevos/src/rcheevos/value.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/aes.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/cdreader.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/hash.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/hash_disc.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/hash_encrypted.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/hash_rom.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/hash_zip.c',
+        'ps2xRuntime/third_party/rcheevos/src/rhash/md5.c',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/AAFilter.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/BPMDetect.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/FIFOSampleBuffer.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/FIRFilter.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/InterpolateCubic.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/InterpolateLinear.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/InterpolateShannon.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/PeakFinder.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/RateTransposer.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/SoundTouch.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/TDStretch.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/cpu_detect_x86.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/mmx_optimized.cpp',
+        'ps2xRuntime/third_party/soundtouch/source/SoundTouch/sse_optimized.cpp',
+    ))
+
+    # android-libs adapter TUs: in-repo origins of the assembly copies.
+    ADAPTER_ORIGINS = frozenset((
+        'ps2xRuntime/third_party/armsx2/ge1/ge1_gs.cpp',
+        'ps2xRuntime/third_party/armsx2/ge1/ge1_host.cpp',
+        'ps2xRuntime/third_party/armsx2/platform/android/ax4b_android_stubs.cpp',
+        'ps2xRuntime/third_party/armsx2/mv2/HeadlessAndroidStubs.cpp',
+        'ps2xRuntime/third_party/armsx2/mv2/MicrovuBridge.cpp',
+    ))
+
+    # Recipe/toolchain files selecting archived sources and defines.
+    RECIPE_INPUTS = frozenset((
+        'ps2xRuntime/CMakeLists.txt',
+        'ps2xRuntime/cmake/ReleaseMode.cmake',
+        'ps2xRuntime/cmake/GameModule.cmake',
+        'ps2xRuntime/cmake/patch_raylib_android_egl_alpha.cmake',
+        'ps2xRuntime/third_party/soundtouch/CMakeLists.txt',
+        'ps2xRuntime/third_party/rcheevos/CMakeLists.txt',
+        'ps2xRuntime/third_party/armsx2/ge1/CMakeLists.txt',
+        'ps2xRuntime/third_party/armsx2/mv2/CMakeLists.txt',
+        'games/ssx3/module/CMakeLists.txt',
+        'games/ssx3/module/include/ps2_ssx3_module.h',
+        'ps2xIOP/CMakeLists.txt',
+        'android/hwcompat/CMakeLists.txt',
+        'tools/ssx3/android-libs/CMakeLists.txt',
+        'LICENSE',
+        'ps2xRuntime/third_party/soundtouch/COPYING.TXT',
+        'ps2xRuntime/third_party/rcheevos/LICENSE',
+    ))
+
+    # f1180764..902a7645 in-repo changes the narrowed stamp must move on:
+    # every one is compiled into an archive or included by a compiled TU.
+    PIN_RANGE_SENSITIVE = frozenset((
+        'ps2xRuntime/include/ps2_ios_runtime.h',
+        'ps2xRuntime/include/ps2_knobs.h',
+        'ps2xRuntime/include/ps2_settings_overlay.h',
+        'ps2xRuntime/include/ps2_ssx3_tricky_list.h',
+        'ps2xRuntime/include/ps2_ssx3_tricky_menu.h',
+        'ps2xRuntime/include/runtime/gs/gs_frontend.h',
+        'ps2xRuntime/include/runtime/gs/ps2_present_vk.h',
+        'ps2xRuntime/include/runtime/ps2_canonical_pages.h',
+        'ps2xRuntime/include/runtime/ps2_memory.h',
+        'ps2xRuntime/include/runtime/ps2_savestate.h',
+        'ps2xRuntime/src/lib/Kernel/EeScheduler.cpp',
+        'ps2xRuntime/src/lib/Kernel/Stubs/Pad.cpp',
+        'ps2xRuntime/src/lib/gs/gs_frontend.cpp',
+        'ps2xRuntime/src/lib/gs/ps2_present_vk_android.cpp',
+        'ps2xRuntime/src/lib/ps2_runtime.cpp',
+        'ps2xRuntime/src/lib/ps2_savestate.cpp',
+        'ps2xRuntime/src/lib/ps2_savestate_internal.h',
+    ))
+
+    def test_archived_tus_are_contract_inputs(self):
+        covered = prebuilt.contract_paths()
+        self.assertEqual([p for p in self.ARCHIVED_TUS if p not in covered], [])
+        self.assertEqual([p for p in self.ADAPTER_ORIGINS if p not in covered], [])
+
+    def test_ios_only_source_is_not_a_contract_input(self):
+        self.assertNotIn('ps2xRuntime/src/lib/ps2_ios_runtime.mm',
+                         prebuilt.contract_paths())
+
+    def test_recipe_and_notice_inputs_are_covered(self):
+        covered = prebuilt.contract_paths()
+        self.assertEqual([p for p in self.RECIPE_INPUTS if p not in covered], [])
+
+    def test_glob_dirs_cover_configured_kernel_and_runner(self):
+        self.assertIn('ps2xRuntime/src/lib/Kernel', prebuilt.CONTRACT_GLOB_DIRS)
+        self.assertIn('ps2xRuntime/src/runner', prebuilt.CONTRACT_GLOB_DIRS)
+
+    def test_explicit_inputs_all_tracked(self):
+        out = subprocess.check_output(
+            ['git', '-C', str(prebuilt.ENGINE), 'ls-files', '--',
+             *prebuilt.CONTRACT_EXPLICIT], text=True).splitlines()
+        self.assertEqual(len(out), len(prebuilt.CONTRACT_EXPLICIT))
+
+    def test_pin_range_sensitivity(self):
+        live = set(subprocess.check_output(
+            ['git', '-C', str(prebuilt.ENGINE), 'diff', '--name-only',
+             'f1180764', '902a7645', '--', *sorted(prebuilt.contract_paths())],
+            text=True).split())
+        self.assertEqual(live, set(self.PIN_RANGE_SENSITIVE))
+        # The one in-range change the stamp ignores really did change.
+        mm = subprocess.run(
+            ['git', '-C', str(prebuilt.ENGINE), 'diff', '--quiet',
+             'f1180764', '902a7645', '--', 'ps2xRuntime/src/lib/ps2_ios_runtime.mm'])
+        self.assertNotEqual(mm.returncode, 0)
+
+    def test_stamp_moves_on_listed_blob_change(self):
+        before = [('a', '0' * 40), ('b', '1' * 40)]
+        self.assertNotEqual(prebuilt._stamp(before), prebuilt._stamp([('a', '0' * 40)]))
+        self.assertNotEqual(prebuilt._stamp(before), prebuilt._stamp([('a', '0' * 40), ('b', '2' * 40)]))
+        self.assertEqual(prebuilt._stamp(before), prebuilt._stamp(list(before)))
 
 
 if __name__ == '__main__':

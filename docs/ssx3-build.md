@@ -6,8 +6,9 @@ x86_64/arm64 (Windows users: Ubuntu in WSL2); play targets: Android arm64 /
 iOS. `doctor` verifies the toolchain before anything downloads.
 
 The public entry regenerates EE code and builds a Mac baseline without PGO
-or generated VU0; Android builds from source or from verified game-free
-support archives (checksum mismatch falls back to source). Prepare the
+or generated VU0; Android builds the support libraries from source by
+default (a verified game-free archive is tried first when one matches;
+checksum mismatch falls back to source). Prepare the
 [exact supported inputs](ssx3-inputs.md) locally first. Library compilation
 and SSX 3 guest-code generation are separate steps.
 

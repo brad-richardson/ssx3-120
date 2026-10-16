@@ -48,9 +48,15 @@ command inside Ubuntu; keep the checkout and work directory on its Linux
 filesystem, rather than `/mnt/c`. The builder does not install system packages
 or accept SDK licenses for you.
 
+Install the host packages **before** cloning — a clean machine has no Git yet —
+then clone the public source tree and run the steps from its root. `sudo` is
+omitted when you are already root (for example in a container):
+
 ```sh
 sudo apt-get update
 sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk
+git clone --recurse-submodules <this-repo> ssx3-120
+cd ssx3-120
 python3 tools/ssx3/build.py doctor --target prepare
 python3 tools/ssx3/build.py prepare --tools-only --work /path/to/private-build --jobs 4
 ```
@@ -64,13 +70,25 @@ prints failed checks and fixes and exits nonzero until prerequisites pass.
 
 Install Google's Android command-line tools into an SDK directory, set
 `ANDROID_HOME` and `JAVA_HOME` (JDK 17), and put the JDK's `bin` on `PATH`.
-Use the platform's command-line tools from the
-[Android SDK downloads](https://developer.android.com/studio#command-tools).
-Then install the exact components and review the licenses:
+Download the current Linux zip from the "Command line tools only" table on the
+[Android SDK downloads](https://developer.android.com/studio#command-tools)
+page, then unpack it so that `sdkmanager` lands at
+`$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager`. For example (replace the
+zip name with the current Linux build):
 
 ```sh
-"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;28.2.13676358" "cmake;3.22.1" "platform-tools"
+export ANDROID_HOME="$HOME/android-sdk"
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64   # Linux arm64: /usr/lib/jvm/java-17-openjdk-arm64
+export PATH="$JAVA_HOME/bin:$PATH"
+
+unzip commandlinetools-linux-*_latest.zip -d /tmp/android-cmdline-tools
+mkdir -p "$ANDROID_HOME/cmdline-tools"
+mv /tmp/android-cmdline-tools/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+
+# Accept the licenses first: until then the install below silently installs
+# nothing and still exits 0.
 "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;28.2.13676358" "cmake;3.22.1" "platform-tools"
 python3 tools/ssx3/build.py doctor --target android
 ```
 
@@ -122,10 +140,13 @@ python3 tools/ssx3/build.py mac --work /path/to/private-build --suite
 ```
 
 Run that suite **from the checkout root**. The generator pin is
-`03c10b5aeccd4fb673fecaea3cf4a5f5064afe14`. It selects overlapping resume owners by greatest candidate function start,
+`467e86e85fee4dd73c8252f40a02c6394116888e`. It selects overlapping resume owners by greatest candidate function start,
 independent of host hash-table order. `prepare` checks ISO and extracted ELF SHA256, fetches the pinned
-generator from the local checkout when present (otherwise the public fork), builds it, writes absolute local TOML
-paths, and records the generated registration SHA256. Use a fresh work
+generator from the local checkout when the pin is part of the published fork
+history (otherwise the public fork), builds it, writes absolute local TOML
+paths, and records the generated registration SHA256. A release check fetches
+the pin from the public fork into an empty repo (see the `generator-pin` CI
+job); a pin that exists only on a local branch fails that check. Use a fresh work
 directory for regeneration; existing output is refused. Registration hashes
 from earlier generator pins do not describe the deterministic ownership rule.
 
@@ -138,7 +159,7 @@ its generated registration SHA differs from the default name-free output.
 
 `mac-libs` pins the public ARMSX2 fork to
 `afad5a04c2668a10e12adadaa51d54c46f832236` (`armsx2-ssx3-four` tip, the play vendor; carries the on-device
-upscale provider the adapter includes and the PB66 VMA allocator fix), builds plutovg v1.1.0 and plutosvg v0.0.7
+upscale provider the adapter includes and the VMA multi-thread allocator fix), builds plutovg v1.1.0 and plutosvg v0.0.7
 locally, builds GE1 and the JIT bridge, and stages public renderer resources
 and metallibs. It requires no OM1 recordings, offline stage or private header
 checkout. Libraries stay in the build directory and use installed system
@@ -155,7 +176,19 @@ the source census, not a promise that every diagnostic knob is supported.
 
 Use JDK 17, Android SDK 34, NDK 28.2.13676358 and CMake 3.22.1. Set
 `ANDROID_HOME` and `JAVA_HOME` to your installs. EE output from `prepare` is
-shared with Android; no remote build host or PGO profile is needed:
+shared with Android; no remote build host or PGO profile is needed. **Do not
+pass `--jnilibs`:** with no `--jnilibs`, `android` first uses the verified
+prebuilt support release pinned for this checkout when one exists (see
+[Android prebuilt support libraries](#android-prebuilt-support-libraries)),
+and otherwise falls back to building the JNI libraries from source:
+
+```sh
+python3 tools/ssx3/build.py android --work /path/to/private-build --jobs 4
+python3 tools/ssx3/build.py install --work /path/to/private-build
+```
+
+To force the source route instead, run `android-libs` first and point `android`
+at its output:
 
 ```sh
 python3 tools/ssx3/build.py android-libs --work /path/to/private-build --ndk "$ANDROID_HOME/ndk/28.2.13676358" --jobs 4
@@ -270,8 +303,16 @@ Preserve dependency licences from their source checkouts.
 ### Android prebuilt support libraries
 
 `android-libs` and `android` default to `--prebuilt=auto`. A release matching
-this checkout's source and toolchain contract is downloaded, checked against
-`SHA256SUMS`, unpacked with a strict file allowlist, and verified file by file.
+this checkout's source and toolchain contract is downloaded, required to match
+the archive hash pinned in [`prebuilt-releases.json`](../../deps/PS2Recomp/tools/ssx3/prebuilt-releases.json),
+unpacked with a strict file allowlist, and verified file by file.
+`SHA256SUMS` only guards the download in transit; it is the committed pin
+that authenticates the archive, so a tampered re-upload under the same tag is
+refused and falls back to the source build. Releases also carry SLSA
+build-provenance attestations (`gh attestation verify --repo
+brad-richardson/PS2Recomp <archive>`). No release exists for contracts without
+a pin entry yet, so `auto` still builds from source there; the maintainer
+prints the pin entry to commit after `prebuilt.py build`.
 The runtime and platform bootstrap are static archives; GE1, microVU and the
 hardware shim remain shared libraries. Your generated game library is linked
 locally. Neither the support archive nor CI contains your generated game code,

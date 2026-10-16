@@ -45,6 +45,9 @@ def ps2xThinLtoCacheDir = project.hasProperty('ps2xThinLtoCacheDir')
 // OFF). Override with --gradle-prop (e.g. ps2xGameIpo=OFF for a control).
 def ps2xGameIpo = project.findProperty('ps2xGameIpo') ?: 'ON'
 def ps2xAndroidMarch = project.findProperty('ps2xAndroidMarch') ?: 'armv8.2-a+fp16+dotprod'
+// build-time-1: PCH for the generated game code; tools/ssx3/build.py turns it
+// on for cold builds (default off: ccache-backed builds can't cache PCH users).
+def ps2xGamePch = project.findProperty('ps2xGamePch') ?: 'OFF'
 // PUB1: per-user signing supplied by tools/ssx3/build.py (keystore created
 // once in the caller's work dir, monotonic versionCode from a work-dir
 // counter). Direct Gradle invocations without these properties keep the
@@ -117,6 +120,7 @@ android {
                         "-DPS2X_PGO_DATA=${ps2xPgoData}",
                         "-DPS2X_ENABLE_DET_HASH_TAP=${ps2xDetHashTap}",
                         "-DPS2X_GAME_IPO=${ps2xGameIpo}",
+                        "-DPS2X_GAME_PCH=${ps2xGamePch}",
                         "-DPS2X_ANDROID_MARCH=${ps2xAndroidMarch}",
                         '-DCMAKE_C_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG',
                         '-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG'

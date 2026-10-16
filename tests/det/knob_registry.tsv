@@ -273,6 +273,8 @@ PS2X_SSX3_TRICKY_HUD_ART	active-lane	TK43a	path to the staged trickyhud.bin atla
 PS2X_SSX3_TRICKY_HUD_FORCE	diag	TK43a	screenshot-only forced display fill/level, writes no guest memory; lanes:TK43a	keep
 PS2X_SSX3_TRICKY_HUD_SCAN	dead	TK43c	rider-struct scan for the HUD when no AP pointer is set (diag; unreliable per TK43c gap 1); lanes:TK43c; removed by TK43d 4f619ca (game-owned rider chain)	TK43d
 PS2X_SSX3_TRICKY_LETTERS_PRESET	diag	TK43c	screenshot/test preset of lit letters, display only; lanes:TK43c	keep
+PS2X_SSX3_TRICKY_LIST	active-lane	tk-menu-1	Tricky course-list overlay, default off (overlay default off until Brad approves the final look); fork ps2xRuntime/include/ps2_ssx3_tricky_list.h:12,32	keep
+PS2X_SSX3_TRICKY_LIST_ART	active-lane	tk-menu-1	path to the staged overlay atlas (FEFONT + disc art + previews); fork ps2xRuntime/src/lib/ps2_runtime.cpp:9290,9302	keep
 PS2X_SSX3_TRICKY_MENU	play-default	TK11	odin tricky.env; approved toggle (brief §1b); tests/det/knob_matrix.py; lanes:APH1,AU19,CFG1,LT1b,TK19c,TK24,TK24a,TK24b,TK24c,TK25,TK25b,TK25c,TK26,TK27,TK28,TK28b,TK29,TK30,TK31,TK33,TK33b,TK34,	keep
 PS2X_SSX3_TRICKY_SONG	active-lane	TK43c	It's Tricky ~5 s resuming bursts on meter full (host mix, output-only); path to staged PCM; Tricky courses only; lanes:TK43c	keep
 PS2X_SSX3_VIS_NATIVE	play-default	VNP1	live code default (=0 is the engine path; ask orchestrator, shipped 10-03); no setter	keep (ask)
@@ -294,6 +296,8 @@ PS2X_TK12_AP_PTR	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,T
 PS2X_TK12_AP_ROUTE	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TKP2,TKP3	keep
 PS2X_TK12_AP_TO	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,TK27,TK28,TK28b,TK30,TK31,TK33,TK33b,TK34,TK35,TK36,TK37,TK37b,TK38,TKP2,TKP3	keep
 PS2X_TK12_CLIP	active-lane	APH1	lanes:APH1,FLK1,TK19c,TK24,TK24c,TK30,TK31,TK36	keep
+PS2X_TK_MENU_1_DIAG	diag	tk-menu-1	lane diag: logs one line per navigator decision; fork ps2xRuntime/include/ps2_ssx3_tricky_list.h:38,42	keep
+PS2X_TK_MENU_1_SHOT	diag	tk-menu-1	lane diag shots: saves the host present to a prefix dir; fork ps2xRuntime/src/lib/ps2_runtime.cpp:8343,8345	keep
 PS2X_TRACE_SYSCALLS	dead	T18/T22	KNC2 B3: deleted at 5417c2a8; retired syscall file logger; evidence in inventory.tsv	KNC2-B3 (removed)
 PS2X_TRACE_SYSCALLS_PC	dead	T18/T22	KNC2 B3: deleted at 5417c2a8; retired syscall file logger; evidence in inventory.tsv	KNC2-B3 (removed)
 PS2X_TS2_CASE_COUNT	dead	TS3	no setter	B3

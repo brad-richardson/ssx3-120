@@ -10,10 +10,10 @@ reviewable diffs on top).
 
 | Source | Pin | Content |
 | --- | --- | --- |
-| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `35cfdcdd…ffca` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
+| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `f7a96f23…1453` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
 | `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
-| Generator (separate source pin, same upstream repo) | `03c10b5aeccd4fb673fecaea3cf4a5f5064afe14` | drives `prepare`; never repinned implicitly |
+| Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
 | Vendor `brad-richardson/armsx2` | `afad5a04c2668a10e12adadaa51d54c46f832236` | renderer/VU source; support-archive identity in `deps.lock.json` |
 | Turnip (optional Vulkan driver) | `turnip-ssx3-ad094bb9` (`tools/ssx3/turnip.json`) | hashes in `deps.lock.json` |
 
@@ -42,6 +42,10 @@ reviewable diffs on top).
 - `tools/ssx3/prebuilt-consumer.cmake`: removed (byte-identical copy remains
   in the engine at the pin; both build paths consume the engine's copy via
   `CMAKE_CURRENT_SOURCE_DIR`, so a product duplicate could only rot).
+- `tools/ssx3/tests/test_public_install_stage.py`: stages the APK under
+  `apps/android/` (product layout) instead of the engine's `android/`.
+- `tools/ssx3/test_prebuilt.py`: contract/drift git queries read the engine
+  checkout (`prebuilt.ENGINE`), not the product root.
 
 ## Lobby separation
 

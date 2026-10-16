@@ -75,9 +75,17 @@ def compiler():
                     if shutil.which(name)), None)
     if not cxx:
         raise ValueError('install Clang (Ubuntu: apt install clang lld g++); set CC/CXX if needed')
-    # clang++-18 must pair with clang-18, not a non-existent sibling clang.
-    cc = os.environ.get('CC') or str(Path(cxx).with_name(
-        Path(cxx).name.replace('clang++', 'clang').replace('g++', 'gcc')))
+    cxx_base = Path(cxx).name
+    if 'clang++' in cxx_base:
+        cc = os.environ.get('CC') or str(Path(cxx).with_name(cxx_base.replace('clang++', 'clang')))
+    elif 'g++' in cxx_base:
+        cc = os.environ.get('CC') or str(Path(cxx).with_name(cxx_base.replace('g++', 'gcc')))
+    else:
+        # Generic names such as c++ carry no C counterpart: use the system
+        # compiler rather than compiling C sources as C++.
+        cc = os.environ.get('CC') or shutil.which('cc')
+        if not cc:
+            raise ValueError('set CC when CXX=' + cxx + ' (cannot derive the C compiler)')
     for name in (cc, cxx):
         ok, detail = probe([name, '--version'])
         if not ok:
@@ -331,9 +339,22 @@ def prepare_generator(a):
     if not gen.exists():
         # Prefer the exact pinned commit already present in the engine checkout.
         # This also validates an unpublished lane commit without a fork push.
-        local_pin = subprocess.run(
+        # Public-safe: the shortcut applies only when the pin is part of the
+        # published fork history (a lane-only object must never satisfy it).
+        # A clean public clone therefore falls through to the FORK fetch,
+        # which is the path the release check exercises.
+        has_pin = subprocess.run(
             ['git', '-C', str(ENGINE), 'cat-file', '-e', GENERATOR + '^{commit}'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+        published = False
+        for ref in ('fork/ssx3', 'origin/ssx3', 'HEAD'):
+            if subprocess.run(
+                    ['git', '-C', str(ENGINE), 'merge-base', '--is-ancestor', GENERATOR, ref],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    check=False).returncode == 0:
+                published = True
+                break
+        local_pin = has_pin and published
         run('git', 'init', gen)
         run('git', '-C', gen, 'fetch', '--depth=1', str(ENGINE) if local_pin else FORK, GENERATOR)
         run('git', '-C', gen, 'checkout', '--detach', GENERATOR)
@@ -398,7 +419,7 @@ def mac(a):
         '-DPS2X_BUILD_TEST=' + extra, '-DPS2X_ENABLE_DEBUG_UI=OFF', '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
         '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
         '-DPS2X_ENABLE_DIAG_WATCH=OFF', '-DPS2X_ENABLE_TS2_DIAG=OFF',
-        '-DPS2X_ENABLE_DET_HASH_TAP=' + det)
+        '-DPS2X_ENABLE_DET_HASH_TAP=' + det, '-DPS2X_GAME_PCH=ON')
     run('cmake', '--build', build_dir, '--parallel', a.jobs,
         '--target', 'ps2EntryRunner', *(['ps2x_tests'] if a.suite else []))
 
@@ -519,6 +540,7 @@ def android(a):
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
         '-Pps2xVu0RecompDir=',
+        '-Pps2xGamePch=ON',
         '-Pps2xPgoData=', '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
         '-Pps2xAppId=' + a.app_id,
         '-Pps2xPrebuiltDir=' + (str(bundle) if bundle else ''),
@@ -537,10 +559,24 @@ def source(url, revision, destination):
     if not destination.exists():
         run('git', 'clone', '--filter=blob:none', '--no-checkout', url, destination)
         run('git', '-C', destination, 'checkout', '--detach', revision)
+    try:
+        expected = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', revision + '^{commit}'], text=True).strip()
+    except subprocess.CalledProcessError:
+        # A blob-less cache from before a vendor repin cannot resolve the new
+        # pin: fetch it, then check out.
+        run('git', '-C', destination, 'fetch', 'origin', revision)
+        run('git', '-C', destination, 'checkout', '--detach', revision)
+        expected = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', revision + '^{commit}'], text=True).strip()
     actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
-    expected = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', revision + '^{commit}'], text=True).strip()
     if actual != expected:
-        raise ValueError('source pin mismatch: ' + str(destination))
+        try:
+            run('git', '-C', destination, 'fetch', 'origin', revision)
+            run('git', '-C', destination, 'checkout', '--detach', revision)
+        except subprocess.CalledProcessError:
+            raise ValueError('source pin mismatch: delete ' + str(destination) + ' and re-run')
+        actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
+        if actual != expected:
+            raise ValueError('source pin mismatch: delete ' + str(destination) + ' and re-run')
 
 
 def libs(a):
@@ -667,11 +703,78 @@ def play(a):
 def support_bundle(a):
     if a.prebuilt == 'off':
         return None
+    if getattr(a, 'jnilibs', None):
+        # An explicit --jnilibs names the APK's libraries: a release bundle
+        # must never silently replace them, so this counts as --prebuilt=off.
+        print('Explicit --jnilibs given; ignoring prebuilt releases.')
+        return None
     if getattr(a, 'app_id', PUBLIC_APP_ID) != PUBLIC_APP_ID:
         print('Custom package ID requires source libraries.')
         return None
     import prebuilt
     return prebuilt.fetch(a.prebuilt_cache or a.work / 'prebuilt-cache', a.prebuilt)
+
+
+# The vendor recipe (build-dependencies.sh at the VENDOR pin) clones these by
+# tag, and tags are mutable: the lane copy checks every clone out to the
+# recorded commit before building, and records the resolved set for
+# notices/SOURCES.json. Update this table together with the vendor pin.
+# Commits were resolved from the tags with git ls-remote (peeled ^{}) on
+# 2026-10-15; shaderc's glslang stays pinned inside the vendor script.
+ANDROID_DEPS = [
+    ('libpng', 'https://github.com/pnggroup/libpng', 'v1.6.51',
+     '49363adcfaf098748d7a4c8c624ad8c45a8c3a86'),
+    ('libjpeg-turbo', 'https://github.com/libjpeg-turbo/libjpeg-turbo', '3.1.4.1',
+     '9217719d3a58633923b096af4c1d50d304768a64'),
+    ('zstd', 'https://github.com/facebook/zstd', 'v1.5.7',
+     'f8745da6ff1ad1e7bab384bd1f9d742439278e99'),
+    ('lz4', 'https://github.com/lz4/lz4', 'v1.10.0',
+     'ebb370ca83af193212df4dcbadcc5d87bc0de2f0'),
+    ('libwebp', 'https://github.com/webmproject/libwebp', 'v1.6.0',
+     '4fa21912338357f89e4fd51cf2368325b59e9bd9'),
+    ('sdl3', 'https://github.com/libsdl-org/SDL', 'release-3.2.26',
+     'badbf8da4ee72b3ef599c721ffc9899e8d7c8d90'),
+    ('freetype', 'https://github.com/freetype/freetype', 'VER-2-14-1',
+     '526ec5c47b9ebccc4754c85ac0c0cdf7c85a5e9b'),
+    ('plutovg', 'https://github.com/sammycage/plutovg', 'v1.3.2',
+     '5695a711dd1cff1f01fa6542f3fe6a15de082c63'),
+    ('plutosvg', 'https://github.com/sammycage/plutosvg', 'v0.0.7',
+     '31f7d2675416cd777c8e86220b035364873b2a8b'),
+    ('curl', 'https://github.com/curl/curl', 'curl-8_11_1',
+     '75a2079d5c28debb2eaa848ca9430f1fe0d7844c'),
+    ('libpcap', 'https://github.com/the-tcpdump-group/libpcap', 'libpcap-1.10.5',
+     'bbcbc9174df3298a854daee2b3e666a4b6e5383a'),
+    ('shaderc', 'https://github.com/google/shaderc', 'v2025.4',
+     '73743588fe9c39f2f1c780a087d94afac691a189'),
+]
+
+
+def pin_android_deps(deps_root):
+    """Check every vendor dependency clone out to its pinned commit.
+
+    Runs before the recipe builds, so a moved tag or a stale cache can never
+    select the code: the tag clone is only the fetch vehicle. Returns the
+    resolved {dir: commit} map and records it beside the clones.
+    """
+    deps_root.mkdir(parents=True, exist_ok=True)
+    resolved = {}
+    for name, url, tag, commit in ANDROID_DEPS:
+        d = deps_root / name
+        if not d.is_dir():
+            run('git', 'clone', '--depth=1', '--branch', tag, '--recursive', url, d)
+        actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+        if actual != commit:
+            run('git', '-C', str(d), 'fetch', 'origin', commit)
+            run('git', '-C', str(d), 'checkout', '--detach', commit)
+            actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
+                                             text=True).strip()
+        if actual != commit:
+            raise ValueError('dependency pin mismatch: ' + str(d))
+        resolved[name] = actual
+    (deps_root / 'android-dependency-pins.json').write_text(
+        json.dumps(resolved, indent=2, sort_keys=True) + '\n')
+    return resolved
 
 
 def android_libs(a):
@@ -696,9 +799,21 @@ def android_libs(a):
     marker = 'NPROCS="$(getconf _NPROCESSORS_ONLN)"'
     if recipe.count(marker) != 1:
         raise ValueError('dependency recipe parallelism changed; review the vendor pin')
+    glslang = re.search(r'^SHADERC_GLSLANG=([0-9a-f]{40})$', recipe, re.M)
+    if not glslang:
+        raise ValueError('dependency recipe glslang pin changed; review the vendor pin')
+    # Tags are mutable: seat every clone on its recorded commit before the
+    # recipe builds (a moved tag only changes what gets fetched, never what
+    # gets built). The recipe still pins glslang itself; verify that below.
+    pin_android_deps(a.work / 'deps-build')
     recipe_path = a.work / 'android-dependencies.sh'
     recipe_path.write_text(recipe.replace(marker, 'NPROCS=' + str(a.jobs)))
     subprocess.run(['bash', str(recipe_path), str(prefix)], env=env, cwd=a.work, check=True)
+    actual_glslang = subprocess.check_output(
+        ['git', '-C', str(a.work / 'deps-build/shaderc/third_party/glslang'),
+         'rev-parse', 'HEAD'], text=True).strip()
+    if actual_glslang != glslang[1]:
+        raise ValueError('shaderc glslang pin mismatch: ' + actual_glslang)
     assembly = vendor.parent
     for src, dest in [(ENGINE / 'ps2xRuntime/third_party/armsx2/ge1', assembly / 'adapter'),
                       (ENGINE / 'ps2xRuntime/third_party/armsx2/mv2', assembly / 'mv2-adapter'),

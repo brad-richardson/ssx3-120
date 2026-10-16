@@ -25,7 +25,7 @@ class PublicInstallStageTest(unittest.TestCase):
             for name in ('ps2x.env', 'full120.env'):
                 (files / name).write_text(name)
             (work / 'inputs.json').write_text(json.dumps({}))
-            apk = root / 'android/app/build/outputs/apk/release/app-release.apk'
+            apk = root / 'apps/android/app/build/outputs/apk/release/app-release.apk'
             apk.parent.mkdir(parents=True)
             apk.write_bytes(b'apk')
             elf = work / 'SLUS_207.72'
