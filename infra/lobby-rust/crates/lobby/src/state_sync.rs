@@ -324,7 +324,8 @@ mod tests {
             slot, tick, pos: [1.0, 2.0, 3.0], quat: [0.0, 0.0, 0.0, 1.0],
             vel: [4.0, 5.0, 6.0], boost: 0.0, uber: 0, wipe: 0, ctl: 0,
             lap: 1, chk: 0, dist: 0.0, fin, ftime, peer_tick: 0,
-            peer_time_ms: 0, digest: 0,
+            peer_time_ms: 0, in_tick: tick, in_de4: 5,
+            in_w0: 0x11223344, in_w1: 0x55667788, digest: 0,
         }
     }
     #[test]

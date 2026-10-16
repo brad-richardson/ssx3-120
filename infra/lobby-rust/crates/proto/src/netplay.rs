@@ -1634,11 +1634,11 @@ fn lef32(b: &[u8]) -> Result<f32, CodecError> {
     Ok(f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
-/// `StateUpdate` wire payload (all LE, 91 bytes):
+/// `StateUpdate` wire payload (all LE, 111 bytes = 91 core + 20 input tail):
 /// `slot:u16, tick:u64, pos:3f, quat:4f, vel:3f, boost:f32, uber:u8,
 /// wipe:u8, ctl:u8, lap:u8, chk:u32, dist:f32, fin:u8, ftime:f32,
 /// peer_tick:u64, peer_time_ms:u32, digest:u64`.
-/// `digest` is FNV-1a/64 over the preceding 83 bytes
+/// `digest` is FNV-1a/64 over the preceding 103 bytes
 /// (`STATE_ALG_FNV64_DIAG`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StateUpdate {
@@ -1658,14 +1658,18 @@ pub struct StateUpdate {
     pub ftime: f32,
     pub peer_tick: u64,
     pub peer_time_ms: u32,
+    pub in_tick: u64,
+    pub in_de4: u32,
+    pub in_w0: u32,
+    pub in_w1: u32,
     pub digest: u64,
 }
 
 impl StateUpdate {
-    pub const ENCODED: usize = 91;
+    pub const ENCODED: usize = 111;
 
-    pub fn encode(&self) -> [u8; 91] {
-        let mut o = [0u8; 91];
+    pub fn encode(&self) -> [u8; 111] {
+        let mut o = [0u8; 111];
         o[0..2].copy_from_slice(&self.slot.to_le_bytes());
         o[2..10].copy_from_slice(&self.tick.to_le_bytes());
         for (i, v) in self.pos.iter().enumerate() {
@@ -1688,16 +1692,20 @@ impl StateUpdate {
         o[67..71].copy_from_slice(&self.ftime.to_le_bytes());
         o[71..79].copy_from_slice(&self.peer_tick.to_le_bytes());
         o[79..83].copy_from_slice(&self.peer_time_ms.to_le_bytes());
-        let digest = fnv64(&o[..83]).to_le_bytes();
-        o[83..91].copy_from_slice(&digest);
+        o[83..91].copy_from_slice(&self.in_tick.to_le_bytes());
+        o[91..95].copy_from_slice(&self.in_de4.to_le_bytes());
+        o[95..99].copy_from_slice(&self.in_w0.to_le_bytes());
+        o[99..103].copy_from_slice(&self.in_w1.to_le_bytes());
+        let digest = fnv64(&o[..103]).to_le_bytes();
+        o[103..111].copy_from_slice(&digest);
         o
     }
 
     pub fn decode(b: &[u8]) -> Result<Self, CodecError> {
-        if b.len() != 91 {
+        if b.len() != 111 {
             return Err(CodecError::BadLength);
         }
-        if fnv64(&b[..83]) != le_u64(&b[83..91])? {
+        if fnv64(&b[..103]) != le_u64(&b[103..111])? {
             return Err(CodecError::BadLength);
         }
         let mut pos = [0f32; 3];
@@ -1729,7 +1737,11 @@ impl StateUpdate {
             ftime: lef32(&b[67..71])?,
             peer_tick: le_u64(&b[71..79])?,
             peer_time_ms: le_u32(&b[79..83])?,
-            digest: le_u64(&b[83..91])?,
+            in_tick: le_u64(&b[83..91])?,
+            in_de4: le_u32(&b[91..95])?,
+            in_w0: le_u32(&b[95..99])?,
+            in_w1: le_u32(&b[99..103])?,
+            digest: le_u64(&b[103..111])?,
         })
     }
 }
@@ -1753,6 +1765,7 @@ mod state_tests {
             vel: [894.64, 342.0, -764.07], boost: 0.5, uber: 3, wipe: 0,
             ctl: 0, lap: 1, chk: 0x000038a1, dist: 6496.0, fin: 1,
             ftime: 241.5, peer_tick: 30496, peer_time_ms: 239500,
+            in_tick: 30703, in_de4: 5, in_w0: 0x11223344, in_w1: 0x55667788,
             digest: 0,
         }
     }
@@ -1769,16 +1782,17 @@ mod state_tests {
         assert_eq!(back.vel, s.vel);
         assert_eq!((back.boost, back.uber, back.ctl, back.chk, back.dist), (s.boost, s.uber, s.ctl, s.chk, s.dist));
         assert_eq!((back.fin, back.ftime, back.peer_tick, back.peer_time_ms), (s.fin, s.ftime, s.peer_tick, s.peer_time_ms));
+        assert_eq!((back.in_tick, back.in_de4, back.in_w0, back.in_w1), (s.in_tick, s.in_de4, s.in_w0, s.in_w1));
     }
     #[test]
     fn state_strict_rejections() {
         let enc = sample().encode();
-        assert_eq!(StateUpdate::decode(&enc[..90]).unwrap_err(), CodecError::BadLength);
+        assert_eq!(StateUpdate::decode(&enc[..110]).unwrap_err(), CodecError::BadLength);
         let mut bad = enc;
         bad[0] ^= 0xff;
         assert_eq!(StateUpdate::decode(&bad).unwrap_err(), CodecError::BadLength);
         let mut bad = enc;
-        bad[90] ^= 0x01;
+        bad[110] ^= 0x01;
         assert_eq!(StateUpdate::decode(&bad).unwrap_err(), CodecError::BadLength);
         let frame = encode_frame(&[0u8; 16], 0, KIND_STATE, 3, 9, &enc);
         assert_eq!(decode_frame(&frame).unwrap().kind, KIND_STATE);
