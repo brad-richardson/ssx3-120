@@ -289,6 +289,8 @@ COURSES = {
         big='MERQUER.BIG', donor='merquer', ps2_tool='tk16/ps2_as_gc.py',
         # NOTE truncated stem: merque_L.ssh (verified in donor extract).
         donor_extra=['merque_L.ssh'],
+        # Pinned census file uses the short stem (merq.json, not merquer).
+        effects='merq',
         # NOTE: no TK10_SURFACE here (bisect 10-16: WITH surface=0 the
         # fence rung gives 3eb8dc18, not merq-d ef3ed5be; merq has no
         # resets so the template surface only shifts content bytes).
