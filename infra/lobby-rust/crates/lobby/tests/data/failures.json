@@ -1,0 +1,139 @@
+{
+ "fixture": "failures.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7126,
+   "conn": "game/10901",
+   "type": "auth",
+   "sub": "00000000",
+   "size": 205,
+   "pairs": [
+    {
+     "k": "NAME",
+     "v": "pro1dup"
+    },
+    {
+     "k": "PASS",
+     "v": "***"
+    },
+    {
+     "k": "TOS",
+     "v": "1"
+    },
+    {
+     "k": "MID",
+     "v": "$020c294f4e4c"
+    },
+    {
+     "k": "PID",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "HWFLAG",
+     "v": "0"
+    },
+    {
+     "k": "HWMASK",
+     "v": "67876"
+    },
+    {
+     "k": "PROD",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "VERS",
+     "v": "\"PS2/Beta 1.04-Sep 17 2003\""
+    },
+    {
+     "k": "LANG",
+     "v": "en"
+    },
+    {
+     "k": "SLUS",
+     "v": "SLUS_20772"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7136,
+   "conn": "game/10901",
+   "type": "auth",
+   "sub": "00000000",
+   "size": 121,
+   "pairs": [
+    {
+     "k": "TOS",
+     "v": "1"
+    },
+    {
+     "k": "MAIL",
+     "v": ""
+    },
+    {
+     "k": "PERSONAS",
+     "v": "pro1dup"
+    },
+    {
+     "k": "BORN",
+     "v": "1990.01.01"
+    },
+    {
+     "k": "GEND",
+     "v": "m"
+    },
+    {
+     "k": "FROM",
+     "v": "US"
+    },
+    {
+     "k": "LANG",
+     "v": "en"
+    },
+    {
+     "k": "SPAM",
+     "v": "0"
+    },
+    {
+     "k": "SINCE",
+     "v": "2026.10.13 09:59:55"
+    },
+    {
+     "k": "CPAT",
+     "v": "1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7601,
+   "conn": "game/10901",
+   "type": "pers",
+   "sub": "00000000",
+   "size": 99,
+   "pairs": [
+    {
+     "k": "PERS",
+     "v": "pro1dup"
+    },
+    {
+     "k": "MID",
+     "v": "$020c294f4e4c"
+    },
+    {
+     "k": "PID",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "CDEV",
+     "v": "6512bd43d9caa6e02c990b0a82652dca"
+    }
+   ],
+   "strays": []
+  }
+ ]
+}

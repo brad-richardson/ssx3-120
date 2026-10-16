@@ -47,12 +47,23 @@ reviewable diffs on top).
 - `tools/ssx3/test_prebuilt.py`: contract/drift git queries read the engine
   checkout (`prebuilt.ENGINE`), not the product root.
 
-## Lobby separation
+## Lobby source (vendored, lobby-src-1)
 
-The `ssx3-lobby` matchmaker/relay server lives in its own repository (MIT);
-it is not vendored here. `infra/` holds only operator-side service files
-(`lobby-rust/ssx3-lobby.service`, `lobby.toml`, `lobby-compose.yaml`) and
-pins the lobby release per deploy. MComm is never published.
+The `ssx3-lobby` matchmaker/relay server is vendored here as the source of
+truth: `infra/lobby-rust/` holds 24 files byte-identical to `ssx3-lobby`
+`main` `408932e` (NOT the `online-120-2` branch `b3905ce`, which deploys
+later with the 120 client change; verified per-file with `cmp` against
+`git show 408932e`). `cargo test --locked --workspace` there is green
+(41 passed, 0 failed), and the musl release build from the vendored tree
+reproduces the live binary byte-for-byte (SHA-256 `af6a37df…f2d`).
+`infra/lobby-rust/` also retains two operator overlays that are not part
+of the lobby source: `ssx3-lobby.service` (production unit, identical to
+the live unit, SHA-256 `54e28e95…e44e`) and `lobby.toml` (production
+template, refreshed repo-to-repo from the lab infra tree at `20794f7a` —
+the limits-load-1 deploy source — checksum-identical to the live config
+`5d74f9f2…`, key names verified equal). The separate
+`ssx3-lobby` repository stays for history until its `online-120-2` branch
+merges. MComm is never published.
 
 ## Never in this repo or its releases
 

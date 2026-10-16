@@ -1,0 +1,9 @@
+[package]
+name = "ssx3-proto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SSX 3 lobby wire framing and phase-1 message types (clean-room, from docs/research/ssx3-online-protocol.md)"
+
+[dev-dependencies]
+proptest = "1"

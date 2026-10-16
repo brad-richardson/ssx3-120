@@ -4,8 +4,7 @@
 [lobby]
 bind = "0.0.0.0"
 # The IP clients dial AND the IP named in +ses/news (never 0.0.0.0).
-# Set to the public IPv4 clients dial (never 0.0.0.0).
-advertise_ip = "203.0.1.10"
+advertise_ip = "163.192.214.113"
 motd = "WIP Server"
 
 [ports]
@@ -27,15 +26,19 @@ peak = 3
 name = "Intermediate"
 peak = 4
 
-# SEC1 connection-churn caps, pinned explicitly (= the lobby code
-# defaults: per-IP connection + message rate limits, caps on
-# connections/sessions/queue; see LOB2 REPORT).
+# Connection/admission caps, pinned explicitly (= the lobby code
+# defaults; see limits-load-1 REPORT). max_pairs is N-1 (100 relay
+# ports); refused waiters stay queued and the quik echo carries FULL=1.
 [limits]
 max_connections = 512
 max_per_ip = 16
 msg_per_sec_per_ip = 60
 max_sessions = 256
 max_queue = 128
+max_pairs = 99
+max_pairs_per_ip = 4
+max_queue_per_ip = 8
+max_sessions_per_ip = 6
 waiter_timeout_secs = 600
 idle_probe_secs = 90
 idle_close_secs = 240
@@ -52,6 +55,28 @@ mode = "always"
 port_start = 3658
 port_end = 3757
 idle_timeout_secs = 120
+# Per-pair / per-role packet token buckets (a stock-60 race needs
+# ~40 pps per pair); per-role handshake bucket (one enrollment costs
+# 2; garbage matching neither shape drops for free).
+packets_per_sec = 300
+burst_packets = 600
+per_role_per_sec = 150
+per_role_burst = 300
+handshake_per_sec = 5
+handshake_burst = 10
+# Bandwidth ceiling with egress accounting: cost per forwarded datagram
+# is payload + 28 B IP/UDP overhead (~4.7 MB per racing pair-hour
+# measured). Global covers a full house at per-pair maxima; the 8 TiB
+# monthly cap (headroom under the free 10 TB/mo) gates new admissions.
+bytes_per_sec_per_pair = 8192
+burst_bytes_per_pair = 32768
+global_bytes_per_sec = 812000
+global_burst_bytes = 1048576
+monthly_egress_cap_bytes = 8796093022208
+
+[health]
+# External HEAD-monitor health (UptimeRobot): /healthz on TCP 8080.
+port = 8080
 
 [session]
 # Session token required so the relay learns the listen side from a

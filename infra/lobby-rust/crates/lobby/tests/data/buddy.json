@@ -1,0 +1,433 @@
+{
+ "fixture": "buddy.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7631,
+   "conn": "buddy/13505",
+   "type": "DISC",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7631,
+   "conn": "buddy/13505",
+   "type": "AUTH",
+   "sub": "00000000",
+   "size": 103,
+   "pairs": [
+    {
+     "k": "PROD",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "VERS",
+     "v": "2003-10-20"
+    },
+    {
+     "k": "PRES",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "USER",
+     "v": "onl6a/cso/SSX-PS2-2004"
+    },
+    {
+     "k": "PASS",
+     "v": "***"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7662,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7675,
+   "conn": "buddy/13505",
+   "type": "AUTH",
+   "sub": "00000000",
+   "size": 103,
+   "pairs": [
+    {
+     "k": "PROD",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "VERS",
+     "v": "2003-10-20"
+    },
+    {
+     "k": "PRES",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "USER",
+     "v": "onl6a/cso/SSX-PS2-2004"
+    },
+    {
+     "k": "PASS",
+     "v": "***"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7676,
+   "conn": "buddy/13505",
+   "type": "RGET",
+   "sub": "00000000",
+   "size": 41,
+   "pairs": [
+    {
+     "k": "LRSC",
+     "v": "cso"
+    },
+    {
+     "k": "LIST",
+     "v": "B"
+    },
+    {
+     "k": "PRES",
+     "v": "Y"
+    },
+    {
+     "k": "ID",
+     "v": "1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7676,
+   "conn": "buddy/13505",
+   "type": "RGET",
+   "sub": "00000000",
+   "size": 41,
+   "pairs": [
+    {
+     "k": "LRSC",
+     "v": "cso"
+    },
+    {
+     "k": "LIST",
+     "v": "I"
+    },
+    {
+     "k": "PRES",
+     "v": "Y"
+    },
+    {
+     "k": "ID",
+     "v": "2"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7676,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7692,
+   "conn": "buddy/13505",
+   "type": "RGET",
+   "sub": "00000000",
+   "size": 25,
+   "pairs": [
+    {
+     "k": "ID",
+     "v": "1"
+    },
+    {
+     "k": "SIZE",
+     "v": "0"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7693,
+   "conn": "buddy/13505",
+   "type": "RGET",
+   "sub": "00000000",
+   "size": 25,
+   "pairs": [
+    {
+     "k": "ID",
+     "v": "2"
+    },
+    {
+     "k": "SIZE",
+     "v": "0"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7796,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7808,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7951,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7955,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8100,
+   "conn": "buddy/13505",
+   "type": "PING",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8101,
+   "conn": "buddy/13505",
+   "type": "PING",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8601,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8606,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 9522,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 153,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d9%0aSZ1%3donl6b%0a"
+    }
+   ],
+   "strays": []
+  }
+ ]
+}

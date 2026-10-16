@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/proto", "crates/lobby"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "TBD"
+version = "0.1.0"
+
+[profile.release]
+opt-level = 2

@@ -1,0 +1,23 @@
+# Drop-in for ssx3 infra/lobby-compose.yaml (same ports, plus the
+# relay UDP range). Do NOT deploy to Oracle; that's a separate step
+# with the orchestrator.
+name: ssx3-lobby
+services:
+  lobby:
+    image: ssx3-lobby:phase1
+    container_name: ssx3-lobby
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: "1.0"
+    pids_limit: 256
+    oom_score_adj: 500
+    restart: unless-stopped
+    environment:
+      LOBBY_ADVERTISE_IP: ${LOBBY_ADVERTISE_IP:?Set the host LAN IPv4}
+    ports:
+      - "11000:11000/tcp"
+      - "10901:10901/tcp"
+      - "13505:13505/tcp"
+      - "3658-3757:3658-3757/udp"
+    volumes:
+      - ./lobby.toml:/lobby.toml:ro

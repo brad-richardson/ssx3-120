@@ -1,0 +1,147 @@
+{
+ "fixture": "quik-ses.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7205,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7206,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8086,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8087,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8400,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8413,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8441,
+   "conn": "game/10901",
+   "type": "+ses",
+   "sub": "00000000",
+   "size": 193,
+   "pairs": [
+    {
+     "k": "NAME",
+     "v": "ff176569-5839-489b-9473-be24ac2fb779"
+    },
+    {
+     "k": "SELF",
+     "v": "onl6a"
+    },
+    {
+     "k": "HOST",
+     "v": "onl6a"
+    },
+    {
+     "k": "OPPO",
+     "v": "onl6b"
+    },
+    {
+     "k": "P1",
+     "v": "2"
+    },
+    {
+     "k": "P2",
+     "v": "0"
+    },
+    {
+     "k": "P3",
+     "v": "0"
+    },
+    {
+     "k": "P4",
+     "v": "0"
+    },
+    {
+     "k": "AUTH",
+     "v": "1"
+    },
+    {
+     "k": "ADDR",
+     "v": "192.0.2.2"
+    },
+    {
+     "k": "FROM",
+     "v": "192.0.2.2"
+    },
+    {
+     "k": "SEED",
+     "v": "611006607"
+    },
+    {
+     "k": "WHEN",
+     "v": "2026.10.13 02:13:54"
+    }
+   ],
+   "strays": []
+  }
+ ]
+}

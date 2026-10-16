@@ -1,0 +1,25 @@
+[package]
+name = "ssx3-lobby"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SSX 3 quick-play lobby: matchmaker plus optional UDP relay (clean-room, phase 1)"
+
+[[bin]]
+name = "lobby"
+path = "src/main.rs"
+
+[dependencies]
+ssx3-proto = { package = "ssx3-proto", path = "../proto" }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"

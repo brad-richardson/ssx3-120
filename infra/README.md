@@ -51,10 +51,14 @@ created even when the instance fails. Retry with
 
 ## 4. Build the lobby
 
-Build the static lobby binary from the lobby source tree, then deploy:
+Build the static lobby binary from the vendored source tree
+(`lobby-rust/`, byte-identical to `ssx3-lobby@408932e`; run
+`cargo test --locked --workspace` there first), then deploy:
 
 ```
+cd lobby-rust
 cargo zigbuild --release --target aarch64-unknown-linux-musl
+cd ..
 ./deploy-lobby-rust.sh --host=<lobby_address> --binary=<path-to-lobby>
 ```
 
@@ -113,4 +117,4 @@ be ready to close ingress.
 | `backup-lobby.sh`, `backup-state.sh` | Data/state backups to `./lobby-backups`, `./infra-state-backup` |
 | `retry-instance.sh`, `check-cloud-init.sh` | Capacity retry; first-boot static guard |
 | `lobby-compose.yaml` | Legacy MComm compose (reference only) |
-| `lobby-rust/` | Service unit + production config template (set `advertise_ip`) |
+| `lobby-rust/` | Vendored lobby source (byte-identical to `ssx3-lobby@408932e`) + service unit + production config template (set `advertise_ip`) |

@@ -1,0 +1,34 @@
+[Unit]
+Description=SSX 3 quick-play lobby (matchmaker + optional UDP relay)
+Documentation=https://github.com/brad-richardson/ssx3
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/lobby /etc/ssx3-lobby/lobby.toml
+Restart=always
+RestartSec=5
+
+# Hardened profile (Brad 10-13; fits the Oracle free tier):
+# static musl binary, no capabilities (all ports are above 1024),
+# no filesystem writes (phase 1 keeps everything in memory).
+DynamicUser=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6
+MemoryMax=512M
+TasksMax=256
+
+# Config is read-only under /etc; logs go to the journal.
+ReadOnlyPaths=/etc/ssx3-lobby
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ssx3-lobby
+
+[Install]
+WantedBy=multi-user.target

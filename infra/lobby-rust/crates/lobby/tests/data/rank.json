@@ -1,0 +1,423 @@
+{
+ "fixture": "rank.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 12993,
+   "conn": "game/10901",
+   "type": "rank",
+   "sub": "00000000",
+   "size": 1144,
+   "pairs": [
+    {
+     "k": "WHEN",
+     "v": "2026.10.13 3:38:39"
+    },
+    {
+     "k": "REPT",
+     "v": "onl6a"
+    },
+    {
+     "k": "AUTH",
+     "v": "1"
+    },
+    {
+     "k": "COMMERR",
+     "v": "0"
+    },
+    {
+     "k": "SCOMERR",
+     "v": "0"
+    },
+    {
+     "k": "PINGRSLT",
+     "v": "1"
+    },
+    {
+     "k": "STALLCNT",
+     "v": "2"
+    },
+    {
+     "k": "CERRSTAT",
+     "v": "1065353216"
+    },
+    {
+     "k": "CERRFLGS",
+     "v": "0"
+    },
+    {
+     "k": "DIDQUIT0",
+     "v": "0"
+    },
+    {
+     "k": "DIDQUIT1",
+     "v": "1"
+    },
+    {
+     "k": "FINISH0",
+     "v": "0"
+    },
+    {
+     "k": "FINISH1",
+     "v": "0"
+    },
+    {
+     "k": "DNF0",
+     "v": "0"
+    },
+    {
+     "k": "DNF1",
+     "v": "0"
+    },
+    {
+     "k": "RSLTSLCK",
+     "v": "0"
+    },
+    {
+     "k": "RACETRA0",
+     "v": "3"
+    },
+    {
+     "k": "RACEEVE0",
+     "v": "0"
+    },
+    {
+     "k": "DESYNC",
+     "v": "0"
+    },
+    {
+     "k": "NAME0",
+     "v": "onl6b"
+    },
+    {
+     "k": "QUIT0",
+     "v": "57"
+    },
+    {
+     "k": "CHEAT0",
+     "v": "0"
+    },
+    {
+     "k": "DISC0",
+     "v": "0"
+    },
+    {
+     "k": "CHARACTER0",
+     "v": "4"
+    },
+    {
+     "k": "RACETIM0",
+     "v": "151587081"
+    },
+    {
+     "k": "SPINDEG0",
+     "v": "0"
+    },
+    {
+     "k": "FLIPDEG0",
+     "v": "0"
+    },
+    {
+     "k": "NUMGRAB0",
+     "v": "0"
+    },
+    {
+     "k": "NUMRAIL0",
+     "v": "0"
+    },
+    {
+     "k": "NUMTLAN0",
+     "v": "0"
+    },
+    {
+     "k": "NUMUTRI0",
+     "v": "0"
+    },
+    {
+     "k": "NUMRESE0",
+     "v": "0"
+    },
+    {
+     "k": "NUMWIPE0",
+     "v": "0"
+    },
+    {
+     "k": "NUMFRAG0",
+     "v": "0"
+    },
+    {
+     "k": "NUMDEAD0",
+     "v": "0"
+    },
+    {
+     "k": "NUMPLAY0",
+     "v": "0"
+    },
+    {
+     "k": "NUMCCHL0",
+     "v": "0"
+    },
+    {
+     "k": "NUMPLAB0",
+     "v": "0"
+    },
+    {
+     "k": "NUMSLAB0",
+     "v": "0"
+    },
+    {
+     "k": "AIRTIME0",
+     "v": "0"
+    },
+    {
+     "k": "GRABTIM0",
+     "v": "0"
+    },
+    {
+     "k": "RAILDIS0",
+     "v": "0"
+    },
+    {
+     "k": "BAIRTIM0",
+     "v": "0"
+    },
+    {
+     "k": "BGRABTI0",
+     "v": "0"
+    },
+    {
+     "k": "BRAILDI0",
+     "v": "0"
+    },
+    {
+     "k": "MAXSPEE0",
+     "v": "3305"
+    },
+    {
+     "k": "MAXAVSP0",
+     "v": "3087"
+    },
+    {
+     "k": "SUMSPEE0",
+     "v": "4017189"
+    },
+    {
+     "k": "SUMTICK0",
+     "v": "2471"
+    },
+    {
+     "k": "TRICKL10",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL20",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL30",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL40",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL50",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL60",
+     "v": "0"
+    },
+    {
+     "k": "BESTRPO0",
+     "v": "-1"
+    },
+    {
+     "k": "POINTS0",
+     "v": "0"
+    },
+    {
+     "k": "PLOSTWI0",
+     "v": "0"
+    },
+    {
+     "k": "PLOSTRE0",
+     "v": "0"
+    },
+    {
+     "k": "CHARACTER1",
+     "v": "4"
+    },
+    {
+     "k": "RACETIM1",
+     "v": "151587081"
+    },
+    {
+     "k": "NAME1",
+     "v": "onl6a"
+    },
+    {
+     "k": "QUIT1",
+     "v": "57"
+    },
+    {
+     "k": "CHEAT1",
+     "v": "0"
+    },
+    {
+     "k": "DISC1",
+     "v": "0"
+    },
+    {
+     "k": "SPINDEG1",
+     "v": "0"
+    },
+    {
+     "k": "FLIPDEG1",
+     "v": "0"
+    },
+    {
+     "k": "NUMGRAB1",
+     "v": "0"
+    },
+    {
+     "k": "NUMRAIL1",
+     "v": "0"
+    },
+    {
+     "k": "NUMTLAN1",
+     "v": "0"
+    },
+    {
+     "k": "NUMUTRI1",
+     "v": "0"
+    },
+    {
+     "k": "NUMRESE1",
+     "v": "0"
+    },
+    {
+     "k": "NUMWIPE1",
+     "v": "1"
+    },
+    {
+     "k": "NUMFRAG1",
+     "v": "0"
+    },
+    {
+     "k": "NUMDEAD1",
+     "v": "0"
+    },
+    {
+     "k": "NUMPLAY1",
+     "v": "0"
+    },
+    {
+     "k": "NUMCCHL1",
+     "v": "0"
+    },
+    {
+     "k": "NUMPLAB1",
+     "v": "0"
+    },
+    {
+     "k": "NUMSLAB1",
+     "v": "0"
+    },
+    {
+     "k": "AIRTIME1",
+     "v": "0"
+    },
+    {
+     "k": "GRABTIM1",
+     "v": "0"
+    },
+    {
+     "k": "RAILDIS1",
+     "v": "0"
+    },
+    {
+     "k": "BAIRTIM1",
+     "v": "0"
+    },
+    {
+     "k": "BGRABTI1",
+     "v": "0"
+    },
+    {
+     "k": "BRAILDI1",
+     "v": "0"
+    },
+    {
+     "k": "MAXSPEE1",
+     "v": "3333"
+    },
+    {
+     "k": "MAXAVSP1",
+     "v": "3224"
+    },
+    {
+     "k": "SUMSPEE1",
+     "v": "4215310"
+    },
+    {
+     "k": "SUMTICK1",
+     "v": "2471"
+    },
+    {
+     "k": "TRICKL11",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL21",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL31",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL41",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL51",
+     "v": "0"
+    },
+    {
+     "k": "TRICKL61",
+     "v": "0"
+    },
+    {
+     "k": "BESTRPO1",
+     "v": "-1"
+    },
+    {
+     "k": "POINTS1",
+     "v": "0"
+    },
+    {
+     "k": "PLOSTWI1",
+     "v": "0"
+    },
+    {
+     "k": "PLOSTRE1",
+     "v": "0"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 13020,
+   "conn": "game/10901",
+   "type": "rank",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  }
+ ]
+}

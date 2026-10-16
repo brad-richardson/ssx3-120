@@ -1,0 +1,470 @@
+{
+ "fixture": "login.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7103,
+   "conn": "lobby/11000",
+   "type": "@dir",
+   "sub": "00000000",
+   "size": 88,
+   "pairs": [
+    {
+     "k": "PROD",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "VERS",
+     "v": "\"PS2/Beta 1.04-Sep 17 2003\""
+    },
+    {
+     "k": "LANG",
+     "v": "en"
+    },
+    {
+     "k": "SLUS",
+     "v": "SLUS_20772"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7104,
+   "conn": "lobby/11000",
+   "type": "-1(conn-frame)",
+   "sub": "ffffffff",
+   "size": 12,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7112,
+   "conn": "lobby/11000",
+   "type": "@dir",
+   "sub": "00000000",
+   "size": 96,
+   "pairs": [
+    {
+     "k": "ADDR",
+     "v": "192.0.2.1"
+    },
+    {
+     "k": "PORT",
+     "v": "10901"
+    },
+    {
+     "k": "SESS",
+     "v": "6776905060"
+    },
+    {
+     "k": "MASK",
+     "v": "41041f3f70ecb1757cd7001b9a7a1916"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7113,
+   "conn": "game/10901",
+   "type": "addr",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "ADDR",
+     "v": "192.0.2.2"
+    },
+    {
+     "k": "PORT",
+     "v": "52061"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7114,
+   "conn": "game/10901",
+   "type": "-1(conn-frame)",
+   "sub": "ffffffff",
+   "size": 12,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7115,
+   "conn": "game/10901",
+   "type": "skey",
+   "sub": "00000000",
+   "size": 40,
+   "pairs": [
+    {
+     "k": "SKEY",
+     "v": "$5075626c6963204b6579"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7115,
+   "conn": "game/10901",
+   "type": "addr",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "ADDR",
+     "v": "192.0.2.2"
+    },
+    {
+     "k": "PORT",
+     "v": "52061"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7117,
+   "conn": "game/10901",
+   "type": "skey",
+   "sub": "00000000",
+   "size": 52,
+   "pairs": [
+    {
+     "k": "SKEY",
+     "v": "$37940faf2a8d1381a3b7d0d2f570e6a7"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7118,
+   "conn": "game/10901",
+   "type": "sele",
+   "sub": "00000000",
+   "size": 52,
+   "pairs": [
+    {
+     "k": "ROOMS",
+     "v": "1 USERS=1 RANKS=0 MESGS=1 GAMES=1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7118,
+   "conn": "game/10901",
+   "type": "auth",
+   "sub": "00000000",
+   "size": 203,
+   "pairs": [
+    {
+     "k": "NAME",
+     "v": "onl6a"
+    },
+    {
+     "k": "PASS",
+     "v": "***"
+    },
+    {
+     "k": "TOS",
+     "v": "1"
+    },
+    {
+     "k": "MID",
+     "v": "$020c294f4e4c"
+    },
+    {
+     "k": "PID",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "HWFLAG",
+     "v": "0"
+    },
+    {
+     "k": "HWMASK",
+     "v": "67876"
+    },
+    {
+     "k": "PROD",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "VERS",
+     "v": "\"PS2/Beta 1.04-Sep 17 2003\""
+    },
+    {
+     "k": "LANG",
+     "v": "en"
+    },
+    {
+     "k": "SLUS",
+     "v": "SLUS_20772"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7125,
+   "conn": "game/10901",
+   "type": "sele",
+   "sub": "00000000",
+   "size": 28,
+   "pairs": [
+    {
+     "k": "MORE",
+     "v": "0"
+    },
+    {
+     "k": "SLOTS",
+     "v": "0"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7126,
+   "conn": "game/10901",
+   "type": "auth",
+   "sub": "00000000",
+   "size": 119,
+   "pairs": [
+    {
+     "k": "TOS",
+     "v": "1"
+    },
+    {
+     "k": "MAIL",
+     "v": ""
+    },
+    {
+     "k": "PERSONAS",
+     "v": "onl6a"
+    },
+    {
+     "k": "BORN",
+     "v": "1990.01.01"
+    },
+    {
+     "k": "GEND",
+     "v": "m"
+    },
+    {
+     "k": "FROM",
+     "v": "US"
+    },
+    {
+     "k": "LANG",
+     "v": "en"
+    },
+    {
+     "k": "SPAM",
+     "v": "0"
+    },
+    {
+     "k": "SINCE",
+     "v": "2026.10.13 02:13:09"
+    },
+    {
+     "k": "CPAT",
+     "v": "1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7127,
+   "conn": "game/10901",
+   "type": "+rom",
+   "sub": "00000000",
+   "size": 78,
+   "pairs": [
+    {
+     "k": "A",
+     "v": "192.0.2.1"
+    },
+    {
+     "k": "I",
+     "v": "1"
+    },
+    {
+     "k": "N",
+     "v": "Beginner.Peak 1"
+    },
+    {
+     "k": "H",
+     "v": "Mcomm"
+    },
+    {
+     "k": "F",
+     "v": "CK"
+    },
+    {
+     "k": "T",
+     "v": "01"
+    },
+    {
+     "k": "L",
+     "v": "32"
+    },
+    {
+     "k": "P",
+     "v": "10"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7128,
+   "conn": "game/10901",
+   "type": "+rom",
+   "sub": "00000000",
+   "size": 78,
+   "pairs": [
+    {
+     "k": "A",
+     "v": "192.0.2.1"
+    },
+    {
+     "k": "I",
+     "v": "2"
+    },
+    {
+     "k": "N",
+     "v": "Advanced.Peak 2"
+    },
+    {
+     "k": "H",
+     "v": "Mcomm"
+    },
+    {
+     "k": "F",
+     "v": "CK"
+    },
+    {
+     "k": "T",
+     "v": "01"
+    },
+    {
+     "k": "L",
+     "v": "32"
+    },
+    {
+     "k": "P",
+     "v": "10"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7129,
+   "conn": "game/10901",
+   "type": "+rom",
+   "sub": "00000000",
+   "size": 75,
+   "pairs": [
+    {
+     "k": "A",
+     "v": "192.0.2.1"
+    },
+    {
+     "k": "I",
+     "v": "3"
+    },
+    {
+     "k": "N",
+     "v": "Elite.Peak 3"
+    },
+    {
+     "k": "H",
+     "v": "Mcomm"
+    },
+    {
+     "k": "F",
+     "v": "CK"
+    },
+    {
+     "k": "T",
+     "v": "01"
+    },
+    {
+     "k": "L",
+     "v": "32"
+    },
+    {
+     "k": "P",
+     "v": "10"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7130,
+   "conn": "game/10901",
+   "type": "+rom",
+   "sub": "00000000",
+   "size": 82,
+   "pairs": [
+    {
+     "k": "A",
+     "v": "192.0.2.1"
+    },
+    {
+     "k": "I",
+     "v": "4"
+    },
+    {
+     "k": "N",
+     "v": "Intermediate.Peak 4"
+    },
+    {
+     "k": "H",
+     "v": "Mcomm"
+    },
+    {
+     "k": "F",
+     "v": "CK"
+    },
+    {
+     "k": "T",
+     "v": "01"
+    },
+    {
+     "k": "L",
+     "v": "32"
+    },
+    {
+     "k": "P",
+     "v": "10"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7631,
+   "conn": "buddy/13505",
+   "type": "-1(conn-frame)",
+   "sub": "ffffffff",
+   "size": 12,
+   "pairs": [],
+   "strays": []
+  }
+ ]
+}

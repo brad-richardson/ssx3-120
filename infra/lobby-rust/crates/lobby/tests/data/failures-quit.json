@@ -1,0 +1,559 @@
+{
+ "fixture": "failures-quit.json",
+ "source": "PRO1 builds from our own captures; IPs remapped to 192.0.2.0/24, PASS scrubbed",
+ "messages": [
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7202,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7203,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7641,
+   "conn": "buddy/13505",
+   "type": "DISC",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7672,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7689,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7811,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7814,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 7951,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 7955,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8175,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8176,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8400,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8416,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 8700,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 20,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "*"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 8703,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 20,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "*"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 9146,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 9147,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 9193,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 9194,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 9300,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 9303,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 43,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "DeathRace"
+    },
+    {
+     "k": "QMFP",
+     "v": "1,1,1,1,1"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 9600,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 20,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "*"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 9607,
+   "conn": "game/10901",
+   "type": "quik",
+   "sub": "00000000",
+   "size": 20,
+   "pairs": [
+    {
+     "k": "KIND",
+     "v": "*"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 10046,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 10051,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "PSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "CHAT"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d0%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 10266,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 10267,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-rx",
+   "guest_tick": 11364,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 11365,
+   "conn": "game/10901",
+   "type": "~png",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 12348,
+   "conn": "buddy/13505",
+   "type": "PSET",
+   "sub": "00000000",
+   "size": 139,
+   "pairs": [
+    {
+     "k": "RSRC",
+     "v": "SSX-PS2-2004"
+    },
+    {
+     "k": "SHOW",
+     "v": "DISC"
+    },
+    {
+     "k": "STAT",
+     "v": "\"en%3d%22is playing SSX 3%22%0aP%3dssx3%0a\""
+    },
+    {
+     "k": "PROD",
+     "v": "S%3dSSX-PS2-2004%0aSSXID%3d3%0aLOCID%3d1%0a"
+    }
+   ],
+   "strays": []
+  },
+  {
+   "dir": "tcp-tx",
+   "guest_tick": 12348,
+   "conn": "buddy/13505",
+   "type": "DISC",
+   "sub": "00000000",
+   "size": 13,
+   "pairs": [],
+   "strays": []
+  }
+ ]
+}
