@@ -65,11 +65,12 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
 # Rung order. 'resets' must stay between 'race' and 'scenery': the ov-s
 # output (not the race output) is the scenery base wherever GC reset data
 # exists (regression: gari scenery once ran on the race world and missed).
-# Middle ladder: sg (show-gate variant) -> bind (effects) -> floor (f11 =
+# Middle ladder: sg (show-gate variant) / cand (soft variant) / finalw
+# (mesa show+unprotect+waterfall variant) -> bind (effects) -> floor (f11 =
 # worlds-final). Stages that a course has not wired yet are skipped with a
 # note (never silently): the oracles, not the rung list, are the gate.
 RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
-             'terrain', 'sg', 'bind', 'floor', 'composite']
+             'terrain', 'sg', 'cand', 'finalw', 'bind', 'floor', 'composite']
 
 
 COURSES = {
@@ -262,12 +263,21 @@ COURSES = {
                        '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
         terrain_L='mesa_L.ssh',
         oracle_c='14b3daf3',
-        # mesa-finalw f81f73d4 (bridge/show/waterfall steps) feeds bind, not
-        # candt2 directly; middle-ladder rung pending TK37b/TKP3 recon.
+        # mesa-finalw: cand2 flags + start-gate show (63/64) + bridge
+        # unprotect (463/475), rails, mesa terrain flags, waterfall bind.
         oracle_cand='14b3daf3',
+        finalw_show=[63, 64],
+        finalw_unprotect=[463, 475],
+        finalw_bind_names=['Mdl_Big_Waterfall', 'Mdl_Mini_Waterfall',
+                           'Mdl_End_Waterfall', 'Mdl_End_Waterfallmist'],
+        oracle_finalw_sc='6c12965314f377df77bd50786146444f735169e4bb2a5f35d2ba69411572e8c4',
+        oracle_finalw_f='4c560c70edf29c69d2cd6f0c89fa15cb4518f929717087185c6f5c361c518507',
+        oracle_finalt='a489c69c6ef56ec99905edabfedde1b9ec5e6b2f058a11134ce4552f7c20c795',
+        oracle_finalw='f81f73d4363c4574ff18b12c675dfeb0bfd63a1b22c6336baaa4ce20a533dc97',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
-        bind_scenery='mesa-final-scenery.json',
+        bind_base='finalw',
+        bind_scenery='final',
         oracle_bound='fe35aa1881eebf6eda0392cb43531b53ae2ffa513688a66fb306e262c5f6f8a4',
         floor_group=80,
         oracle_final='93668ecfb8ebad07d958d8a0c7f8e7cf55c4312476a0c7c612009e29b3e0702d',
@@ -308,6 +318,19 @@ COURSES = {
         stem_terrain='merq',
         oracle_sc='658eda9e18acf7e4a4e311e935bc66c5a16da2859efeed0f47fb935b39c42133',
         oracle_f='ef3ed5be',
+        # TK33b merq-cand: soft + 33-glass keep + merq-d trims on the race
+        # base (MERQ stem); rails16; m5 terrain flags, 'merq' stem.
+        cand_extra=['--soft-u0zero', '--soft-u0zero-keep-file',
+                    '{data}/merq-glass-keep.txt',
+                    '--collision-route', '{data}/merq3d.txt',
+                    '--collision-radius', '1500',
+                    '--drop-instances', '{data}/merq-drop.txt'],
+        cand_stem_scenery='MERQ',
+        cand_stem_terrain='merq',
+        oracle_cand_sc='60e1f21c',
+        oracle_candt='e5394e3c',
+        bind_base='candt',
+        bind_scenery='cand',
         # TK19 m5 recipe via TK19c: --mips 4 --prune --compact-ids
         # --mips-only merq-line-tex5 --offline-tex-max 64 --lm 1.0/0.5.
         terrain_tool='tk19c/make_terrain_tex.py',
@@ -318,7 +341,6 @@ COURSES = {
         terrain_L='merque_L.ssh',
         oracle_c='60830bffafbf9c46a542a99c6218506d8ab1b6d6412be01db3fc4f5eb212f997',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
-        bind_scenery='merq-cand-scenery.json',
         oracle_bound='021b9b1a0d27499f3bae6e299a0299e373e925b1eb71aa5635a7135ca4568b20',
         floor_group=148,
         oracle_final='9fcced315bf5d0f9a8ab4b7232dc1f6a2a2d4386748332ef479aea99c967998c',
@@ -352,6 +374,22 @@ COURSES = {
         # terrain also takes ELYS.
         stem_scenery='ELYS',
         stem_terrain='ELYS',
+        # TK33b elys-cand: soft + 110-glass/reset keep + elys-b trims on the
+        # race base (ELYS stem); rails16; eb1 terrain flags, 'elys' stem.
+        cand_extra=['--soft-u0zero', '--soft-u0zero-keep-file',
+                    '{data}/elys-glassreset-keep.txt',
+                    '--collision-route', '{data}/elys3d.txt',
+                    '--collision-radius', '1500',
+                    '--drop-instances', '{data}/elys-drop.txt'],
+        cand_stem_scenery='ELYS',
+        cand_stem_terrain='elys',
+        oracle_cand_sc='ef001690',
+        oracle_candt='60e1b402',
+        bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        bind_base='candt',
+        bind_scenery='cand',
+        # Pinned census file uses the short stem (elys.json, not elysium).
+        effects='elys',
         # TK26 elys-eb1 terrain (TK19c tool): --mips 4 --mips-only
         # elys-line-tex20 --prune --prune-kinds 10 --compact-ids --lm 1.0
         # --offline-tex-max 32. eb1 68207cc0; candt 60e1b402 path after eb1
@@ -407,6 +445,9 @@ COURSES = {
         terrain_L='aloha_L.ssh',
         oracle_c='0c35368056f406eb1698aba45bb3b0ae97b4bc0677e22d03ce4b1daef3b87691',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        # A-bind on the -c world with the -b scenery (generic A == the
+        # proven specific trio: 6ca2bca6 both ways).
+        bind_base='c',
         bind_scenery='aloha-b-scenery.json',
         oracle_bound='6ca2bca62db08d2d9e068b522e5e5fa6de567edde1d7a028546a839143d4c8b9',
         floor_group=22,
@@ -451,6 +492,10 @@ COURSES = {
         terrain_L='alaska_L.ssh',
         oracle_c='b1bb68d2cdf2a01b02517b336efbf40d33bd744867bc2184aa560d9a1693560d',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
+        # A-bind on the -c world with the -b scenery (TKP2 census: 3 rows;
+        # specific Mdl_LcdscanRed run gave 161ff820, generic A pending check
+        # against the same oracle at runtime).
+        bind_base='c',
         bind_scenery='alaska-b-scenery.json',
         oracle_bound='161ff820b26c35418853f998424b6aaea7d908199fd171b2ca4eea61e4c5968e',
         floor_group=115,
@@ -735,6 +780,110 @@ class Chain:
             check(tout, r['oracle_sgt'], f'{c} sgt')
         return tout
 
+    # -- rung: soft-candidate variant (cand) ----------------------------------
+    # Rebuilds scenery from the RACE base (pre-rails: kind 3/12 assert) with
+    # soft-u0zero + keep-file + the course trims, then rails + the course
+    # terrain flags. Proven: merq (60e1f21c -> e5394e3c), elys (ef001690 ->
+    # 60e1b402, lowercase terrain stem).
+    def rung_cand(self, c, r, rbig, bdir, ddir):
+        w = self.W / f'w-{c}-cand'
+        (w / 'sc').mkdir(parents=True, exist_ok=True)
+        sc = w / 'sc' / f'{c.upper()}.BIG'
+        out = w / f'{c.upper()}.BIG'
+        fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
+        extra = [a.format(**fmt) for a in r['cand_extra']]
+        stem = r.get('cand_stem_scenery', c)
+        run('cand-scenery', sys.executable, self.T / 'tk33b' / 'make_scenery33.py',
+            rbig, bdir / 'experiment.json',
+            ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            stem, sc, '--receipt', w / 'scenery.json', *extra,
+            cwd=self.W, log=self.log(c, 'cand-scenery'))
+        if r.get('oracle_cand_sc'):
+            check(sc, r['oracle_cand_sc'], f'{c} cand-sc')
+        run('cand-rails', sys.executable, self.T / r.get('cand_rails_tool', 'tk33b/make_rails16.py'),
+            sc, bdir / 'experiment.json',
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            stem, out, cwd=self.W, log=self.log(c, 'cand-rails'))
+        tdir = self.W / f'w-{c}-candt'
+        tdir.mkdir(parents=True, exist_ok=True)
+        tout = tdir / f'{c.upper()}.BIG'
+        L = r['terrain_L']
+        fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
+        tex = [a.format(**fex) for a in r['terrain_extra']]
+        run('cand-terrain', sys.executable, self.T / r['terrain_tool'],
+            out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
+            ddir / f"{r['donor']}.ssh", ddir / L,
+            r.get('cand_stem_terrain', c), tout, *tex,
+            '--receipt', tdir / 'terrain.json',
+            cwd=self.W, log=self.log(c, 'cand-terrain'))
+        if r.get('oracle_candt'):
+            check(tout, r['oracle_candt'], f'{c} candt')
+        return tout
+
+    # -- rung: finalw variant (mesa) ------------------------------------------
+    # Rebuilds scenery from the ov-s base with the candidate flags plus
+    # --show-hidden-instance (start gate) and --unprotect-instance (bridge
+    # boards), then rails + the course terrain flags + the waterfall bind.
+    # Proven: mesa (6c129653 -> 4c560c70 -> a489c69c -> f81f73d4).
+    def rung_finalw(self, c, r, sbig, bdir, ddir):
+        w = self.W / f'w-{c}-final'
+        (w / 'sc').mkdir(parents=True, exist_ok=True)
+        sc = w / 'sc' / f'{c.upper()}.BIG'
+        out = w / f'{c.upper()}.BIG'
+        fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
+        extra = [a.format(**fmt) for a in r['scenery_extra']]
+        ff = (r.get('fence_file') or '').format(c=c)
+        if ff:
+            for n in (self.T / 'data' / ff).read_text().split():
+                extra += ['--no-collision-instance', n]
+        for n in r.get('finalw_show', []):
+            extra += ['--show-hidden-instance', str(n)]
+        for n in r.get('finalw_unprotect', []):
+            extra += ['--unprotect-instance', str(n)]
+        run('finalw-scenery', sys.executable, self.T / r['scenery_tool'],
+            sbig, bdir / 'experiment.json',
+            ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            r.get('stem_scenery', c), sc, '--receipt', w / 'scenery.json',
+            *extra, cwd=self.W, log=self.log(c, 'finalw-scenery'))
+        if r.get('oracle_finalw_sc'):
+            check(sc, r['oracle_finalw_sc'], f'{c} finalw-sc')
+        run('finalw-rails', sys.executable, self.T / r['rails_tool'],
+            sc, bdir / 'experiment.json',
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            r.get('stem_scenery', c), out,
+            cwd=self.W, log=self.log(c, 'finalw-rails'))
+        if r.get('oracle_finalw_f'):
+            check(out, r['oracle_finalw_f'], f'{c} finalw-f')
+        tdir = self.W / f'w-{c}-finalt'
+        tdir.mkdir(parents=True, exist_ok=True)
+        tout = tdir / f'{c.upper()}.BIG'
+        L = r['terrain_L']
+        fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
+        tex = [a.format(**fex) for a in r['terrain_extra']]
+        run('finalw-terrain', sys.executable, self.T / r['terrain_tool'],
+            out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
+            ddir / f"{r['donor']}.ssh", ddir / L,
+            r.get('stem_terrain', c), tout, *tex,
+            '--receipt', tdir / 'terrain.json',
+            cwd=self.W, log=self.log(c, 'finalw-terrain'))
+        if r.get('oracle_finalt'):
+            check(tout, r['oracle_finalt'], f'{c} finalt')
+        fdir = self.W / f'w-{c}-finalw'
+        fdir.mkdir(parents=True, exist_ok=True)
+        fout = fdir / f'{c.upper()}.BIG'
+        effects = Path(self.a.pins) / 'scenery-effects' / 'effects' / \
+            f"{r.get('effects', r['donor'])}.json"
+        run('finalw-bind', sys.executable, self.T / 'tk24c' / 'bind_effects.py',
+            tout, w / 'scenery.json', effects, fout,
+            '--names', *r['finalw_bind_names'], '--kind0-as-trigger',
+            '--receipt', fdir / 'bind.json',
+            cwd=self.W, log=self.log(c, 'finalw-bind'))
+        if r.get('oracle_finalw'):
+            check(fout, r['oracle_finalw'], f'{c} finalw')
+        return fout
+
     # -- rung: bind effects --------------------------------------------------
     # bind_effects.py on the candidate (or sgt) world with the pinned donor
     # effects census + by-name sign binds. Proven on gari (sgt -> 58897da8)
@@ -785,7 +934,7 @@ class Chain:
         if upto != 'all':
             order = order[:order.index(upto) + 1]
         ddir = bdir = rbig = sbig = bbig = cbig = None
-        sgt = bound = final = None
+        sgt = bound = final = finalw = None
         aip = None
         if 'extract' in order:
             ddir = self.rung_extract(c, r)
@@ -806,21 +955,36 @@ class Chain:
             bbig = self.rung_scenery(c, r, sbig, bdir, ddir)
         if 'terrain' in order:
             cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
+        if 'cand' in order:
+            if r.get('cand_extra'):
+                cbig = self.rung_cand(c, r, rbig, bdir, ddir)
+            else:
+                print(f'{c} cand skipped (not wired)', flush=True)
         if 'sg' in order:
             if r.get('sg_show'):
                 sgt = self.rung_sg(c, r, sbig, bdir, ddir)
             else:
                 print(f'{c} sg skipped (no sg_show)', flush=True)
+        if 'finalw' in order:
+            if r.get('finalw_show'):
+                finalw = self.rung_finalw(c, r, sbig, bdir, ddir)
+            else:
+                print(f'{c} finalw skipped (no finalw_show)', flush=True)
         if 'bind' in order:
             if r.get('bind_names') and r.get('bind_base'):
                 if r['bind_base'] == 'sgt':
                     wworld = sgt
                 elif r['bind_base'] == 'candt':
                     wworld = cbig
+                elif r['bind_base'] == 'c':
+                    wworld = cbig
+                elif r['bind_base'] == 'finalw':
+                    wworld = finalw
                 else:
                     raise SystemExit(f'{c}: unknown bind_base {r["bind_base"]}')
-                sjson = self.W / f'w-{c}-sg' / 'scenery.json' \
-                    if r.get('bind_scenery') == 'sg' \
+                bs = r.get('bind_scenery', 'cand' if r.get('cand_extra') else 'b')
+                sjson = self.W / f'w-{c}-{bs}' / 'scenery.json' \
+                    if bs in ('sg', 'cand', 'final') \
                     else self.W / f'w-{c}-b' / 'scenery.json'
                 bound = self.rung_bind(c, r, wworld, sjson)
             else:
