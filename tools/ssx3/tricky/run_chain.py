@@ -77,7 +77,9 @@ COURSES = {
         resets=None,
         scenery_tool='tk30/make_scenery30.py', scenery_extra=[],
         rails_tool='tk30/make_rails30.py',
-        oracle_b='80d5d62b',
+        # Recorded TK10-era -b 80d5d62b superseded: this chain's -b is
+        # 543cf7a8 and -c + TK49 match pins; see lane REPORT/open questions.
+        oracle_b=None,
         terrain_tool='tk30/make_terrain_tex30.py',
         terrain_extra=['--mips', '1', '--prune', '--compact-ids',
                        '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
@@ -128,12 +130,16 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts'],
         resets_nbd='snow.nbd',
-        scenery_tool='tk28b/make_scenery16_at_34715951.py',
+        # TK33b build_snow33.sh: make_scenery33 (no flags) + 521 fence drops
+        scenery_tool='tk33b/make_scenery33.py',
         scenery_extra=[],
-        rails_tool='tk28b/make_rails16.py',
-        fence_receipt='TK28/snow-fence.txt',
+        rails_tool='tk33b/make_rails16.py',
+        fence_receipt=True,
+        oracle_sc='70d905bab0d58727a477aae92636c03a5b64ebae50a2f6c8dcfa0d82547047dd',
+        oracle_f='d81692e68a5a157ab890ecb9c3c4caddb7cff5e57bb0fa55d90dd4dce0a69a97',
         oracle_b=None,
-        terrain_tool='tk28b/make_terrain_tex19c.py',
+        # rails16/terrain19c identical in TK28b and TK33b tooling; tk33b kept.
+        terrain_tool='tk33b/make_terrain_tex19c.py',
         terrain_extra=['--mips', '1', '--prune', '--compact-ids',
                        '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
         terrain_L='snow_L.ssh',
@@ -163,9 +169,25 @@ COURSES = {
         race_args=['--hide', 'A_ARA1'],
         race_aip='gc/gari.aip',
         resets_nbd='gari.nbd',
-        fence_receipt='TK28/gari-fence.txt',
-        fence_count=349,
-        oracle_fc='a4684e615aa5ba79ac4d9ce988b018b18038d76e6d5b650567bd67cdb22',
+        # TK33b build_course33.sh gari-cand: make_scenery33 + soft + splitZ
+        # + 349 fence drops, then rails16, then terrain19c --mips-only.
+        scenery_tool='tk33b/make_scenery33.py',
+        scenery_extra=['--soft-u0zero',
+                       '--split-hull', '54:1254', '--split-hull', '55:1254',
+                       '--split-hull', '56:1254', '--split-hull', '119:1254'],
+        rails_tool='tk33b/make_rails16.py',
+        fence_receipt=True,
+        oracle_sc='1c1bdfed',
+        oracle_f='93f73852',
+        terrain_tool='tk33b/make_terrain_tex19c.py',
+        terrain_extra=['--prune', '--compact-ids', '--lm-alpha-scale', '1.0',
+                       '--lm-inset', '0.5', '--mips-only',
+                       '{data}/gari-line-tex20.txt'],
+        terrain_L='gari_L.ssh',
+        oracle_c='ada8ba3e',
+        # Staged TK49 1850bc0e is a TK42c blend/materialize gate (middle
+        # ladder), NOT a make_composite30 product; wired when that rung lands.
+        oracle_tk49='1850bc0e0ba74cecbc60f56b281997ac81391c50c09e31af701fc4da9cf24878',
         cand_extra=['--soft-u0zero',
                     '--split-hull', '54:1254', '--split-hull', '55:1254',
                     '--split-hull', '56:1254', '--split-hull', '119:1254'],
@@ -429,19 +451,27 @@ class Chain:
         (w / 'sc').mkdir(parents=True, exist_ok=True)
         sc = w / 'sc' / f'{c.upper()}.BIG'
         out = w / f'{c.upper()}.BIG'
-        extra = [a.format(donor=ddir, lane=self.lane) for a in r['scenery_extra']]
+        fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
+        extra = [a.format(**fmt) for a in r['scenery_extra']]
+        if r.get('fence_receipt'):
+            for n in (self.T / 'data' / f'{c}-fence.txt').read_text().split():
+                extra += ['--no-collision-instance', n]
         run('scenery', sys.executable, self.T / r['scenery_tool'],
             rbig, bdir / 'experiment.json',
             ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
             c, sc, '--receipt', w / 'scenery.json', *extra,
             cwd=self.W, log=self.log(c, 'scenery'))
+        if r.get('oracle_sc'):
+            check(sc, r['oracle_sc'], f'{c} sc')
         run('rails', sys.executable, self.T / r['rails_tool'],
             sc, bdir / 'experiment.json',
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
             c, out, cwd=self.W, log=self.log(c, 'rails'))
         if r.get('oracle_b'):
             check(out, r['oracle_b'], f'{c} -b')
+        if r.get('oracle_f'):
+            check(out, r['oracle_f'], f'{c} -f')
         return out
 
     # -- rung: terrain ------------------------------------------------------
@@ -449,10 +479,12 @@ class Chain:
         out = self.W / f'w-{c}-c' / f'{c.upper()}.BIG'
         out.parent.mkdir(parents=True, exist_ok=True)
         L = r['terrain_L']
+        fmt = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
+        extra = [a.format(**fmt) for a in r['terrain_extra']]
         run('terrain', sys.executable, self.T / r['terrain_tool'],
             bbig, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
-            c, out, *r['terrain_extra'],
+            c, out, *extra,
             '--receipt', out.parent / 'terrain.json',
             cwd=self.W, log=self.log(c, 'terrain'))
         if r.get('oracle_c'):

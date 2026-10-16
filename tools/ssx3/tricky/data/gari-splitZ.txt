@@ -1,0 +1,6 @@
+model 54 (WarningSign_Cliff): zmin 973.9, ring 1253/1254, 1648, zmax 1927.3 -> Z=1254
+model 55 (WarningSign_Ice):   same as 54 -> Z=1254
+model 56 (WarningSign_Jump):  same as 54 -> Z=1254
+model 119 (WarningSign_Gap):  same as 54 -> Z=1254
+(model 131 is DirectionalSign_Red, excluded)
+vertex z histogram (model 56, 18 pts, 1 mesh): 974x4, 1253x2, 1254x3, 1648x5, 1927x4
