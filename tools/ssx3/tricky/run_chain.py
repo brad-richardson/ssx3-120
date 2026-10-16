@@ -65,8 +65,11 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
 # Rung order. 'resets' must stay between 'race' and 'scenery': the ov-s
 # output (not the race output) is the scenery base wherever GC reset data
 # exists (regression: gari scenery once ran on the race world and missed).
+# Middle ladder: sg (show-gate variant) -> bind (effects) -> floor (f11 =
+# worlds-final). Stages that a course has not wired yet are skipped with a
+# note (never silently): the oracles, not the rung list, are the gate.
 RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
-             'terrain', 'composite']
+             'terrain', 'sg', 'bind', 'floor', 'composite']
 
 
 COURSES = {
@@ -161,7 +164,8 @@ COURSES = {
         oracle_c='55ddafcf126d2a749e6679b1ffa200415cf5ce1e4fed2934448700e19ab58be1',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
-        bind_scenery='snow-cand-scenery.json',
+        bind_base='candt',
+        bind_scenery='cand',
         oracle_bound='4eae7401996002a38b524fa54350585fd234441d12b0837ce3a965321719960d',
         floor_group=56,
         oracle_final='c850d63e5324a7d85957da9fa14f87270f5cd5394286d0029a14e7702b31e8c3',
@@ -210,15 +214,21 @@ COURSES = {
                     '--split-hull', '54:1254', '--split-hull', '55:1254',
                     '--split-hull', '56:1254', '--split-hull', '119:1254'],
         oracle_cand='ada8ba3e',
+        sg_show=[136, 138],
+        bind_base='sgt',
+        bind_scenery='sg',
         oracle_sg_scenery='d833fa45',
         oracle_sgt='72ed9d93b994a188bc79206859867a06fcff173c67760308b2af6e5750126aa0',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
-        bind_scenery='gari-sg-scenery.json',
         oracle_bound='58897da7e81e873115d75f07e72b37bf26206ef523b21aac966fa6e025868f38',
         floor_group=33,
         oracle_final='2ba912b3e95f428c8d9ac539e0cd8e18793171f668562141cfb4e8a6c324733a',
         fix_group=33,
+        # fix = TK56 class-row rebind OF THE STAGED TK49 (1850bc0e), not a
+        # floor successor: floor(bound) = final 2ba912b3 (worlds-final side
+        # branch). Order: ... terrain, bind, floor, [TK42c stage TK49],
+        # TK56 fix, TK57, TK51, TK58, reloc, preview, stage.
         oracle_fix='3e714aca99403fc8350dfa3e6ac81835174cd77b37d20cba4279275f0c0cc5ce',
         preview_loc='ARA1',
     ),
@@ -679,6 +689,84 @@ class Chain:
             check(out, r['oracle_c'], f'{c} -c')
         return out
 
+    # -- rung: show-gate variant (sg) ---------------------------------------
+    # Rebuilds scenery from the ov-s base with the candidate flags plus
+    # --show-hidden-instance N (start gates), then rails + the candidate
+    # terrain flags. Proven on gari (sg d833fa45 -> sgt 72ed9d93).
+    def rung_sg(self, c, r, sbig, bdir, ddir):
+        w = self.W / f'w-{c}-sg'
+        (w / 'sc').mkdir(parents=True, exist_ok=True)
+        sc = w / 'sc' / f'{c.upper()}.BIG'
+        out = w / f'{c.upper()}.BIG'
+        fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
+        extra = [a.format(**fmt) for a in r['scenery_extra']]
+        ff = (r.get('fence_file') or '').format(c=c)
+        if ff:
+            for n in (self.T / 'data' / ff).read_text().split():
+                extra += ['--no-collision-instance', n]
+        for n in r.get('sg_show', []):
+            extra += ['--show-hidden-instance', str(n)]
+        run('sg-scenery', sys.executable, self.T / r['scenery_tool'],
+            sbig, bdir / 'experiment.json',
+            ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            r.get('stem_scenery', c), sc, '--receipt', w / 'scenery.json',
+            *extra, cwd=self.W, log=self.log(c, 'sg-scenery'))
+        if r.get('oracle_sg_scenery'):
+            check(sc, r['oracle_sg_scenery'], f'{c} sg-sc')
+        run('sg-rails', sys.executable, self.T / r['rails_tool'],
+            sc, bdir / 'experiment.json',
+            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
+            r.get('stem_scenery', c), out,
+            cwd=self.W, log=self.log(c, 'sg-rails'))
+        tdir = self.W / f'w-{c}-sgt'
+        tdir.mkdir(parents=True, exist_ok=True)
+        tout = tdir / f'{c.upper()}.BIG'
+        L = r['terrain_L']
+        fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
+        tex = [a.format(**fex) for a in r['terrain_extra']]
+        run('sg-terrain', sys.executable, self.T / r['terrain_tool'],
+            out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
+            ddir / f"{r['donor']}.ssh", ddir / L,
+            r.get('stem_terrain', c), tout, *tex,
+            '--receipt', tdir / 'terrain.json',
+            cwd=self.W, log=self.log(c, 'sg-terrain'))
+        if r.get('oracle_sgt'):
+            check(tout, r['oracle_sgt'], f'{c} sgt')
+        return tout
+
+    # -- rung: bind effects --------------------------------------------------
+    # bind_effects.py on the candidate (or sgt) world with the pinned donor
+    # effects census + by-name sign binds. Proven on gari (sgt -> 58897da8)
+    # and snow (candt -> 4eae7401).
+    def rung_bind(self, c, r, world, scenery_json):
+        out = self.W / f'w-{c}-bound' / f'{c.upper()}.BIG'
+        out.parent.mkdir(parents=True, exist_ok=True)
+        effects = Path(self.a.pins) / 'scenery-effects' / 'effects' / \
+            f"{r.get('effects', r['donor'])}.json"
+        run('bind', sys.executable, self.T / 'tk24c' / 'bind_effects.py',
+            world, scenery_json, effects, out,
+            '--names', *r['bind_names'], '--kind0-as-trigger',
+            '--receipt', out.parent / 'bind.json',
+            cwd=self.W, log=self.log(c, 'bind'))
+        if r.get('oracle_bound'):
+            check(out, r['oracle_bound'], f'{c} bound')
+        return out
+
+    # -- rung: AABB floor (worlds-final) -------------------------------------
+    # aabb_floor.py --group G --level 11. The f11 output IS worlds-final
+    # (proven: gari 2ba912b3, snow c850d63e).
+    def rung_floor(self, c, r, world):
+        out = self.W / f'w-{c}-f11' / f'{c.upper()}.BIG'
+        out.parent.mkdir(parents=True, exist_ok=True)
+        run('floor', sys.executable, self.T / 'tk37' / 'aabb_floor.py',
+            world, out, '--group', str(r['floor_group']), '--level', '11',
+            '--receipt', out.parent / 'aabb.json',
+            cwd=self.W, log=self.log(c, 'floor'))
+        if r.get('oracle_final'):
+            check(out, r['oracle_final'], f'{c} final')
+        return out
+
     # -- rung: composite ----------------------------------------------------
     def rung_composite(self, c, r, cbig):
         out = self.W / f'{c}-tk49' / f'{c.upper()}.BIG'
@@ -697,6 +785,7 @@ class Chain:
         if upto != 'all':
             order = order[:order.index(upto) + 1]
         ddir = bdir = rbig = sbig = bbig = cbig = None
+        sgt = bound = final = None
         aip = None
         if 'extract' in order:
             ddir = self.rung_extract(c, r)
@@ -717,8 +806,36 @@ class Chain:
             bbig = self.rung_scenery(c, r, sbig, bdir, ddir)
         if 'terrain' in order:
             cbig = self.rung_terrain(c, r, bbig, bdir, ddir)
+        if 'sg' in order:
+            if r.get('sg_show'):
+                sgt = self.rung_sg(c, r, sbig, bdir, ddir)
+            else:
+                print(f'{c} sg skipped (no sg_show)', flush=True)
+        if 'bind' in order:
+            if r.get('bind_names') and r.get('bind_base'):
+                if r['bind_base'] == 'sgt':
+                    wworld = sgt
+                elif r['bind_base'] == 'candt':
+                    wworld = cbig
+                else:
+                    raise SystemExit(f'{c}: unknown bind_base {r["bind_base"]}')
+                sjson = self.W / f'w-{c}-sg' / 'scenery.json' \
+                    if r.get('bind_scenery') == 'sg' \
+                    else self.W / f'w-{c}-b' / 'scenery.json'
+                bound = self.rung_bind(c, r, wworld, sjson)
+            else:
+                print(f'{c} bind skipped (not wired)', flush=True)
+        if 'floor' in order:
+            if bound is not None and r.get('floor_group'):
+                final = self.rung_floor(c, r, bound)
+            else:
+                print(f'{c} floor skipped (not wired)', flush=True)
         if 'composite' in order:
-            self.rung_composite(c, r, cbig)
+            if r.get('composite_tool'):
+                self.rung_composite(c, r, cbig)
+            else:
+                print(f'{c} composite skipped (TK42c staging pending)',
+                      flush=True)
         print(f'{c} done through {order[-1]}', flush=True)
 
 
