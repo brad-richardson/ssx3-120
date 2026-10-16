@@ -114,12 +114,16 @@ COURSES = {
         scenery_tool='tk30/make_scenery30.py',
         scenery_extra=['--drop-instances', '{data}/untrack-drop.txt'],
         rails_tool='tk30/make_rails30.py',
-        oracle_b=None,
+        # TK31 wrapper passes UNTRACK (uppercase); race/terrain stems
+        # lowercase per the verbatim race command (terrain stem unknown,
+        # oracles decide).
+        stem_scenery='UNTRACK',
+        oracle_b='b83d43c7',
+        oracle_c='6cce9262',
         terrain_tool='tk30/make_terrain_tex30.py',
         terrain_extra=['--mips', '1', '--prune', '--compact-ids',
                        '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
         terrain_L='untrac_L.ssh',
-        oracle_c=None,
         composite_tool='tk30/make_composite30.py',
         oracle_tk49='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
         floor_group=None, bind=None,
@@ -265,7 +269,10 @@ COURSES = {
         big='MERQUER.BIG', donor='merquer', ps2_tool='tk16/ps2_as_gc.py',
         # NOTE truncated stem: merque_L.ssh (verified in donor extract).
         donor_extra=['merque_L.ssh'],
-        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '68'},
+        # NOTE: no TK10_SURFACE here (bisect 10-16: WITH surface=0 the
+        # fence rung gives 3eb8dc18, not merq-d ef3ed5be; merq has no
+        # resets so the template surface only shifts content bytes).
+        build_env={'TK10_KEEP_RESET': '68'},
         build_args=build_world_args(
             'ERA5', 51, '-88.97691345214844,-19928.7578125,17058.09765625',
             '-351954.6822916667,110245.00911458333,490273.6875',
@@ -283,6 +290,13 @@ COURSES = {
                        '--collision-radius', '1500',
                        '--drop-instances', '{data}/merq-drop.txt'],
         rails_tool='tk16/make_rails16.py',
+        # Stems verbatim: scenery/rails MERQ (TK16 wrapper uppercase); the
+        # lowercase race base reconverges here (proven 10-16: -f ef3ed5be on
+        # the 'merq' race world), so no stem_race override. Terrain 'merq'
+        # (TK19 m5 verbatim).
+        stem_scenery='MERQ',
+        stem_terrain='merq',
+        oracle_sc='658eda9e18acf7e4a4e311e935bc66c5a16da2859efeed0f47fb935b39c42133',
         oracle_f='ef3ed5be',
         # TK19 m5 recipe via TK19c: --mips 4 --prune --compact-ids
         # --mips-only merq-line-tex5 --offline-tex-max 64 --lm 1.0/0.5.
@@ -324,6 +338,10 @@ COURSES = {
                        '--collision-radius', '1500',
                        '--drop-instances', '{data}/elys-drop.txt'],
         rails_tool='tk20/make_rails20.py',
+        # TK20 wrapper passes ELYS (uppercase) to scenery+rails; TK26 eb1
+        # terrain also takes ELYS.
+        stem_scenery='ELYS',
+        stem_terrain='ELYS',
         # TK26 elys-eb1 terrain (TK19c tool): --mips 4 --mips-only
         # elys-line-tex20 --prune --prune-kinds 10 --compact-ids --lm 1.0
         # --offline-tex-max 32. eb1 68207cc0; candt 60e1b402 path after eb1
@@ -365,6 +383,8 @@ COURSES = {
                        '--no-collision-instance', '451',
                        '--no-collision-instance', '1846'],
         rails_tool='tk20/make_rails20.py',
+        # TK20 wrapper passes ALOHA (uppercase) to scenery+rails.
+        stem_scenery='ALOHA',
         # TK20 aloha-b rails gate (machine receipt, TK19c): 23ac9638.
         oracle_b='23ac963810f89a6a4a60cbaab2db3464fa51347a25474a48d4611f9cfc8be11c',
         # TK19 a2 recipe via TK19c: --mips 4 --mips-only aloha-line-tex20
@@ -406,6 +426,8 @@ COURSES = {
         scenery_tool='tk16/make_scenery16.py',
         scenery_extra=[],
         rails_tool='tk16/make_rails16.py',
+        # TK18 wrapper passes ALASKA (uppercase); its race used 'alaska'.
+        stem_scenery='ALASKA',
         oracle_b='b840713463e715de6adb545a6393f176e148585856ba8b638852bf49a532c7e2',
         # TK19c alaska-c: --mips-only top-10 2,0,26,11,3,143,1,10,147,165 (=
         # data/alaska-line-tex10.txt content) + --offline-tex-max 32.
@@ -440,6 +462,11 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts', '--keep-reset', '42',
                    '--gate-chain', '1,2,3,4,5'],
+        # Stems verbatim (TK18): race 'megaple', scenery/rails 'MEGA';
+        # TK23c u2 terrain also 'MEGA'.
+        stem_race='megaple',
+        stem_scenery='MEGA',
+        stem_terrain='MEGA',
         # NOTE: no race_aip: TK18 build+race use the lap-patched donor aip.
         resets_nbd=None,
         # TK18 mega-b (checkpoint, superseded branch): TK16 make_scenery16 +
@@ -558,6 +585,9 @@ class Chain:
         return out
 
     # -- rung: race --------------------------------------------------------
+    # Stem case is verbatim per lane wrapper: it names the world members
+    # (rename_world_members), so 'MERQ' != 'merq' in bytes. TK16/TK18/TK20
+    # wrappers pass UPPERCASE stems; TK28b/TK33b/TK30 pass lowercase.
     def rung_race(self, c, r, bdir, ddir, aip=None):
         out = self.W / f'{c}-r.BIG'
         if aip is None:
@@ -567,7 +597,8 @@ class Chain:
                 aip = ddir / f"{r['donor']}.aip"
         run('race', sys.executable, self.T / r['race_tool'],
             bdir / 'BAM.BIG', self.a.host_bam, aip,
-            bdir / 'experiment.json', c, out, *r['race_args'],
+            bdir / 'experiment.json', r.get('stem_race', c), out,
+            *r['race_args'],
             cwd=self.W, log=self.log(c, 'race'))
         if r.get('oracle_r'):
             check(out, r['oracle_r'], f'{c} -r')
@@ -603,18 +634,19 @@ class Chain:
         if ff:
             for n in (self.T / 'data' / ff).read_text().split():
                 extra += ['--no-collision-instance', n]
+        stem = r.get('stem_scenery', c)
         run('scenery', sys.executable, self.T / r['scenery_tool'],
             rbig, bdir / 'experiment.json',
             ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
-            c, sc, '--receipt', w / 'scenery.json', *extra,
+            stem, sc, '--receipt', w / 'scenery.json', *extra,
             cwd=self.W, log=self.log(c, 'scenery'))
         if r.get('oracle_sc'):
             check(sc, r['oracle_sc'], f'{c} sc')
         run('rails', sys.executable, self.T / r['rails_tool'],
             sc, bdir / 'experiment.json',
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
-            c, out, cwd=self.W, log=self.log(c, 'rails'))
+            stem, out, cwd=self.W, log=self.log(c, 'rails'))
         if r.get('oracle_b'):
             check(out, r['oracle_b'], f'{c} -b')
         if r.get('oracle_f'):
@@ -631,7 +663,7 @@ class Chain:
         run('terrain', sys.executable, self.T / r['terrain_tool'],
             bbig, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
-            c, out, *extra,
+            r.get('stem_terrain', c), out, *extra,
             '--receipt', out.parent / 'terrain.json',
             cwd=self.W, log=self.log(c, 'terrain'))
         if r.get('oracle_c'):

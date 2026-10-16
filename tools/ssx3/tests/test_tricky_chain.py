@@ -146,6 +146,15 @@ class RecipeTableTest(unittest.TestCase):
             self.assertTrue(all(n.isdigit() for n in ids),
                             f'{course} {fence} non-numeric entry')
 
+    def test_no_duplicate_recipe_keys(self):
+        import re
+        source = (TRICKY / 'run_chain.py').read_text()
+        for course in run_chain.COURSES:
+            block = source.split(f"'{course}': dict(")[1].split('\n    ),')[0]
+            keys = re.findall(r'^ {8}(\w+)=', block, re.M)
+            self.assertEqual(len(keys), len(set(keys)),
+                             f'{course} duplicates: {keys}')
+
     def test_oracles_are_hex(self):
         for course, recipe in run_chain.COURSES.items():
             for key, value in recipe.items():
