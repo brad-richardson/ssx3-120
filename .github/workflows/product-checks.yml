@@ -21,6 +21,16 @@ jobs:
         run: |
           test "$(git -C deps/PS2Recomp rev-parse HEAD)" = "$(python3 -c "import json; print(json.load(open('deps.lock.json'))['engine']['pin'])")"
           test -z "$(git -C deps/PS2Recomp status --porcelain)"
+      - name: Engine history for the pin-range contract check
+        run: |
+          # actions/checkout leaves deps/PS2Recomp shallow, so the historical
+          # revisions test_pin_range_sensitivity diffs against are absent.
+          # Deepen the submodule, then assert both arrived so that check cannot
+          # silently skip in CI.
+          git -C deps/PS2Recomp fetch --unshallow origin 2>/dev/null || \
+            git -C deps/PS2Recomp fetch origin
+          git -C deps/PS2Recomp cat-file -e f1180764^{commit}
+          git -C deps/PS2Recomp cat-file -e 902a7645^{commit}
       - name: Builder unit tests
         run: |
           pip install numpy pillow

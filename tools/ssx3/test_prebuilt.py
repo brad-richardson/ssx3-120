@@ -463,7 +463,31 @@ class ContractInputsTests(unittest.TestCase):
              *prebuilt.CONTRACT_EXPLICIT], text=True).splitlines()
         self.assertEqual(len(out), len(prebuilt.CONTRACT_EXPLICIT))
 
+    # Historical engine revisions the narrowed-stamp contract is measured
+    # against (f1180764 = prebuilt-release-1, 902a7645 = ci-flake-1).
+    PIN_RANGE_REVS = ('f1180764', '902a7645')
+
+    def skip_if_engine_history_missing(self):
+        """Skip when the engine checkout lacks the pin-range revisions.
+
+        CI checks the engine submodule out shallow, so the historical
+        revisions test_pin_range_sensitivity diffs against are absent. Skip
+        with a reason instead of erroring; product-checks deepens the
+        submodule so the check still runs there.
+        """
+        missing = [rev for rev in self.PIN_RANGE_REVS
+                   if subprocess.run(
+                       ['git', '-C', str(prebuilt.ENGINE), 'cat-file', '-e',
+                        rev + '^{commit}'], check=False,
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL).returncode]
+        if missing:
+            self.skipTest('engine checkout lacks revision(s) ' + ', '.join(missing) +
+                          '; the pin-range contract check needs engine history '
+                          '(CI deepens the submodule, see product-checks)')
+
     def test_pin_range_sensitivity(self):
+        self.skip_if_engine_history_missing()
         live = set(subprocess.check_output(
             ['git', '-C', str(prebuilt.ENGINE), 'diff', '--name-only',
              'f1180764', '902a7645', '--', *sorted(prebuilt.contract_paths())],
