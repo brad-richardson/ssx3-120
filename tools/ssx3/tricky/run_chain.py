@@ -134,7 +134,7 @@ COURSES = {
         scenery_tool='tk33b/make_scenery33.py',
         scenery_extra=[],
         rails_tool='tk33b/make_rails16.py',
-        fence_receipt=True,
+        fence_file='{c}-fence.txt',
         oracle_sc='70d905bab0d58727a477aae92636c03a5b64ebae50a2f6c8dcfa0d82547047dd',
         oracle_f='d81692e68a5a157ab890ecb9c3c4caddb7cff5e57bb0fa55d90dd4dce0a69a97',
         oracle_b=None,
@@ -176,7 +176,7 @@ COURSES = {
                        '--split-hull', '54:1254', '--split-hull', '55:1254',
                        '--split-hull', '56:1254', '--split-hull', '119:1254'],
         rails_tool='tk33b/make_rails16.py',
-        fence_receipt=True,
+        fence_file='{c}-fence.txt',
         oracle_sc='1c1bdfed',
         oracle_f='93f73852',
         terrain_tool='tk33b/make_terrain_tex19c.py',
@@ -216,7 +216,25 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts', '--gate-chain', '0,1,2,3,4'],
         resets_nbd='mesa.nbd',
-        oracle_c='fd9400d086fc750661679ce6d634eabbfd6b58a1f46d66a242c196e748253d20',
+        # TK33b build_course33.sh mesa-cand2: make_scenery33 + soft +
+        # mode2-solid-file + 39 breakaway drops (NOT mesa-fence.txt), rails16,
+        # terrain19c --mips 4. Base/exp regenerated here (TK14's archived).
+        # NOTE fd9400d0 was the TK19c-era mesa-c, superseded by candt2.
+        scenery_tool='tk33b/make_scenery33.py',
+        scenery_extra=['--soft-u0zero', '--mode2-solid-file',
+                       '{data}/mesa-trunks.txt'],
+        rails_tool='tk33b/make_rails16.py',
+        fence_file='mesa-breakaway.txt',
+        oracle_sc='577667f3',
+        oracle_f='7c32dad1',
+        terrain_tool='tk33b/make_terrain_tex19c.py',
+        terrain_extra=['--mips', '4', '--prune', '--compact-ids',
+                       '--lm-alpha-scale', '1.0', '--lm-inset', '0.5'],
+        terrain_L='mesa_L.ssh',
+        oracle_c='14b3daf3',
+        # mesa-finalw f81f73d4 (bridge/show/waterfall steps) feeds bind, not
+        # candt2 directly; middle-ladder rung pending TK37b/TKP3 recon.
+        oracle_cand='14b3daf3',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd',
                     'Mdl_SpeedBoost', 'Mdl_TrickBoost', 'Mdl_TrickB00st'],
         bind_scenery='mesa-final-scenery.json',
@@ -240,6 +258,15 @@ COURSES = {
         race_args=['--base-race-starts', '--keep-reset', '68',
                    '--gate-chain', '0,4,5,1,2,3'],
         resets_nbd=None,
+        # TK16 build_course.sh merq-d: make_scenery16 + route/radius/drop.
+        # merq-c re-scenery (--corridor-top-exempt 100, 69d27aa4) + terrain
+        # (--mips-only merq-line-tex5, MISSING file) pending TK19c recon.
+        scenery_tool='tk16/make_scenery16.py',
+        scenery_extra=['--collision-route', '{data}/merq3d.txt',
+                       '--collision-radius', '1500',
+                       '--drop-instances', '{data}/merq-drop.txt'],
+        rails_tool='tk16/make_rails16.py',
+        oracle_f='ef3ed5be',
         oracle_c='60830bffafbf9c46a542a99c6218506d8ab1b6d6412be01db3fc4f5eb212f997',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='merq-cand-scenery.json',
@@ -263,6 +290,14 @@ COURSES = {
         race_args=['--base-race-starts', '--keep-reset', '42',
                    '--gate-chain', '0,1,2,3,4'],
         resets_nbd=None,
+        # TK20 build_course.sh elys-b: TK16 make_scenery16 + route/radius/
+        # drop; rails20. Halted at race start (draw-table overflow); front
+        # chain continues via TK22/TK26; -b/candt oracles pending that recon.
+        scenery_tool='tk16/make_scenery16.py',
+        scenery_extra=['--collision-route', '{data}/elys3d.txt',
+                       '--collision-radius', '1500',
+                       '--drop-instances', '{data}/elys-drop.txt'],
+        rails_tool='tk20/make_rails20.py',
         oracle_bound='b9df59d3ee19532927eb35d07e1132f2aab8a3410ace7a577d44bfe5d2a9b212',
         floor_group=135,
         oracle_final='169a8cf4ef60020e1604f82cb059c1ab7c140fe3a6ba2cf870a46c24afae3fd4',
@@ -284,6 +319,14 @@ COURSES = {
                    '--gate-chain', '0,1,2,3'],
         race_aip='gc/aloha.aip',
         resets_nbd='aloha.nbd',
+        # TK20 build_course.sh aloha-b: TK16 make_scenery16 + 4 race-line
+        # crossing drops; rails20. -b SHA pending; -c 0c353680 carried.
+        scenery_tool='tk16/make_scenery16.py',
+        scenery_extra=['--no-collision-instance', '662',
+                       '--no-collision-instance', '454',
+                       '--no-collision-instance', '451',
+                       '--no-collision-instance', '1846'],
+        rails_tool='tk20/make_rails20.py',
         oracle_c='0c35368056f406eb1698aba45bb3b0ae97b4bc0677e22d03ce4b1daef3b87691',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='aloha-b-scenery.json',
@@ -297,7 +340,8 @@ COURSES = {
     'alaska': dict(
         big='ALASKA.BIG', donor='alaska', ps2_tool='tk16/ps2_as_gc.py',
         donor_extra=['alaska_L.ssh'],
-        build_env={'TK10_KEEP_RESET': '87'},
+        # TK18 pipeline step 1 runs build_world with TK10_SURFACE=0.
+        build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '87'},
         build_args=build_world_args(
             'DSS2', 12, '-18650.419921875,4959.109375,7784.38916015625',
             '128772.49739583333,-145501.33854166666,-29729.162109375',
@@ -309,6 +353,12 @@ COURSES = {
                    '--markers', '0.275798,0.653856', '--chain-tolerance', '1500'],
         resets_nbd=None,
         route_tol=['1500', '{lane}/TK18/routes/alaska3d-b.txt', '--z'],
+        # TK18 build_course.sh alaska-b: TK16 make_scenery16 + rails16, no
+        # extras (route files are boot inputs; copies in data/).
+        scenery_tool='tk16/make_scenery16.py',
+        scenery_extra=[],
+        rails_tool='tk16/make_rails16.py',
+        oracle_b='b840713463e715de6adb545a6393f176e148585856ba8b638852bf49a532c7e2',
         oracle_c='b1bb68d2cdf2a01b02517b336efbf40d33bd744867bc2184aa560d9a1693560d',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_scenery='alaska-b-scenery.json',
@@ -332,8 +382,16 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts', '--keep-reset', '42',
                    '--gate-chain', '1,2,3,4,5'],
-        race_aip='gc/megaple.aip',
+        # NOTE: no race_aip: TK18 build+race use the lap-patched donor aip.
         resets_nbd=None,
+        # TK18 build_course.sh mega-b: TK16 make_scenery16 + rails16 with the
+        # mega drop list. TK23 reworks this into mega-h (scenery23 +
+        # solidify/slab/split-hull/boost); mega-c 3c97fa33 is the TK26 terrain
+        # gate on that path. mega-b oracle below; TK23 step pending recon.
+        scenery_tool='tk16/make_scenery16.py',
+        scenery_extra=['--drop-instances', '{data}/mega-drop.txt'],
+        rails_tool='tk16/make_rails16.py',
+        oracle_b='1bae15bf7868b9b6d8364576d2aa3bf4b85a884010d64cfe44db850b0fc617c2',
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
         floor_group=94,
         oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
@@ -453,8 +511,9 @@ class Chain:
         out = w / f'{c.upper()}.BIG'
         fmt = dict(donor=ddir, lane=self.lane, data=self.T / 'data')
         extra = [a.format(**fmt) for a in r['scenery_extra']]
-        if r.get('fence_receipt'):
-            for n in (self.T / 'data' / f'{c}-fence.txt').read_text().split():
+        ff = (r.get('fence_file') or '').format(c=c)
+        if ff:
+            for n in (self.T / 'data' / ff).read_text().split():
                 extra += ['--no-collision-instance', n]
         run('scenery', sys.executable, self.T / r['scenery_tool'],
             rbig, bdir / 'experiment.json',
