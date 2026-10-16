@@ -13,6 +13,11 @@
 //! A body may also carry non-`KEY=value` stray lines (the `news`
 //! MOTD, e.g. `WIP Server`); strays are preserved, never dropped.
 
+/// SSXNP v2 netplay codec (framing + message set), plus the state-sync
+/// extension (`KIND_STATE`, `KIND_EVENT`, `REASON_STATE_TIMEOUT`).
+/// Wired from np-referee-p1 `5302992`; the v2 base is untouched.
+pub mod netplay;
+
 use std::str::Utf8Error;
 
 /// 12-byte header length. Minimum legal message size.

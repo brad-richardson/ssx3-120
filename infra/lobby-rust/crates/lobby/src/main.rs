@@ -12,6 +12,7 @@
 
 mod health;
 mod relay;
+mod state_sync;
 mod time_util;
 
 use rand::RngCore;
@@ -70,6 +71,8 @@ struct Config {
     session: SessionCfg,
     #[serde(default)]
     health: HealthCfg,
+    #[serde(default)]
+    state_sync: StateSyncCfg,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -183,6 +186,53 @@ struct AuthCfg {
     /// compatibility and never stored or checked.
     #[serde(default = "d_auth_mode")]
     mode: String,
+}
+
+/// Loopback test-only state-sync relay (netsync-spike-1 Part 3).
+/// Default off: the TCP lobby + O5 relay behave exactly as before.
+#[derive(Debug, Deserialize, Clone)]
+struct StateSyncCfg {
+    /// Master switch for the STATE endpoint.
+    #[serde(default)]
+    pub enable: bool,
+    /// UDP port for SNP2 STATE traffic (loopback).
+    #[serde(default = "d_ss_port")]
+    pub port: u16,
+    /// Fixed per-role tokens (test credentials, loopback only).
+    #[serde(default)]
+    pub token_a: String,
+    #[serde(default)]
+    pub token_b: String,
+    /// Injected one-way delay + uniform jitter, milliseconds.
+    #[serde(default)]
+    pub delay_ms: f64,
+    #[serde(default)]
+    pub jitter_ms: f64,
+    /// No-STATE timeout per peer, milliseconds.
+    #[serde(default = "d_ss_timeout")]
+    pub timeout_ms: u64,
+}
+
+const fn d_ss_port() -> u16 {
+    36595
+}
+
+const fn d_ss_timeout() -> u64 {
+    2000
+}
+
+impl Default for StateSyncCfg {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            port: d_ss_port(),
+            token_a: String::new(),
+            token_b: String::new(),
+            delay_ms: 0.0,
+            jitter_ms: 0.0,
+            timeout_ms: d_ss_timeout(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -452,6 +502,7 @@ impl Default for Config {
             relay: RelayCfg::default(),
             session: SessionCfg::default(),
             health: HealthCfg::default(),
+            state_sync: StateSyncCfg::default(),
         }
     }
 }
@@ -1737,11 +1788,29 @@ async fn main() {
         buddy_port = bp,
         "ssx3-lobby up"
     );
-    let _ = tokio::join!(
-        serve(lobby_l, state.clone(), "lobby"),
-        serve(game_l, state.clone(), "game"),
-        serve(buddy_l, state.clone(), "buddy"),
-    );
+    if state.cfg.state_sync.enable {
+        let ssc = state_sync::Sscfg {
+            port: state.cfg.state_sync.port,
+            token_a: state.cfg.state_sync.token_a.clone().into_bytes(),
+            token_b: state.cfg.state_sync.token_b.clone().into_bytes(),
+            delay_ms: state.cfg.state_sync.delay_ms,
+            jitter_ms: state.cfg.state_sync.jitter_ms,
+            timeout_ms: state.cfg.state_sync.timeout_ms,
+        };
+        let (_stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+        let _ = tokio::join!(
+            serve(lobby_l, state.clone(), "lobby"),
+            serve(game_l, state.clone(), "game"),
+            serve(buddy_l, state.clone(), "buddy"),
+            state_sync::run(ssc, stop_rx),
+        );
+    } else {
+        let _ = tokio::join!(
+            serve(lobby_l, state.clone(), "lobby"),
+            serve(game_l, state.clone(), "game"),
+            serve(buddy_l, state.clone(), "buddy"),
+        );
+    }
 }
 
 /// Pairs touching `ip`, from formation addresses (H2): drop-and-repair
