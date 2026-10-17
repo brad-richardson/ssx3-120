@@ -121,6 +121,96 @@ class Om1StageTest(unittest.TestCase):
         self.assertIn('recording recipe', str(ctx.exception))
 
 
+class Om1GenerateTest(unittest.TestCase):
+    def make_work(self, root, pin=None, elf=b'elf-bytes'):
+        work = Path(root) / 'work'
+        work.mkdir(parents=True, exist_ok=True)
+        (work / 'SLUS_207.72').write_bytes(elf)
+        stage = work / 'om1-stage'
+        for name in build.OM1_STAGE_REQUIRED:
+            target = stage / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('// stub')
+        for area in build.OM1_AREAS:
+            for suffix in ('.s', '_tables.c', '_tables.h'):
+                (stage / (area + suffix)).write_text('// ' + area)
+        (work / 'om1-stage.json').write_text(json.dumps({
+            'replay_pin': pin or build.OM1_REPLAY_PIN,
+            'manifest_sha256': build.sha(build.OM1_MANIFEST),
+            'elf_sha256': build.sha(work / 'SLUS_207.72')}))
+        return work
+
+    def test_current_true(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertTrue(build.ios_om1_current(self.make_work(temp)))
+
+    def test_current_false_on_pin_change(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertFalse(build.ios_om1_current(self.make_work(temp, pin='0' * 40)))
+
+    def test_current_false_missing_area_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = self.make_work(temp)
+            (work / 'om1-stage' / 'menus.s').unlink()
+            self.assertFalse(build.ios_om1_current(work))
+
+    def test_current_false_no_receipt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            work.mkdir()
+            self.assertFalse(build.ios_om1_current(work))
+
+    def test_ensure_uses_current_stage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = self.make_work(temp)
+            with patch.object(build, 'ios_om1', side_effect=AssertionError('must skip')):
+                self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
+
+    def test_ensure_generates_when_stale(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            work.mkdir()
+            with patch.object(build, 'ios_om1', return_value=work / 'om1-stage') as gen:
+                self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
+            gen.assert_called_once()
+
+    def test_link_vendor_points_at_tree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = Path(temp) / 'vendor'
+            for rel in ('pcsx2/Config.h', 'tests/ctest/core/StubHost.cpp',
+                        'pcsx2/Achievements.h'):
+                target = vendor / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text('// ' + rel)
+            stage = Path(temp) / 'stage'
+            stage.mkdir()
+            link = build.link_om1_vendor(stage, vendor)
+            self.assertTrue(link.is_symlink())
+            for rel in ('pcsx2/Config.h', 'tests/ctest/core/StubHost.cpp',
+                        'pcsx2/Achievements.h'):
+                self.assertTrue((stage / 'armsx2' / rel).is_file())
+
+    def test_link_vendor_replaces_stale_copy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = Path(temp) / 'vendor'
+            (vendor / 'pcsx2').mkdir(parents=True)
+            (vendor / 'pcsx2' / 'Config.h').write_text('// new')
+            stage = Path(temp) / 'stage'
+            stale = stage / 'armsx2' / 'pcsx2'
+            stale.mkdir(parents=True)
+            (stale / 'Config.h').write_text('// stale')
+            build.link_om1_vendor(stage, vendor)
+            self.assertTrue((stage / 'armsx2').is_symlink())
+            self.assertEqual((stage / 'armsx2' / 'pcsx2' / 'Config.h').read_text(), '// new')
+
+    def test_ensure_mac_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(build.platform, 'system', return_value='Linux'):
+                with self.assertRaises(ValueError) as ctx:
+                    build.ensure_ios_om1_stage(args(work=Path(temp)))
+            self.assertIn('--om1-stage explicitly', str(ctx.exception))
+
+
 class DryRunTest(unittest.TestCase):
     def test_listing_touches_nothing(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -418,7 +508,8 @@ class PresetHygieneTest(unittest.TestCase):
         # bundle rows ship (each fails closed without its files), so neither
         # is forbidden any more. SKIP_MOVIE/PAD_SCRIPT stay out (dev-only).
         for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_SKIP_MOVIE=',
-                          'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision'):
+                          'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision',
+                          'PS2X_OM1_DENY='):
             self.assertNotIn(forbidden, joined)
 
     def test_play_values_are_explicit(self):

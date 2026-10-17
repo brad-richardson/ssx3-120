@@ -918,9 +918,9 @@ def android_libs(a):
 # doctor checks, resumable ios-libs, an `ios` app step, and a one-command
 # `ios --ssx3-iso` (doctor -> prepare -> ios-libs -> app, then --install).
 # macOS Apple silicon only. Game sources come from the user's own disc via
-# prepare; the offline VU1 stage (--om1-stage) is the user's own locally
-# generated tables (the portable recording recipe is still incomplete, so
-# the builder validates a supplied stage instead of generating one).
+# prepare; the offline VU1 stage defaults to work/om1-stage, generated from
+# that disc by the ios-om1 step (manifest-driven om1_replay), with --om1-stage
+# kept as an override.
 
 GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
 GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
@@ -937,6 +937,16 @@ GE1_VENDOR_SHORT = 'e8ed655ec6'
 OM1_VENDOR_REPO = GE1_VENDOR_REPO
 OM1_VENDOR_PIN = '70a478c1797ac8da62d3c12e6c12cd2bc3c43f28'
 OM1_VENDOR_SHORT = '70a478c17'
+
+# OM1 replay vendor: the om1-replay series on top of OM1_VENDOR_PIN
+# (recorder sources + om1_replay driver + f-list tail fix). The ios-om1 step
+# fetches this series and rebuilds the offline VU1 stage from the user's disc.
+OM1_REPLAY_REPO = OM1_VENDOR_REPO
+OM1_REPLAY_PIN = '5feeabfcfebfca2b49dcc3fe6681656185b49607'
+OM1_REPLAY_SHORT = '5feeabfcf'
+OM1_AREAS = ('sp1', 'mid', 'full', 'menus', 'late', 'sv1', 'grav', 'rb', 'jx')
+OM1_MANIFEST = ROOT / 'tools/ssx3/ios/om1-manifest.json'
+OM1_OFFLINE_CORE = ('OfflineCore.cpp', 'OfflineBridge.cpp', 'OfflineCore.h', 'OM1StubHost.cpp')
 
 # Vendored iOS dependency sources missing from the vendor tree (the rest of
 # the GE1_IOS_DEPS set ships inside it). Same-generation pins as the
@@ -1624,6 +1634,128 @@ def sign_staged_app(work, stage_app, team, bundle_id):
     return identity
 
 
+def ios_om1_receipt_path(work):
+    return work / 'om1-stage.json'
+
+
+def ios_om1_current(work):
+    """Resume-skip predicate: the generated stage matches vendor pin,
+    manifest, ELF and file set (validate_om1_stage contract)."""
+    try:
+        receipt = json.loads(ios_om1_receipt_path(work).read_text())
+    except (OSError, ValueError):
+        return False
+    if receipt.get('replay_pin') != OM1_REPLAY_PIN:
+        return False
+    if receipt.get('manifest_sha256') != sha(OM1_MANIFEST):
+        return False
+    try:
+        elf_sha = sha(work / 'SLUS_207.72')
+    except OSError:
+        return False
+    if receipt.get('elf_sha256') != elf_sha:
+        return False
+    stage = work / 'om1-stage'
+    try:
+        validate_om1_stage(stage)
+    except ValueError:
+        return False
+    for area in OM1_AREAS:
+        for suffix in ('.s', '_tables.c', '_tables.h'):
+            if not (stage / (area + suffix)).is_file():
+                return False
+    return True
+
+
+def link_om1_vendor(stage, vendor):
+    """Point stage/armsx2 at the fetched om1-replay vendor tree.
+
+    The engine consumes the stage's armsx2/ as a full ARMSX2 tree (it
+    compiles armsx2/tests/ctest/core/StubHost.cpp with include dirs rooted
+    under armsx2/, so StubHost's pcsx2/* includes plus 3rdparty headers must
+    resolve there). Copying single files is not enough; link the tree."""
+    link = Path(stage) / 'armsx2'
+    if link.is_symlink() or link.exists():
+        link.unlink() if link.is_symlink() else shutil.rmtree(link)
+    link.symlink_to(Path(vendor), target_is_directory=True)
+    return link
+
+
+def ensure_ios_om1_stage(a):
+    """Default --om1-stage: generate work/om1-stage from the user's disc
+    (Mac-only), or resume-skip when the receipt still matches."""
+    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
+        raise ValueError('the generated --om1-stage default needs a Mac '
+                         '(Apple silicon); pass --om1-stage explicitly elsewhere')
+    if a.dry_run:
+        print('  offline VU1 stage generated ' + str(a.work / 'om1-stage'))
+        return a.work / 'om1-stage'
+    if ios_om1_current(a.work):
+        print('  offline VU1 stage current ' + str(a.work / 'om1-stage'))
+        return a.work / 'om1-stage'
+    return ios_om1(a)
+
+
+def ios_om1(a):
+    """Mac-only ios-om1 step: fetch the om1-replay vendor series, build
+    om1_replay with Apple Clang, verify the manifest ELF pin against the
+    user's SLUS_207.72, run all 9 areas into work/om1-stage, copy in the
+    offline-core sources, and link stage/armsx2 at the fetched vendor tree
+    (the engine compiles the stage's StubHost.cpp against that full tree)."""
+    for tool in ('/usr/bin/clang', '/usr/bin/clang++', 'cmake', 'ninja'):
+        if not shutil.which(tool):
+            raise ValueError('ios-om1 needs ' + tool + ' (Mac-only step)')
+    manifest = json.loads(OM1_MANIFEST.read_text())
+    elf = a.work / 'SLUS_207.72'
+    try:
+        elf_sha = sha(elf)
+    except OSError:
+        raise ValueError('ios-om1 needs work/SLUS_207.72: run prepare with --ssx3-iso first')
+    if elf_sha != manifest['elf']['sha256']:
+        raise ValueError('ios-om1: SLUS_207.72 sha ' + elf_sha[:12] + ' does not match '
+                         'the manifest pin ' + manifest['elf']['sha256'][:12] +
+                         ' (manifest pieces are exact ELF offsets of that SLUS revision)')
+    vendor = a.work / 'ios-vendor-om1replay'
+    source(OM1_REPLAY_REPO, OM1_REPLAY_PIN, vendor)
+    actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
+    if actual != OM1_REPLAY_PIN:
+        raise ValueError('ios-om1 vendor checkout is ' + actual[:12] + ', want ' + OM1_REPLAY_SHORT)
+    deps = a.work / 'ios-om1-deps'
+    for name in ('plutovg', 'plutosvg'):
+        src = vendor / '3rdparty' / name
+        bdir = a.work / ('ios-om1-deps-build-' + name)
+        extra = ['-DCMAKE_PREFIX_PATH=' + str(deps)] if name == 'plutosvg' else []
+        run('cmake', '-S', str(src), '-B', str(bdir), '-G', 'Ninja',
+            '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(deps),
+            '-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', *extra)
+        run('cmake', '--build', str(bdir), '--parallel', str(a.jobs))
+        run('cmake', '--install', str(bdir))
+    bdir = a.work / 'ios-om1-build'
+    run('cmake', '-S', str(vendor), '-B', str(bdir), '-G', 'Ninja',
+        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=/usr/bin/clang',
+        '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', '-DENABLE_QT_UI=OFF',
+        '-DENABLE_TESTS=OFF', '-DENABLE_RECOMPILER_TEST_HOOKS=ON',
+        '-DUSE_VULKAN=OFF', '-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON',
+        '-DCMAKE_C_FLAGS=-fno-common', '-DCMAKE_CXX_FLAGS=-fno-common',
+        '-DCMAKE_PREFIX_PATH=' + str(deps))
+    run('cmake', '--build', str(bdir), '--target', 'om1_replay', '--parallel', str(a.jobs))
+    tool = bdir / 'om1-adapter' / 'om1_replay'
+    stage = a.work / 'om1-stage'
+    stage.mkdir(parents=True, exist_ok=True)
+    for area in OM1_AREAS:
+        run(str(tool), str(OM1_MANIFEST), str(elf), area, str(stage))
+    offline_core = ROOT / 'tools/ssx3/offline-core'
+    for name in OM1_OFFLINE_CORE:
+        shutil.copy2(offline_core / name, stage / name)
+    link_om1_vendor(stage, vendor)
+    validate_om1_stage(stage)
+    ios_om1_receipt_path(a.work).write_text(json.dumps({
+        'replay_pin': OM1_REPLAY_PIN, 'manifest_sha256': sha(OM1_MANIFEST),
+        'elf_sha256': elf_sha}))
+    print('  offline VU1 stage regenerated ' + str(stage))
+    return stage
+
+
 def ios(a):
     team = check_team(a)
     bundle_id = check_bundle_id(getattr(a, 'bundle_id', None) or default_bundle_id(team))
@@ -1633,7 +1765,7 @@ def ios(a):
         print('  engine ' + str(ENGINE))
         print('  GE1 vendor ' + GE1_VENDOR_REPO + ' @ ' + GE1_VENDOR_SHORT)
         print('  OM1 vendor ' + OM1_VENDOR_REPO + ' @ ' + OM1_VENDOR_SHORT)
-        print('  offline VU1 stage ' + str(getattr(a, 'om1_stage', None) or '(missing --om1-stage)'))
+        print('  offline VU1 stage ' + str(getattr(a, 'om1_stage', None) or 'generated work/om1-stage'))
         print('  prepare outputs ' + ('current' if prepare_current(a.work) else 'MISSING (run prepare)') + ': '
               + str(a.work / 'codegen'))
         print('  ios-libs ' + ('current' if ios_libs_current(a.work) else 'MISSING (run ios-libs)') + ': '
@@ -1646,7 +1778,10 @@ def ios(a):
     inputs = json.loads((a.work / 'inputs.json').read_text())
     if not ios_libs_current(a.work):
         raise ValueError('ios-libs outputs are missing or stale; run ios-libs in this work directory first')
-    om1_stage = validate_om1_stage(getattr(a, 'om1_stage', None))
+    if getattr(a, 'om1_stage', None):
+        om1_stage = validate_om1_stage(a.om1_stage)
+    else:
+        om1_stage = ensure_ios_om1_stage(a)
     receipt = json.loads((a.work / 'ios-libs.json').read_text())
     ge1_build = Path(receipt.get('ge1_dir') or receipt.get('ge1_build') or '')
     vendor = a.work / 'ios-vendor'
@@ -2078,7 +2213,7 @@ def main():
     p.add_argument('--team', help='Apple Developer Team ID for ios (10 characters; Xcode signs with this team)')
     p.add_argument('--device', help='iOS device UDID for ios install (default: the single connected device)')
     p.add_argument('--bundle-id', help='iOS bundle id (default: com.ssx3recomp.<team>)')
-    p.add_argument('--om1-stage', type=Path, help='own locally generated offline VU1 stage directory (ios app only)')
+    p.add_argument('--om1-stage', type=Path, help='offline VU1 stage directory override (default: generated from your disc into work/om1-stage; ios app only)')
     p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
     p.add_argument('--jnilibs', type=Path, help='own source-built Android JNI libraries')
     p.add_argument('--prebuilt', action='store_true', help='opt in to verified prebuilt Android support libraries (default: build them from source)')

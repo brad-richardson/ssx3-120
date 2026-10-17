@@ -59,10 +59,11 @@ python3 build.py android --work ~/ssx3-work
 ```
 
 iOS (macOS Apple silicon host with Xcode; iPhone/iPad target) needs
-your Apple Development team id and the offline-VU1 stage directory:
+your Apple Development team id; the offline-VU1 stage is generated
+from your disc into `work/om1-stage` by the builder:
 
 ```sh
-./build ios --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --team <TEAM10> --om1-stage <OM1STAGE>
+./build ios --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --team <TEAM10>
 ```
 
 Add `--install` to push to the connected device (plain install; saves

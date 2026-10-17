@@ -34,14 +34,15 @@ unless `--no-auto-download` is passed — then set `JAVA_HOME`,
 
 ## iOS (host: macOS Apple silicon with Xcode; target: iPhone/iPad)
 
-Three user values are required: the Apple Development **team id**
-(10 characters, Xcode > Settings > Accounts > Team), the connected
-device, and the offline-VU1 microVU stage directory.
+Two user values are required: the Apple Development **team id**
+(10 characters, Xcode > Settings > Accounts > Team) and the connected
+device. The offline-VU1 microVU stage is generated from your disc into
+`work/om1-stage` by the builder (`--om1-stage` overrides it).
 
 ```sh
-./build ios --dry-run --team <TEAM10> --om1-stage <OM1STAGE> --work ~/ssx3-work
-./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --om1-stage <OM1STAGE> --work ~/ssx3-work
-./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --om1-stage <OM1STAGE> --work ~/ssx3-work --install
+./build ios --dry-run --team <TEAM10> --work ~/ssx3-work
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work --install
 ```
 
 What each run does: `doctor` (Xcode, CMake, signing identity, device),
