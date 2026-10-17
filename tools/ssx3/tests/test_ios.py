@@ -239,6 +239,39 @@ class Om1GenerateTest(unittest.TestCase):
             with patch.object(build, 'OM1_REPLAY_PIN', head):
                 self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
+    def test_stage_lock_serializes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            work.mkdir()
+            lock = work / 'om1-stage.lock'
+            with build.om1_stage_lock(work):
+                self.assertTrue(lock.is_file())
+                self.assertEqual(lock.read_text().strip(), str(os.getpid()))
+                with self.assertRaises(ValueError) as ctx:
+                    with build.om1_stage_lock(work):
+                        pass
+                self.assertIn('already running', str(ctx.exception))
+            self.assertFalse(lock.exists())
+
+    def test_publish_swaps_stage_atomically(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            work.mkdir()
+            old = work / 'om1-stage'
+            old.mkdir()
+            (old / 'stale.txt').write_text('// stale')
+            new = work / 'om1-stage.new'
+            new.mkdir()
+            (new / 'fresh.txt').write_text('// fresh')
+            receipt_data = {'replay_pin': 'abc'}
+            stage = build.publish_om1_stage(work, new, receipt_data)
+            self.assertEqual(stage, old)
+            self.assertFalse(new.exists())
+            self.assertFalse((old / 'stale.txt').exists())
+            self.assertEqual((old / 'fresh.txt').read_text(), '// fresh')
+            self.assertEqual(json.loads((work / 'om1-stage.json').read_text()), receipt_data)
+            self.assertFalse((work / 'om1-stage.json.tmp').exists())
+
     def test_vendor_clean_check(self):
         with tempfile.TemporaryDirectory() as temp:
             vendor, _ = self.make_vendor(temp)

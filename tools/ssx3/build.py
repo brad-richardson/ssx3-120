@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import platform
 import re
@@ -1768,6 +1769,50 @@ def link_om1_vendor(stage, vendor):
     return link
 
 
+@contextmanager
+def om1_stage_lock(work):
+    """R6: serialize stage generation per work dir. The lock file holds the
+    holder's pid; a present lock fails loud instead of interleaving two
+    generations over the same vendor/build/stage paths. Remove the lock file
+    if the holder process is gone."""
+    lock = Path(work) / 'om1-stage.lock'
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            holder = lock.read_text().strip()
+        except OSError:
+            holder = '?'
+        raise ValueError('ios-om1 generation is already running in ' + str(work) +
+                         ' (lock held by pid ' + holder + '); remove ' + str(lock) +
+                         ' if that process is gone')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(str(os.getpid()))
+        yield
+    finally:
+        try:
+            lock.unlink()
+        except OSError:
+            pass
+
+
+def publish_om1_stage(work, new, receipt_data):
+    """R6: atomically publish a verified temp stage. The receipt lands first
+    (temp file + os.replace); a crash before the dir swap leaves a receipt
+    whose output hashes match nothing, so the next run regenerates. Then the
+    old stage (if any) is removed and the temp dir renamed into place."""
+    receipt = ios_om1_receipt_path(work)
+    tmp = receipt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(receipt_data))
+    os.replace(tmp, receipt)
+    stage = Path(work) / 'om1-stage'
+    if stage.is_symlink() or stage.exists():
+        stage.unlink() if stage.is_symlink() else shutil.rmtree(stage)
+    os.rename(new, stage)
+    return stage
+
+
 def ensure_ios_om1_stage(a):
     """Default --om1-stage: generate work/om1-stage from the user's disc
     (Mac-only), or resume-skip when the receipt still matches."""
@@ -1786,9 +1831,11 @@ def ensure_ios_om1_stage(a):
 def ios_om1(a):
     """Mac-only ios-om1 step: fetch the om1-replay vendor series, build
     om1_replay with Apple Clang, verify the manifest ELF pin against the
-    user's SLUS_207.72, run all 9 areas into work/om1-stage, copy in the
+    user's SLUS_207.72, run all 9 areas into a temp stage, copy in the
     offline-core sources, and link stage/armsx2 at the fetched vendor tree
-    (the engine compiles the stage's StubHost.cpp against that full tree)."""
+    (the engine compiles the stage's StubHost.cpp against that full tree).
+    The verified temp stage is published atomically; concurrent runs are
+    serialized by om1_stage_lock."""
     for tool in ('/usr/bin/clang', '/usr/bin/clang++', 'cmake', 'ninja'):
         if not shutil.which(tool):
             raise ValueError('ios-om1 needs ' + tool + ' (Mac-only step)')
@@ -1802,51 +1849,58 @@ def ios_om1(a):
         raise ValueError('ios-om1: SLUS_207.72 sha ' + elf_sha[:12] + ' does not match '
                          'the manifest pin ' + manifest['elf']['sha256'][:12] +
                          ' (manifest pieces are exact ELF offsets of that SLUS revision)')
-    vendor = a.work / 'ios-vendor-om1replay'
-    source(OM1_REPLAY_REPO, OM1_REPLAY_PIN, vendor)
-    actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
-    if actual != OM1_REPLAY_PIN:
-        raise ValueError('ios-om1 vendor checkout is ' + actual[:12] + ', want ' + OM1_REPLAY_SHORT)
-    check_vendor_clean(vendor)
-    deps = a.work / 'ios-om1-deps'
-    for name in ('plutovg', 'plutosvg'):
-        src = vendor / '3rdparty' / name
-        bdir = a.work / ('ios-om1-deps-build-' + name)
-        extra = ['-DCMAKE_PREFIX_PATH=' + str(deps)] if name == 'plutosvg' else []
-        run('cmake', '-S', str(src), '-B', str(bdir), '-G', 'Ninja',
-            '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(deps),
-            '-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', *extra)
-        run('cmake', '--build', str(bdir), '--parallel', str(a.jobs))
-        run('cmake', '--install', str(bdir))
-    bdir = a.work / 'ios-om1-build'
-    run('cmake', '-S', str(vendor), '-B', str(bdir), '-G', 'Ninja',
-        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=/usr/bin/clang',
-        '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', '-DENABLE_QT_UI=OFF',
-        '-DENABLE_TESTS=OFF', '-DENABLE_RECOMPILER_TEST_HOOKS=ON',
-        '-DUSE_VULKAN=OFF', '-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON',
-        '-DCMAKE_C_FLAGS=-fno-common', '-DCMAKE_CXX_FLAGS=-fno-common',
-        '-DCMAKE_PREFIX_PATH=' + str(deps))
-    run('cmake', '--build', str(bdir), '--target', 'om1_replay', '--parallel', str(a.jobs))
-    tool = bdir / 'om1-adapter' / 'om1_replay'
-    stage = a.work / 'om1-stage'
-    stage.mkdir(parents=True, exist_ok=True)
-    for area in OM1_AREAS:
-        run(str(tool), str(OM1_MANIFEST), str(elf), area, str(stage))
-    for name in OM1_OFFLINE_CORE:
-        shutil.copy2(OM1_OFFLINE_CORE_DIR / name, stage / name)
-    link_om1_vendor(stage, vendor)
-    validate_om1_stage(stage)
-    core_hashes = om1_core_hashes()
-    if core_hashes is None:
-        raise ValueError('ios-om1: a canonical offline-core source is missing under '
-                         + str(OM1_OFFLINE_CORE_DIR))
-    output_hashes = om1_stage_file_hashes(stage)
-    if output_hashes is None:
-        raise ValueError('ios-om1: cannot hash the generated stage under ' + str(stage))
-    ios_om1_receipt_path(a.work).write_text(json.dumps({
-        'replay_pin': OM1_REPLAY_PIN, 'manifest_sha256': sha(OM1_MANIFEST),
-        'elf_sha256': elf_sha, 'core_sha256': core_hashes,
-        'outputs_sha256': output_hashes}))
+    with om1_stage_lock(a.work):
+        try:
+            ios_om1_receipt_path(a.work).unlink()
+        except OSError:
+            pass
+        vendor = a.work / 'ios-vendor-om1replay'
+        source(OM1_REPLAY_REPO, OM1_REPLAY_PIN, vendor)
+        actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
+        if actual != OM1_REPLAY_PIN:
+            raise ValueError('ios-om1 vendor checkout is ' + actual[:12] + ', want ' + OM1_REPLAY_SHORT)
+        check_vendor_clean(vendor)
+        deps = a.work / 'ios-om1-deps'
+        for name in ('plutovg', 'plutosvg'):
+            src = vendor / '3rdparty' / name
+            bdir = a.work / ('ios-om1-deps-build-' + name)
+            extra = ['-DCMAKE_PREFIX_PATH=' + str(deps)] if name == 'plutosvg' else []
+            run('cmake', '-S', str(src), '-B', str(bdir), '-G', 'Ninja',
+                '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(deps),
+                '-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', *extra)
+            run('cmake', '--build', str(bdir), '--parallel', str(a.jobs))
+            run('cmake', '--install', str(bdir))
+        bdir = a.work / 'ios-om1-build'
+        run('cmake', '-S', str(vendor), '-B', str(bdir), '-G', 'Ninja',
+            '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=/usr/bin/clang',
+            '-DCMAKE_CXX_COMPILER=/usr/bin/clang++', '-DENABLE_QT_UI=OFF',
+            '-DENABLE_TESTS=OFF', '-DENABLE_RECOMPILER_TEST_HOOKS=ON',
+            '-DUSE_VULKAN=OFF', '-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON',
+            '-DCMAKE_C_FLAGS=-fno-common', '-DCMAKE_CXX_FLAGS=-fno-common',
+            '-DCMAKE_PREFIX_PATH=' + str(deps))
+        run('cmake', '--build', str(bdir), '--target', 'om1_replay', '--parallel', str(a.jobs))
+        tool = bdir / 'om1-adapter' / 'om1_replay'
+        new = a.work / 'om1-stage.new'
+        if new.is_symlink() or new.exists():
+            new.unlink() if new.is_symlink() else shutil.rmtree(new)
+        new.mkdir(parents=True)
+        for area in OM1_AREAS:
+            run(str(tool), str(OM1_MANIFEST), str(elf), area, str(new))
+        for name in OM1_OFFLINE_CORE:
+            shutil.copy2(OM1_OFFLINE_CORE_DIR / name, new / name)
+        link_om1_vendor(new, vendor)
+        validate_om1_stage(new)
+        core_hashes = om1_core_hashes()
+        if core_hashes is None:
+            raise ValueError('ios-om1: a canonical offline-core source is missing under '
+                             + str(OM1_OFFLINE_CORE_DIR))
+        output_hashes = om1_stage_file_hashes(new)
+        if output_hashes is None:
+            raise ValueError('ios-om1: cannot hash the generated stage under ' + str(new))
+        stage = publish_om1_stage(a.work, new, {
+            'replay_pin': OM1_REPLAY_PIN, 'manifest_sha256': sha(OM1_MANIFEST),
+            'elf_sha256': elf_sha, 'core_sha256': core_hashes,
+            'outputs_sha256': output_hashes})
     print('  offline VU1 stage regenerated ' + str(stage))
     return stage
 
