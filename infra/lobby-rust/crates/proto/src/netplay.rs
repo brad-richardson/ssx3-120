@@ -1668,6 +1668,51 @@ pub struct StateUpdate {
 impl StateUpdate {
     pub const ENCODED: usize = 111;
 
+    /// netsec-fix-1 F8: numeric validation before a sample is accepted or
+    /// forwarded. False on any non-finite float, a degenerate or wild
+    /// quaternion, an out-of-range position/velocity, or a finish time that
+    /// is negative, unrepresentable, or unsafe for a peer's
+    /// float-to-milliseconds conversion. Bounds mirror the client's
+    /// `stateSampleValid` and are generous (far outside any course).
+    pub fn valid(&self) -> bool {
+        for f in self.pos.iter().chain(self.quat.iter()).chain(self.vel.iter()) {
+            if !f.is_finite() {
+                return false;
+            }
+        }
+        for f in [self.boost, self.dist, self.ftime] {
+            if !f.is_finite() {
+                return false;
+            }
+        }
+        let qn = (self.quat[0] as f64).powi(2)
+            + (self.quat[1] as f64).powi(2)
+            + (self.quat[2] as f64).powi(2)
+            + (self.quat[3] as f64).powi(2);
+        if !(0.09..=4.0).contains(&qn) {
+            return false;
+        }
+        if self.pos.iter().any(|f| !(-4_000_000.0..=4_000_000.0).contains(f)) {
+            return false;
+        }
+        if self.vel.iter().any(|f| !(-1_000_000.0..=1_000_000.0).contains(f)) {
+            return false;
+        }
+        if !(-1_000_000.0..=1_000_000.0).contains(&self.boost) {
+            return false;
+        }
+        if !(-10_000_000.0..=10_000_000.0).contains(&self.dist) {
+            return false;
+        }
+        if !(0.0..=86_400.0).contains(&self.ftime) {
+            return false;
+        }
+        if self.fin > 1 {
+            return false;
+        }
+        true
+    }
+
     pub fn encode(&self) -> [u8; 111] {
         let mut o = [0u8; 111];
         o[0..2].copy_from_slice(&self.slot.to_le_bytes());
@@ -1883,6 +1928,68 @@ impl QpStart {
     }
 }
 
+/// `0x56 QP_TOKEN`, server->client: this seat's rejoin proof (16 bytes).
+/// Sent alongside QP_START; old clients ignore the unknown kind.
+pub const KIND_QP_TOKEN: u8 = 0x56;
+/// `0x57 QP_REJOIN`, client->server: present a rejoin proof before
+/// re-JOINing from a new endpoint: `client:[16], course:u8, token:[16]`
+/// (33 bytes). Old servers ignore the unknown kind.
+pub const KIND_QP_REJOIN: u8 = 0x57;
+
+/// `QP_TOKEN = token:[16]` (16 bytes): the seat's server-issued rejoin proof.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpToken {
+    pub token: [u8; 16],
+}
+
+impl QpToken {
+    pub const ENCODED: usize = 16;
+
+    pub fn encode(&self) -> Vec<u8> {
+        self.token.to_vec()
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        let mut token = [0u8; 16];
+        token.copy_from_slice(payload);
+        Ok(Self { token })
+    }
+}
+
+/// `QP_REJOIN = client:[16], course:u8, token:[16]` (33 bytes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpRejoin {
+    pub client: [u8; 16],
+    pub course: u8,
+    pub token: [u8; 16],
+}
+
+impl QpRejoin {
+    pub const ENCODED: usize = 33;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut p = Vec::with_capacity(Self::ENCODED);
+        p.extend_from_slice(&self.client);
+        p.push(self.course);
+        p.extend_from_slice(&self.token);
+        p
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        let mut client = [0u8; 16];
+        client.copy_from_slice(&payload[..16]);
+        let mut token = [0u8; 16];
+        token.copy_from_slice(&payload[17..33]);
+        Ok(Self { client, course: payload[16], token })
+    }
+}
+
 /// `QP_GO = start_id:u32, seq:u8, rtt_us:u32, recv_to_go_us:u32,
 /// go_tick:u64` (21 bytes): the START the client used, its RTT estimate,
 /// the wall time from that START's arrival to the race clock's first tick,
@@ -1969,6 +2076,53 @@ mod state_tests {
         assert_eq!(QpWait::decode(&[9, 0, 0]).unwrap_err(), CodecError::InvalidEnum);
         assert_eq!(QpStart::decode(&[0u8; 11]).unwrap_err(), CodecError::BadLength);
         assert_eq!(QpGo::decode(&[0u8; 20]).unwrap_err(), CodecError::BadLength);
+        // netsec-fix-1 F7: rejoin token codec.
+        let tok = QpToken { token: [11u8; 16] };
+        assert_eq!(tok.encode().len(), QpToken::ENCODED);
+        assert_eq!(QpToken::decode(&tok.encode()).unwrap(), tok);
+        assert_eq!(QpToken::decode(&[0u8; 15]).unwrap_err(), CodecError::BadLength);
+        let rj = QpRejoin { client: [7u8; 16], course: 0, token: [11u8; 16] };
+        assert_eq!(rj.encode().len(), QpRejoin::ENCODED);
+        assert_eq!(QpRejoin::decode(&rj.encode()).unwrap(), rj);
+        assert_eq!(QpRejoin::decode(&[0u8; 32]).unwrap_err(), CodecError::BadLength);
+    }
+    #[test]
+    fn state_numeric_validation() {
+        // netsec-fix-1 F8: the race sample is valid; hostile numerics are not.
+        assert!(sample().valid());
+        let mut nan = sample();
+        nan.pos[0] = f32::NAN;
+        assert!(!nan.valid());
+        let mut inf = sample();
+        inf.vel[1] = f32::INFINITY;
+        assert!(!inf.valid());
+        let mut neg_inf = sample();
+        neg_inf.boost = f32::NEG_INFINITY;
+        assert!(!neg_inf.valid());
+        let mut flat = sample();
+        flat.quat = [0.0, 0.0, 0.0, 0.0];
+        assert!(!flat.valid());
+        let mut wild_q = sample();
+        wild_q.quat = [3.0, 0.0, 0.0, 0.0];
+        assert!(!wild_q.valid());
+        let mut neg = sample();
+        neg.ftime = -1.0;
+        assert!(!neg.valid());
+        let mut huge = sample();
+        huge.ftime = 1.0e10;
+        assert!(!huge.valid());
+        let mut fin = sample();
+        fin.fin = 2;
+        assert!(!fin.valid());
+        let mut far = sample();
+        far.pos[0] = 5.0e6;
+        assert!(!far.valid());
+        let mut fast = sample();
+        fast.vel[2] = -2.0e6;
+        assert!(!fast.valid());
+        let mut norm = sample();
+        norm.quat = [0.5, 0.5, 0.5, 0.5];
+        assert!(norm.valid());
     }
     #[test]
     fn state_strict_rejections() {

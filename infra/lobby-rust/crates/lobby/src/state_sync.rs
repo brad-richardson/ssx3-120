@@ -56,6 +56,9 @@ pub struct Sscfg {
     pub max_rooms: usize,
     pub max_waiters: usize,
     pub max_waiters_per_ip: usize,
+    /// Active-room seats per source IP (netsec-fix-1 F4): waiting entries
+    /// alone don't bound matchmaking capacity, so live seats count too.
+    pub max_seats_per_ip: usize,
     /// Per source IP packet bucket.
     pub packets_per_sec: f64,
     pub burst_packets: f64,
@@ -79,6 +82,7 @@ impl Default for Sscfg {
             max_rooms: 256,
             max_waiters: 128,
             max_waiters_per_ip: 4,
+            max_seats_per_ip: 8,
             packets_per_sec: 100.0,
             burst_packets: 200.0,
             global_bytes_per_sec: 812_000.0,
@@ -287,11 +291,14 @@ struct Seat {
     go: Option<QpGo>,
     result_sends: u8,
     result_last: Option<Instant>,
+    /// Fresh server-issued rejoin proof (netsec-fix-1 F7): minted per seat
+    /// per pairing, delivered in QP_TOKEN, presented back in QP_REJOIN.
+    rejoin_token: [u8; 16],
 }
 
 impl Seat {
     fn new(addr: SocketAddr, client: [u8; 16], now: Instant) -> Self {
-        Self { addr, client, seen: now, quit: false, start_sends: Vec::new(), go: None, result_sends: 0, result_last: None }
+        Self { addr, client, seen: now, quit: false, start_sends: Vec::new(), go: None, result_sends: 0, result_last: None, rejoin_token: rand::random() }
     }
 }
 
@@ -352,10 +359,26 @@ pub struct Hub {
     global: Bucket,
     seq: u64,
     pub stats: Stats,
+    /// Presented rejoin proofs awaiting their JOIN (netsec-fix-1 F7):
+    /// presenter addr -> (room, slot, presentation time). Entries expire in
+    /// on_tick and are consumed by the takeover.
+    pending_rejoin: HashMap<SocketAddr, ([u8; 16], u16, Instant)>,
 }
+
+/// A presented QP_REJOIN proof stays valid this long for its JOIN.
+const REJOIN_WINDOW: Duration = Duration::from_secs(60);
 
 fn short(id: &[u8; 16]) -> String {
     hex::encode(&id[..4])
+}
+
+/// Fixed-length proof comparison without an early exit (netsec-fix-1 F7).
+fn token_eq(a: &[u8; 16], b: &[u8; 16]) -> bool {
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 impl Hub {
@@ -370,7 +393,18 @@ impl Hub {
             global,
             seq: 0,
             stats: Stats::default(),
+            pending_rejoin: HashMap::new(),
         }
+    }
+
+    /// Live-room seats from `ip` in unfinished rooms (netsec-fix-1 F4).
+    fn seats_of_ip(&self, ip: IpAddr) -> usize {
+        self.rooms
+            .values()
+            .filter(|r| r.result.is_none())
+            .flat_map(|r| r.seats.iter())
+            .filter(|s| !s.quit && s.addr.ip() == ip)
+            .count()
     }
 
     pub fn waiting(&self) -> usize {
@@ -475,16 +509,49 @@ impl Hub {
                 }
             }
             KIND_QUIT => {
-                if let Some(&(id, slot)) = self.seat_of.get(&src) {
-                    if let Some(room) = self.rooms.get_mut(&id) {
-                        room.seats[slot as usize].quit = true;
-                        room.seats[slot as usize].seen = now;
+                // netsec-fix-1 F7: QUIT validates room + sender like QP_GO.
+                // A seated mismatch drops; a waiter just leaves the queue.
+                let seated = self.seat_of.get(&src).copied();
+                match (seated, Quit::decode(&payload)) {
+                    (Some((id, slot)), Ok(_)) if session == id && sender == slot => {
+                        if let Some(room) = self.rooms.get_mut(&id) {
+                            room.seats[slot as usize].quit = true;
+                            room.seats[slot as usize].seen = now;
+                        }
+                        self.drop_seat(id, slot, REASON_QUIT, &mut out, now);
+                        self.seat_of.remove(&src);
+                        self.try_finalize(id, now, &mut out);
                     }
-                    self.drop_seat(id, slot, REASON_QUIT, &mut out, now);
-                    self.seat_of.remove(&src);
-                    self.try_finalize(id, now, &mut out);
-                } else {
-                    self.waiters.retain(|w| w.addr != src);
+                    (None, _) => {
+                        self.waiters.retain(|w| w.addr != src);
+                    }
+                    _ => self.stats.dropped += 1,
+                }
+            }
+            KIND_QP_REJOIN => {
+                // netsec-fix-1 F7: present a rejoin proof ahead of the JOIN
+                // from the new endpoint. The proof is consumed by the next
+                // matching JOIN inside REJOIN_WINDOW, else it expires.
+                match QpRejoin::decode(&payload) {
+                    Ok(rj) => {
+                        let hit = self.rooms.iter().find_map(|(id, room)| {
+                            if room.result.is_some() {
+                                return None;
+                            }
+                            room.seats.iter().enumerate().find_map(|(i, s)| {
+                                (!s.quit && s.client == rj.client && room.course == rj.course &&
+                                    token_eq(&s.rejoin_token, &rj.token))
+                                .then_some((*id, i as u16))
+                            })
+                        });
+                        match hit {
+                            Some((id, slot)) => {
+                                self.pending_rejoin.insert(src, (id, slot, now));
+                            }
+                            None => self.stats.dropped += 1,
+                        }
+                    }
+                    Err(_) => self.stats.dropped += 1,
                 }
             }
             KIND_QP_GO => {
@@ -529,40 +596,52 @@ impl Hub {
             }
             return;
         }
-        // Rejoin from a new source addr on a live seat (app relaunch picks
-        // a new ephemeral port): the same device takes its seat back. Same
-        // client id + same course = resume; anything else queues as a new
-        // waiter below. Finished rooms stay finished.
-        let takeover = self.rooms.iter().find_map(|(id, room)| {
-            if room.result.is_some() {
-                return None;
+        // Rejoin from a new source addr (app relaunch picks a new ephemeral
+        // port): only with a fresh server-issued proof presented in QP_REJOIN
+        // (netsec-fix-1 F7). A tokenless JOIN from a new addr queues as a new
+        // waiter below; finished rooms stay finished.
+        if let Some((id, slot, at)) = self.pending_rejoin.get(&src).copied() {
+            let fresh = now.saturating_duration_since(at) <= REJOIN_WINDOW;
+            let room_ok = self.rooms.get(&id).is_some_and(|room| {
+                room.result.is_none()
+                    && room.seats.get(slot as usize).is_some_and(|s| {
+                        !s.quit && s.client == j.client && room.course == j.course
+                    })
+            });
+            self.pending_rejoin.remove(&src);
+            if fresh && room_ok {
+                let olds: Vec<SocketAddr> = self
+                    .seat_of
+                    .iter()
+                    .filter_map(|(a, (i, s))| (*i == id && *s == slot && *a != src).then_some(*a))
+                    .collect();
+                for a in olds {
+                    self.seat_of.remove(&a);
+                }
+                self.seat_of.insert(src, (id, slot));
+                if let Some(room) = self.rooms.get_mut(&id) {
+                    room.seats[slot as usize].addr = src;
+                    room.seats[slot as usize].seen = now;
+                    room.tracker.rejoin(slot);
+                }
+                info!(room = %short(&id), slot, "quickplay rejoin (proof)");
+                if let Some(f) = self.start_frame(id, slot, now) {
+                    self.push(out, src, f, now);
+                }
+                return;
             }
-            room.seats.iter().enumerate().find_map(|(i, s)| {
-                (!s.quit && s.client == j.client && room.course == j.course)
-                    .then_some((*id, i as u16, s.addr))
-            })
-        });
-        if let Some((id, slot, old)) = takeover {
-            self.seat_of.remove(&old);
-            self.seat_of.insert(src, (id, slot));
-            if let Some(room) = self.rooms.get_mut(&id) {
-                room.seats[slot as usize].addr = src;
-                room.seats[slot as usize].seen = now;
-                room.tracker.rejoin(slot);
-            }
-            info!(room = %short(&id), slot, "quickplay rejoin (seat takeover)");
-            if let Some(f) = self.start_frame(id, slot, now) {
-                self.push(out, src, f, now);
-            }
-            return;
         }
         if let Some(w) = self.waiters.iter_mut().find(|w| w.addr == src) {
             w.seen = now;
         } else {
             let per_ip = self.waiters.iter().filter(|w| w.addr.ip() == src.ip()).count();
+            // netsec-fix-1 F4: waiting entries alone don't bound capacity,
+            // so live-room seats per IP gate admission too (same call that
+            // pairs, hence atomic with the reservation).
             if self.waiters.len() >= self.cfg.max_waiters
                 || per_ip >= self.cfg.max_waiters_per_ip
                 || self.rooms.len() >= self.cfg.max_rooms
+                || self.seats_of_ip(src.ip()) >= self.cfg.max_seats_per_ip
             {
                 let f = self.wait_frame(QP_WAIT_FULL);
                 self.push(out, src, f, now);
@@ -582,6 +661,23 @@ impl Hub {
             self.push(out, src, f, now);
             return;
         };
+        // netsec-fix-1 F4: pairing adds one live seat per mate (two when both
+        // mates share an IP); when either side's IP would pass its seat cap
+        // the pair waits (both waiters keep their places and retry on the
+        // next JOIN).
+        {
+            let (ma, mb) = (self.waiters[mate].addr, self.waiters[me].addr);
+            let seats_after = |ip: IpAddr| {
+                self.seats_of_ip(ip) + usize::from(ma.ip() == ip) + usize::from(mb.ip() == ip)
+            };
+            if seats_after(ma.ip()) > self.cfg.max_seats_per_ip
+                || seats_after(mb.ip()) > self.cfg.max_seats_per_ip
+            {
+                let f = self.wait_frame(QP_WAIT_QUEUED);
+                self.push(out, src, f, now);
+                return;
+            }
+        }
         let (first, second) = if mate < me { (mate, me) } else { (me, mate) };
         let b = self.waiters.remove(second);
         let a = self.waiters.remove(first);
@@ -603,6 +699,13 @@ impl Hub {
         self.stats.rooms_made += 1;
         info!(room = %short(&id), course = a.course, lead_ms = self.cfg.start_delay_ms, "quickplay paired");
         for (slot, addr) in [(0u16, a.addr), (1u16, b.addr)] {
+            // netsec-fix-1 F7: each seat gets its rejoin proof with START.
+            // Old clients ignore the unknown kind; pair/race are unaffected.
+            if let Some(room) = self.rooms.get(&id) {
+                let tok = QpToken { token: room.seats[slot as usize].rejoin_token };
+                let tf = self.frame(&id, KIND_QP_TOKEN, &tok.encode());
+                self.push(out, addr, tf, now);
+            }
             if let Some(f) = self.start_frame(id, slot, now) {
                 self.push(out, addr, f, now);
             }
@@ -628,6 +731,11 @@ impl Hub {
             self.stats.dropped += 1;
             return;
         };
+        // netsec-fix-1 F8: numeric validation before accept and forward.
+        if !st.valid() {
+            self.stats.dropped += 1;
+            return;
+        }
         if session != id || sender != slot || st.slot != slot {
             self.stats.dropped += 1;
             return;
@@ -716,6 +824,8 @@ impl Hub {
         let mut out = Vec::new();
         let ttl = Duration::from_millis(self.cfg.waiter_ttl_ms);
         self.waiters.retain(|w| now.duration_since(w.seen) <= ttl);
+        // netsec-fix-1 F7: presented proofs expire.
+        self.pending_rejoin.retain(|_, (_, _, at)| now.saturating_duration_since(*at) <= REJOIN_WINDOW);
         let ids: Vec<[u8; 16]> = self.rooms.keys().copied().collect();
         for id in ids {
             let Some(room) = self.rooms.get(&id) else { continue };
@@ -908,15 +1018,64 @@ mod tests {
         let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 37, 0, 0.0), t2);
         assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
     }
+    fn token_of(outs: &[Out], port: u16) -> [u8; 16] {
+        let (_, b) = outs
+            .iter()
+            .find(|(a, b)| a.port() == port && decode_frame(b).unwrap().kind == KIND_QP_TOKEN)
+            .unwrap();
+        let f = decode_frame(b).unwrap();
+        QpToken::decode(f.payload).unwrap().token
+    }
+
+    fn rejoin_frame(client: u8, token: [u8; 16]) -> Vec<u8> {
+        let r = QpRejoin { client: [client; 16], course: 0, token };
+        encode_frame(&ZERO16, 0, KIND_QP_REJOIN, 0, 1, &r.encode())
+    }
+
     #[test]
-    fn rejoin_new_addr_takes_seat_back() {
+    fn rejoin_new_addr_without_proof_queues_as_waiter() {
+        // netsec-fix-1 F7: a tokenless JOIN from a new addr no longer steals
+        // the seat; it queues as a new waiter and the old seat stands.
         let t0 = Instant::now();
         let mut hub = Hub::new(Sscfg::default(), t0);
         let room = paired(&mut hub, t0);
         let t1 = t0 + Duration::from_secs(3);
         hub.on_datagram(addr(1), &state_frame(&room, 0, 40000, 0, 0.0), t1);
+        let t2 = t1 + Duration::from_millis(100);
+        let r = hub.on_datagram(addr(9), &join(1, 120), t2);
+        assert_eq!(kinds(&r), vec![(9, KIND_QP_WAIT)]);
+        assert_eq!((hub.waiting(), hub.rooms()), (1, 1));
+        // The old addr still owns the seat; the new addr has no seat.
+        let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 40001, 0, 0.0), t2);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+        assert!(hub.on_datagram(addr(9), &state_frame(&room, 0, 37, 0, 0.0), t2).is_empty());
+        // The queued waiter still pairs normally with the next compatible
+        // waiter (TOKEN + START to each seat).
+        let r = hub.on_datagram(addr(7), &join(3, 120), t2);
+        assert_eq!(
+            kinds(&r),
+            vec![(9, KIND_QP_TOKEN), (9, KIND_QP_START), (7, KIND_QP_TOKEN), (7, KIND_QP_START)]
+        );
+        assert_eq!((hub.waiting(), hub.rooms()), (0, 2));
+    }
+
+    #[test]
+    fn rejoin_new_addr_with_proof_takes_seat_back() {
+        // netsec-fix-1 F7: presenting the seat's QP_TOKEN proof then JOINing
+        // from the new addr resumes the seat.
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let a = hub.on_datagram(addr(1), &join(1, 120), t0);
+        assert_eq!(kinds(&a), vec![(1, KIND_QP_WAIT)]);
+        let b = hub.on_datagram(addr(2), &join(2, 120), t0);
+        let room = start_of(&b, 1).0;
+        let token = token_of(&b, 1);
+        let t1 = t0 + Duration::from_secs(3);
+        hub.on_datagram(addr(1), &state_frame(&room, 0, 40000, 0, 0.0), t1);
         // App relaunch: new ephemeral port, same client id, same course.
         let t2 = t1 + Duration::from_millis(100);
+        let r = hub.on_datagram(addr(9), &rejoin_frame(1, token), t2);
+        assert!(r.is_empty());
         let r = hub.on_datagram(addr(9), &join(1, 120), t2);
         let (rr, s) = start_of(&r, 9);
         assert_eq!(rr, room);
@@ -926,10 +1085,88 @@ mod tests {
         let r = hub.on_datagram(addr(9), &state_frame(&room, 0, 37, 0, 0.0), t2);
         assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
         assert!(hub.on_datagram(addr(1), &state_frame(&room, 0, 40001, 0, 0.0), t2).is_empty());
-        // A stranger (new client id) queues instead of stealing.
-        let r = hub.on_datagram(addr(7), &join(3, 120), t2);
-        assert_eq!(kinds(&r), vec![(7, KIND_QP_WAIT)]);
-        assert_eq!(hub.waiting(), 1);
+    }
+
+    #[test]
+    fn rejoin_wrong_proof_queues_as_waiter() {
+        // netsec-fix-1 F7: a forged proof presents nothing; the JOIN queues.
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        hub.on_datagram(addr(1), &state_frame(&room, 0, 40000, 0, 0.0), t1);
+        let t2 = t1 + Duration::from_millis(100);
+        let r = hub.on_datagram(addr(9), &rejoin_frame(1, [9u8; 16]), t2);
+        assert!(r.is_empty());
+        assert_eq!(hub.stats.dropped, 1);
+        let r = hub.on_datagram(addr(9), &join(1, 120), t2);
+        assert_eq!(kinds(&r), vec![(9, KIND_QP_WAIT)]);
+        assert_eq!((hub.waiting(), hub.rooms()), (1, 1));
+    }
+
+    #[test]
+    fn quit_wrong_room_or_sender_drops() {
+        // netsec-fix-1 F7: QUIT validates room + sender; mismatches drop and
+        // the seat survives.
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        let bad_room = encode_frame(&ZERO16, 0, KIND_QUIT, 0, 99, &Quit { reason: REASON_QUIT }.encode());
+        assert!(hub.on_datagram(addr(1), &bad_room, t1).is_empty());
+        let bad_sender = encode_frame(&room, 0, KIND_QUIT, 1, 99, &Quit { reason: REASON_QUIT }.encode());
+        assert!(hub.on_datagram(addr(1), &bad_sender, t1).is_empty());
+        assert_eq!(hub.stats.dropped, 2);
+        // The seat is still alive: its STATE still forwards.
+        let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 6, 0, 0.0), t1);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+        // The valid QUIT still lands (positive path).
+        let quit = encode_frame(&room, 0, KIND_QUIT, 0, 99, &Quit { reason: REASON_QUIT }.encode());
+        let r = hub.on_datagram(addr(1), &quit, t1);
+        assert_eq!(kinds(&r), vec![(2, KIND_EVENT)]);
+    }
+
+    #[test]
+    fn invalid_state_numerics_drop_before_forward() {
+        // netsec-fix-1 F8: a digest-valid STATE with hostile numerics drops.
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        let mut bad = st(0, 100, 0, 0.0);
+        bad.pos[0] = f32::NAN;
+        let frame = encode_frame(&room, 0, KIND_STATE, 0, 101, &bad.encode());
+        assert!(hub.on_datagram(addr(1), &frame, t1).is_empty());
+        assert_eq!(hub.stats.dropped, 1);
+        let mut bad_fin = st(0, 101, 2, 0.0);
+        bad_fin.pos[0] = 1.0;
+        let frame = encode_frame(&room, 0, KIND_STATE, 0, 102, &bad_fin.encode());
+        assert!(hub.on_datagram(addr(1), &frame, t1).is_empty());
+        // The sane stream still forwards.
+        let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 102, 0, 0.0), t1);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+    }
+
+    #[test]
+    fn seats_per_ip_cap_gates_waiters_and_pairs() {
+        // netsec-fix-1 F4: live-room seats per IP bound admission and pairing.
+        let t0 = Instant::now();
+        let mut cfg = Sscfg::default();
+        cfg.max_seats_per_ip = 2;
+        let mut hub = Hub::new(cfg, t0);
+        let room = paired(&mut hub, t0);
+        assert_eq!((hub.waiting(), hub.rooms()), (0, 1));
+        // Same IP holds both seats: a third waiter is refused FULL.
+        let r = hub.on_datagram(addr(3), &join(3, 120), t0);
+        assert_eq!(kinds(&r), vec![(3, KIND_QP_WAIT)]);
+        let f = decode_frame(&r[0].1).unwrap();
+        assert_eq!(QpWait::decode(f.payload).unwrap().status, QP_WAIT_FULL);
+        // A waiter from a fresh IP is still admitted and queued.
+        let other = SocketAddr::from(([10, 0, 0, 2], 3));
+        let r = hub.on_datagram(other, &join(4, 120), t0);
+        let f = decode_frame(&r[0].1).unwrap();
+        assert_eq!(QpWait::decode(f.payload).unwrap().status, QP_WAIT_QUEUED);
+        let _ = room;
     }
     #[test]
     fn qp_status_counts_queue_rooms_and_alive_window() {

@@ -212,7 +212,44 @@ async fn handle(
     let _ = stream.write_all(reply.as_bytes()).await;
 }
 
+/// Health-listener admission (netsec-fix-1 F3): a global + per-IP cap on
+/// concurrent health tasks, taken before spawning. Deliberately separate
+/// from the game/buddy pool: health checks must consume neither game slots
+/// nor `/statusz`'s `tcp_sessions` (the `--when-idle` deploy gate polls
+/// `/statusz`, so its own connection must read idle:true on a quiet lobby).
+#[derive(Default)]
+struct Caps {
+    total: usize,
+    per_ip: HashMap<IpAddr, usize>,
+}
+
+const HEALTH_MAX_TOTAL: usize = 64;
+const HEALTH_MAX_PER_IP: usize = 8;
+
+/// Connection permit: released back to the health pool when the task ends.
+struct HealthPermit {
+    caps: Arc<Mutex<Caps>>,
+    ip: IpAddr,
+}
+
+impl Drop for HealthPermit {
+    fn drop(&mut self) {
+        let mut caps = self.caps.lock().unwrap();
+        caps.total = caps.total.saturating_sub(1);
+        if let Some(n) = caps.per_ip.get(&self.ip).copied() {
+            if n <= 1 {
+                caps.per_ip.remove(&self.ip);
+            } else {
+                caps.per_ip.insert(self.ip, n - 1);
+            }
+        }
+    }
+}
+
 /// Serve health forever on `listener` (one task per connection).
+/// netsec-fix-1 F3: a global + per-IP connection permit is taken before
+/// spawning, transient accept errors no longer terminate the listener, and
+/// silent connections keep only the 5 s first-read timeout.
 pub async fn serve(
     listener: TcpListener,
     lobby_port: u16,
@@ -221,14 +258,36 @@ pub async fn serve(
     qp: Arc<Mutex<QpStatus>>,
 ) {
     let gate = Arc::new(Gate::default());
+    let caps = Arc::new(Mutex::new(Caps::default()));
     loop {
-        let Ok((stream, addr)) = listener.accept().await else {
-            break;
+        let (stream, addr) = match listener.accept().await {
+            Ok(x) => x,
+            Err(_) => continue,
         };
+        let ip = addr.ip();
+        let admitted = {
+            let mut caps = caps.lock().unwrap();
+            let n = caps.per_ip.get(&ip).copied().unwrap_or(0);
+            if caps.total >= HEALTH_MAX_TOTAL || n >= HEALTH_MAX_PER_IP {
+                false
+            } else {
+                caps.total += 1;
+                caps.per_ip.insert(ip, n + 1);
+                true
+            }
+        };
+        if !admitted {
+            drop(stream);
+            continue;
+        }
         let gate = gate.clone();
         let state = state.clone();
         let qp = qp.clone();
-        tokio::spawn(handle(stream, addr.ip(), gate, lobby_port, game_port, state, qp));
+        let caps = caps.clone();
+        tokio::spawn(async move {
+            let _permit = HealthPermit { caps, ip };
+            handle(stream, ip, gate, lobby_port, game_port, state, qp).await;
+        });
     }
 }
 

@@ -220,6 +220,9 @@ struct StateSyncCfg {
     pub max_waiters: usize,
     #[serde(default = "d_ss_max_waiters_per_ip")]
     pub max_waiters_per_ip: usize,
+    /// Active-room seats per source IP (netsec-fix-1 F4).
+    #[serde(default = "d_ss_max_seats_per_ip")]
+    pub max_seats_per_ip: usize,
     /// Per source IP packet bucket (a racing client sends ~22/s).
     #[serde(default = "d_ss_pps")]
     pub packets_per_sec: f64,
@@ -255,6 +258,10 @@ const fn d_ss_max_waiters_per_ip() -> usize {
     4
 }
 
+const fn d_ss_max_seats_per_ip() -> usize {
+    8
+}
+
 const fn d_ss_pps() -> f64 {
     100.0
 }
@@ -276,6 +283,7 @@ impl Default for StateSyncCfg {
             max_rooms: d_ss_max_rooms(),
             max_waiters: d_ss_max_waiters(),
             max_waiters_per_ip: d_ss_max_waiters_per_ip(),
+            max_seats_per_ip: d_ss_max_seats_per_ip(),
             packets_per_sec: d_ss_pps(),
             burst_packets: d_ss_burst(),
         }
@@ -1563,50 +1571,50 @@ async fn try_pair(state: &Arc<State>) {
         if q.len() < 2 {
             return;
         }
-        let a_name = q.pop_front().unwrap();
-        let b_name = q.pop_front().unwrap();
-        let live = |name: &String| {
-            games
-                .get(name)
-                .map(|g| g.session.is_none())
-                .unwrap_or(false)
-        };
-        if !live(&a_name) || !live(&b_name) {
-            for name in [&a_name, &b_name] {
-                if live(name) && !q.contains(name) {
-                    q.push_back(name.clone());
-                }
+        // netsec-fix-1 F5: pick the first eligible pair behind a blocked head
+        // instead of stalling the queue. Blocked waiters keep their places
+        // and retry on the next quik; dead sessions are dropped.
+        let views: Vec<(String, Option<IpAddr>)> = q
+            .iter()
+            .map(|name| {
+                let ip = games
+                    .get(name)
+                    .filter(|g| g.session.is_none())
+                    .map(|g| g.peer.ip());
+                (name.clone(), ip)
+            })
+            .collect();
+        let pair_ips: Vec<(IpAddr, IpAddr)> = state
+            .pairs
+            .lock()
+            .unwrap()
+            .values()
+            .map(|p| (p.a_ip, p.b_ip))
+            .collect();
+        let (pick, dead) = pick_pair(
+            &views,
+            &pair_ips,
+            state.cfg.limits.max_pairs,
+            state.egress_capped(),
+            state.cfg.limits.max_pairs_per_ip,
+        );
+        for name in &dead {
+            if let Some(i) = q.iter().position(|n| n == name) {
+                q.remove(i);
             }
+        }
+        let Some((a_name, b_name)) = pick else {
+            warn!("no eligible pair; waiters remain queued");
             return;
+        };
+        // Remove the pick (one entry each), preserving everyone else's order.
+        for name in [&a_name, &b_name] {
+            if let Some(i) = q.iter().position(|n| n == name) {
+                q.remove(i);
+            }
         }
         let a_peer = games.get(&a_name).unwrap().peer;
         let b_peer = games.get(&b_name).unwrap().peer;
-        // Admission gates (lane A): refusals re-queue both waiters at
-        // the front in order; they retry on the next quik poll.
-        if state.pairs.lock().unwrap().len() >= state.cfg.limits.max_pairs {
-            q.push_front(b_name);
-            q.push_front(a_name);
-            warn!("pair ceiling reached; waiters remain queued");
-            return;
-        }
-        if state.egress_capped() {
-            q.push_front(b_name);
-            q.push_front(a_name);
-            warn!("monthly egress cap reached; waiters remain queued");
-            return;
-        }
-        {
-            let pairs = state.pairs.lock().unwrap();
-            let over = [a_peer.ip(), b_peer.ip()]
-                .iter()
-                .any(|ip| count_pairs_on_ip(&pairs, *ip) >= state.cfg.limits.max_pairs_per_ip);
-            if over {
-                q.push_front(b_name);
-                q.push_front(a_name);
-                warn!("per-IP pair ceiling reached; waiters remain queued");
-                return;
-            }
-        }
         let name = new_guid();
         let relay_mode = state.cfg.relay.mode.as_str();
         let (relay_port, relay_socket, relay_tokens) = if relay_mode == "always" {
@@ -1894,6 +1902,7 @@ async fn main() {
             max_rooms: c.max_rooms,
             max_waiters: c.max_waiters,
             max_waiters_per_ip: c.max_waiters_per_ip,
+            max_seats_per_ip: c.max_seats_per_ip,
             packets_per_sec: c.packets_per_sec,
             burst_packets: c.burst_packets,
             global_bytes_per_sec: state.cfg.relay.global_bytes_per_sec,
@@ -1940,6 +1949,53 @@ fn count_pairs_on_ip(pairs: &HashMap<String, Pair>, ip: IpAddr) -> usize {
         .values()
         .filter(|p| p.a_ip == ip || p.b_ip == ip)
         .count()
+}
+
+/// netsec-fix-1 F5: first eligible pair behind a blocked head (pure,
+/// unit-tested). `waiters` is the queue in order with each waiter's member
+/// IP (`None` = dead session); `pair_ips` lists existing pairs' member IPs.
+/// Returns the two names in queue order plus dead names to drop. Blocked
+/// waiters are skipped in place (they retry on the next quik); when no pair
+/// is eligible the queue is left untouched apart from dead pruning.
+fn pick_pair(
+    waiters: &[(String, Option<IpAddr>)],
+    pair_ips: &[(IpAddr, IpAddr)],
+    max_pairs: usize,
+    egress_capped: bool,
+    max_pairs_per_ip: usize,
+) -> (Option<(String, String)>, Vec<String>) {
+    let dead: Vec<String> = waiters
+        .iter()
+        .filter(|(_, ip)| ip.is_none())
+        .map(|(n, _)| n.clone())
+        .collect();
+    if pair_ips.len() >= max_pairs || egress_capped {
+        return (None, dead);
+    }
+    let on_ip = |ip: IpAddr| {
+        pair_ips
+            .iter()
+            .filter(|(a, b)| *a == ip || *b == ip)
+            .count()
+    };
+    for i in 0..waiters.len() {
+        let Some(a) = waiters[i].1 else {
+            continue;
+        };
+        if on_ip(a) >= max_pairs_per_ip {
+            continue;
+        }
+        for j in (i + 1)..waiters.len() {
+            let Some(b) = waiters[j].1 else {
+                continue;
+            };
+            if on_ip(b) >= max_pairs_per_ip {
+                continue;
+            }
+            return (Some((waiters[i].0.clone(), waiters[j].0.clone())), dead);
+        }
+    }
+    (None, dead)
 }
 
 impl State {
@@ -2634,6 +2690,77 @@ mod tests {
         assert!(r.ends_with("\"idle\":true}"), "{r}");
         assert!(r.contains("\"tcp_sessions\":0"), "{r}");
         let _ = state;
+    }
+
+    /// netsec-fix-1 F3: the health listener takes a per-IP permit before
+    /// spawning; the 9th concurrent silent connection from one IP is
+    /// dropped instead of spawning a task.
+    #[tokio::test]
+    async fn health_per_ip_cap_drops_the_ninth_connection() {
+        let (state, lp, gp, _bp) = boot("off").await;
+        let hp = boot_health(&state, lp, gp).await;
+        let mut held = Vec::new();
+        for _ in 0..8 {
+            held.push(
+                tokio::net::TcpStream::connect(format!("127.0.0.1:{hp}"))
+                    .await
+                    .unwrap(),
+            );
+        }
+        let mut ninth = tokio::net::TcpStream::connect(format!("127.0.0.1:{hp}"))
+            .await
+            .unwrap();
+        let mut buf = [0u8; 16];
+        let n = tokio::time::timeout(Duration::from_secs(5), ninth.read(&mut buf))
+            .await
+            .expect("drop should be fast")
+            .unwrap();
+        assert_eq!(n, 0);
+        drop(held);
+    }
+
+    /// netsec-fix-1 F5: the pairer finds the first eligible pair behind a
+    /// blocked head instead of stalling the queue.
+    #[test]
+    fn pick_pair_skips_blocked_head_and_keeps_order() {
+        let a: IpAddr = "10.0.0.1".parse().unwrap();
+        let b: IpAddr = "10.0.0.2".parse().unwrap();
+        let c: IpAddr = "10.0.0.3".parse().unwrap();
+        // One pair already on a's IP with cap 1: a1/a2 blocked, b1/c1 pair.
+        let w = vec![
+            ("a1".to_string(), Some(a)),
+            ("a2".to_string(), Some(a)),
+            ("b1".to_string(), Some(b)),
+            ("c1".to_string(), Some(c)),
+        ];
+        let (pick, dead) = pick_pair(&w, &[(a, a)], 98, false, 1);
+        assert_eq!(pick, Some(("b1".to_string(), "c1".to_string())));
+        assert!(dead.is_empty());
+        // Eligible head pairs first.
+        let w = vec![("b1".to_string(), Some(b)), ("c1".to_string(), Some(c))];
+        let (pick, _) = pick_pair(&w, &[], 98, false, 1);
+        assert_eq!(pick, Some(("b1".to_string(), "c1".to_string())));
+        // Global ceilings block everybody but still report the dead.
+        let w = vec![("gone".to_string(), None), ("b1".to_string(), Some(b))];
+        let (pick, dead) = pick_pair(&w, &[], 0, false, 1);
+        assert_eq!(pick, None);
+        assert_eq!(dead, vec!["gone".to_string()]);
+        let (pick, _) = pick_pair(&w, &[], 98, true, 1);
+        assert_eq!(pick, None);
+        // Dead sessions are pruned while the live pair behind them is picked.
+        let w = vec![
+            ("gone".to_string(), None),
+            ("b1".to_string(), Some(b)),
+            ("c1".to_string(), Some(c)),
+        ];
+        let (pick, dead) = pick_pair(&w, &[], 98, false, 1);
+        assert_eq!(pick, Some(("b1".to_string(), "c1".to_string())));
+        assert_eq!(dead, vec!["gone".to_string()]);
+        // Everyone capped: no pick, nothing pruned.
+        let w = vec![("a1".to_string(), Some(a)), ("a2".to_string(), Some(a))];
+        let (pick, dead) = pick_pair(&w, &[(a, a)], 98, false, 1);
+        assert_eq!(pick, None);
+        assert!(dead.is_empty());
     }
 
     /// Health endpoint: 200 + 429 + HEAD-no-body + 404.
