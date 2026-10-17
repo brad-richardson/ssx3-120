@@ -234,6 +234,25 @@ class BundleAssembleTest(unittest.TestCase):
             build.assemble_bundle(Path(temp) / 'bundle', vendor, src)
 
 
+class ArchiveEnvTest(unittest.TestCase):
+    def test_pins_no_common(self):
+        env = build.archive_build_env('/tmp/bundle')
+        self.assertIn('-fno-common', env['CFLAGS'].split())
+        self.assertIn('-fno-common', env['CXXFLAGS'].split())
+        self.assertEqual(env['SSX3_IOS_DEPS'], '/tmp/bundle')
+
+    def test_preserves_user_flags(self):
+        with patch.dict('os.environ', {'CFLAGS': '-O2'}):
+            env = build.archive_build_env('/tmp/bundle')
+        self.assertIn('-O2', env['CFLAGS'].split())
+        self.assertIn('-fno-common', env['CFLAGS'].split())
+
+    def test_vendor_pins_are_full_shas(self):
+        for pin in (build.GE1_VENDOR_PIN, build.OM1_VENDOR_PIN):
+            self.assertRegex(pin, r'^[0-9a-f]{40}$')
+        self.assertNotEqual(build.GE1_VENDOR_PIN, build.OM1_VENDOR_PIN)
+
+
 class PruneOm1Test(unittest.TestCase):
     def make_build(self, root):
         bld = Path(root) / 'bld'

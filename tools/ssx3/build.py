@@ -925,14 +925,14 @@ def android_libs(a):
 GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
 GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
 GE1_VENDOR_SHORT = 'e8ed655ec6'
-# OM1 archive vendor: the newest pre-growth tree (MTGS gained its GS/disc-CRC
-# path 09-25, GS.cpp its upscale/TFX/probe hub 10-14; either drags libwebp
-# into the OM1 island and fails the engine's Check C). This is the exact pin
-# the OM1 lane itself validated, an ancestor of the GE1 tip so it fetches
-# the same way. GE1 stays on the new pin (upscale defaults on).
+# OM1 archive vendor: the parent of the 09-25 growth commit 2d8486965, which
+# gave MTGS its GS/disc-CRC path (verified by nm: the pre-growth MTGS needs
+# only the lean void GSGameChanged; the post-growth tree drags the whole GS
+# stack and libwebp into the island). An ancestor of the GE1 tip so it
+# fetches the same way. GE1 stays on the new pin (upscale defaults on).
 OM1_VENDOR_REPO = GE1_VENDOR_REPO
-OM1_VENDOR_PIN = '247fa6f09499f69192c52c0542305ed16119518b'
-OM1_VENDOR_SHORT = '247fa6f09'
+OM1_VENDOR_PIN = '35213339f93b16c700f0aa26ed195ff691ae47b2'
+OM1_VENDOR_SHORT = '35213339f'
 
 # Vendored iOS dependency sources missing from the vendor tree (the rest of
 # the GE1_IOS_DEPS set ships inside it). Same-generation pins as the
@@ -1198,11 +1198,24 @@ def assemble_bundle(bundle_dir, vendor, deps_src):
     return bundle_dir
 
 
+def archive_build_env(bundle):
+    """Environment for the iOS archive builds. -fno-common is load-bearing:
+    tentative definitions must come out as defined BSS (the shape every
+    shipped pin has), never COMMONs: the OM1 island close demotes defined
+    globals behind its exports list but COMMONs stay global and trip the
+    GE1-intersection check. The current Xcode toolchain defaults to
+    -fcommon, so pin it explicitly instead of inheriting the default."""
+    env = os.environ.copy()
+    env['SSX3_IOS_DEPS'] = str(bundle)
+    for key in ('CFLAGS', 'CXXFLAGS'):
+        env[key] = (env.get(key, '') + ' -fno-common').strip()
+    return env
+
+
 def run_vendor_build(vendor, bundle, work, jobs, label):
     """GE1 + PCSX2 static archives via the pinned engine recipe
     (ps2xRuntime/third_party/armsx2/build.sh ios). Returns the build dir."""
-    env = os.environ.copy()
-    env['SSX3_IOS_DEPS'] = str(bundle)
+    env = archive_build_env(bundle)
     build_sh = ENGINE / 'ps2xRuntime/third_party/armsx2/build.sh'
     proc = subprocess.run(['bash', str(build_sh), 'ios', '--armsx2', str(vendor),
                            '--build-root', str(work), '--jobs', str(jobs)],
@@ -1384,7 +1397,8 @@ def ios_libs(a):
             prior = json.loads((a.work / 'ios-libs.json').read_text())
         except (OSError, ValueError):
             prior = {}
-        if prior.get(key + '_vendor') == want_vendor:
+        if prior.get(key + '_vendor') == want_vendor \
+                and prior.get('archive_cflags') == '-fno-common':
             candidate = Path(prior.get(key + '_dir') or prior.get(key + '_build') or '')
             if candidate.name and all((candidate / name).is_file() for name in
                                       ('ge1-adapter/libge1_gs.a', 'pcsx2/libPCSX2.a',
@@ -1399,7 +1413,9 @@ def ios_libs(a):
     except (OSError, ValueError):
         prior_om1 = {}
     om1_candidate = Path(prior_om1.get('om1_build') or '')
-    if (prior_om1.get('om1_vendor') == OM1_VENDOR_PIN and om1_candidate.name
+    if (prior_om1.get('om1_vendor') == OM1_VENDOR_PIN
+            and prior_om1.get('archive_cflags') == '-fno-common'
+            and om1_candidate.name
             and (om1_candidate / 'pcsx2/libPCSX2.a').is_file()
             and (om1_candidate / 'common/libcommon.a').is_file()):
         print('om1: reusing ' + str(om1_candidate))
@@ -1437,6 +1453,7 @@ def ios_libs(a):
     shutil.copy2(sdl_lib, libs / 'libSDL2.a')
     shutil.copytree(mvk_fw, libs / 'MoltenVK.framework')
     (a.work / 'ios-libs.json').write_text(json.dumps({
+        'archive_cflags': '-fno-common',
         'ge1_vendor': GE1_VENDOR_PIN, 'ge1_dir': str(ge1_build),
         'om1_vendor': OM1_VENDOR_PIN, 'om1_dir': str(om1_dir),
         'om1_build': str(om1_build), 'om1_ge1_gs': om1_ge1_gs,
