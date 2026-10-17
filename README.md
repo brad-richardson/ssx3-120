@@ -126,7 +126,9 @@ hashes don't prove graphics or cost: pair them with fixed captures
 
 Online is on: Quick Matchup connects to a lobby server you (or a friend)
 operate — match + UDP relay, no direct peer IPs. The default server is
-`ssx.bradr.dev`; the lobby source is vendored in `infra/lobby-rust/`, and
+`ssx.bradr.dev` (single definition: `presets/online.env`); to point at
+another lobby, set `PS2X_NET_SERVER=<hostname-or-IPv4>` in your env with
+`PS2X_NET=1`. The lobby source is vendored in `infra/lobby-rust/`, and
 this repo holds the operator side (`infra/`: one small cloud host, deploy,
 harden, backup, rollback). To play offline, just don't pick Online in the
 menu; the in-game settings panel also has an Online row that turns it off.
