@@ -288,7 +288,7 @@ def unpack_cmdline(archive, sdk):
     """Stage Google's command-line tools at <sdk>/cmdline-tools/latest."""
     sdk = Path(sdk)
     target = sdk / 'cmdline-tools' / 'latest'
-    if (target / 'bin/sdkmanager').is_file():
+    if (target / 'bin/sdkmanager').is_file() and os.access(target / 'bin/sdkmanager', os.X_OK):
         return target
     staging = sdk / 'cmdline-tools' / '_new'
     shutil.rmtree(staging, ignore_errors=True)
