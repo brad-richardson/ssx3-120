@@ -1230,12 +1230,12 @@ def newest_build_dir(work):
 
 
 def run_om1_build(vendor, bundle, work, jobs):
-    """OM1 archives from the pre-growth vendor. The run's ge1_gs link is
-    expected to fail (the current adapter needs new-core symbols), but the
-    OM1_LIB inputs (libPCSX2.a, libcommon.a, 3rdparty) complete first as
-    independent targets; harvest them when the link fails and say so. The
-    harvest only accepts a stamp dir modified by this run, never a stale
-    one (which may be the GE1 set that cannot close)."""
+    """OM1 archives from the pre-growth vendor. Its ge1_gs target cannot
+    link (the current adapter needs new-core symbols the old tree lacks),
+    so on that expected failure finish everything else with ninja -k 0 and
+    harvest the OM1_LIB inputs. The harvest only accepts a stamp dir
+    modified by this run, never a stale one (which may be the GE1 set
+    that cannot close)."""
     start = time.time()
     try:
         return run_vendor_build(vendor, bundle, work, jobs, 'OM1')
@@ -1243,13 +1243,24 @@ def run_om1_build(vendor, bundle, work, jobs):
         build_dir = newest_build_dir(work)
         if build_dir.stat().st_mtime < start:
             raise err
-        missing = [name for name in ('pcsx2/libPCSX2.a', 'common/libcommon.a')
-                   if not (build_dir / name).is_file()]
-        if missing:
-            raise err
-        print('OM1: ge1_gs link failed as predicted (adapter needs new-core '
-              'symbols); harvested PCSX2 archives from ' + str(build_dir))
+    proc = subprocess.run(['ninja', '-C', str(build_dir), '-k', '0', '-j', str(jobs)],
+                          text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          check=False)
+    print(proc.stdout)
+    failed = [line for line in proc.stdout.splitlines() if line.startswith('FAILED')]
+    if any('ge1-adapter' not in line for line in failed):
+        raise ValueError('OM1 archive build has unexpected failures: '
+                         + '; '.join(line[:160] for line in failed if 'ge1-adapter' not in line))
+    missing = [name for name in ('pcsx2/libPCSX2.a', 'common/libcommon.a')
+               if not (build_dir / name).is_file()]
+    if proc.returncode and not missing:
+        print('OM1: ge1_gs failed as predicted (adapter needs new-core symbols); '
+              'harvested PCSX2 archives from ' + str(build_dir))
         return build_dir
+    if missing or proc.returncode:
+        raise ValueError('OM1 archive build failed without usable archives'
+                         + (': ' + ', '.join(missing) if missing else ''))
+    return build_dir
 
 
 def prune_om1_copy(build_dir, dest):
@@ -1417,6 +1428,9 @@ def ios_libs(a):
         raise ValueError('GE1 iOS build is missing common/libcommon.a')
     shutil.copy2(common_lib, libs / 'libcommon.a')
     om1_dir = prune_om1_copy(om1_build, libs / 'om1')
+    # Harvested when the OM1 run's ge1_gs link cannot succeed (adapter needs
+    # new-core symbols); the OM1_LIB inputs are what matter.
+    om1_ge1_gs = 'built' if (om1_build / 'ge1-adapter/libge1_gs.a').is_file() else 'harvested'
     sdl_lib = sdl_prefix / 'lib/libSDL2.a'
     if not sdl_lib.is_file():
         raise ValueError('SDL2 install is missing lib/libSDL2.a')
@@ -1425,7 +1439,7 @@ def ios_libs(a):
     (a.work / 'ios-libs.json').write_text(json.dumps({
         'ge1_vendor': GE1_VENDOR_PIN, 'ge1_dir': str(ge1_build),
         'om1_vendor': OM1_VENDOR_PIN, 'om1_dir': str(om1_dir),
-        'om1_build': str(om1_build),
+        'om1_build': str(om1_build), 'om1_ge1_gs': om1_ge1_gs,
         'ios_dep_pins': resolved, 'sdl2_tarball_sha256': SDL2_TARBALL_SHA,
         'ffmpeg_tarball_sha256': FFMPEG_TARBALL_SHA,
         'moltenvk': mvk['url'] + ' @ ' + mvk['archive_sha256'],
