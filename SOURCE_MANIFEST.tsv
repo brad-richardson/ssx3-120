@@ -99,7 +99,7 @@ tests/det/keys/fe5b4b8-play120-native-arm64-fr1r1-t4800-snd1-1x-531408ff/manifes
 tests/det/keys/fe5b4b8-play120-native-arm64-fr1r1-t4800-snd1-1x-531408ff/snd.txt	authored:key-extraction	-	bf1a774f817df90dacbe8f2d2013449e3beadbe0e71f07a94dc56065242669bf	6027	new
 tests/det/knob_matrix.py	lab@ed718e09	local/tooling/knob_matrix.py	df3fea1c9988baa850087fd78c7b9ff67a80b5baac54a600899dec7138a53d48	29869	composition:generalized-profiles-and-sources
 tests/det/knob_registry.py	lab@ed718e09	local/tooling/knob_registry.py	a27e08cbca241da0fed93b40b8851f2af333a2fe21ea33142f5d61b9eb011f2a	5196	composition:dual-root-scan
-tests/det/knob_registry.tsv	lab@ed718e09	local/tooling/knob_registry.tsv	0e89c84f64d4a59ac2730b8c9ffe78669cae9df78b420086be8e8d5a584b4203	58188	composition:scrubbed-evidence-paths
+tests/det/knob_registry.tsv	lab@0ac8b01f	local/tooling/knob_registry.tsv	8b7971fc44af32866bfbcffc8ac25c94ae36a56d75510937fa716b1adbb97be8	61268	composition:scrubbed-evidence-paths
 tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	7fa7cf436d92246c16dbe6fe08e47a8e1bbb5242496efe696fb83a9ed3a7222c	10811	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
 tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
