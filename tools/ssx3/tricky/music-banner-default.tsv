@@ -17,6 +17,8 @@
 #   [Reality Detached] -> "reality.mus"; [SlayBreak] -> "slaybreak.mus"
 #   (MUSICMAP TRICK-song, no jukebox row); [Menu] -> "ssxmenu.mus".
 # - Slot assignment: music-pool-default.tsv (TKP4b shared pool).
+# Artists the disc table leaves empty, filled from Brad's soundtrack list (10-17):
+#   Superwoman = Rasmus; Adam's Revenge / Gin & Sin = John Morgan. Top Bomb and SlayBreak stay empty (unconfirmed).
 # Empty ARTIST mirrors the stock file's own convention for untitled slots
 # (menu/hub sections carry ARTIST = "").
 B1/bep	moveit	Move It With Your Mind	Plump DJ's
@@ -31,7 +33,7 @@ B1/likethis	shakemomma	Shake What Yo' Mama Gave Ya	Skank
 B1/nerd	topbomb	Top Bomb
 B1/poorleno	shakemomma	Shake What Yo' Mama Gave Ya	Skank
 B1/qoftsa	bburner	Board Burner	Mixmaster Mike
-B1/ride	adamsrev	Adam's Revenge
+B1/ride	adamsrev	Adam's Revenge	John Morgan
 B1/screwup	ssxmenu	Menu
 B1/snowptrl	reality	Reality Detached	The Forth
 B1/theman	slayboarder	Slayboarder	Mixmaster Mike / Rahzel
@@ -47,10 +49,10 @@ B2/avalnch	smartbomb	Smartbomb (Plump DJ's Remix)	BT
 B2/bjaxx	finsym	Finished Symphony	Hybrid
 B2/buffet	reality	Reality Detached	The Forth
 B2/caesars	hiphop	Hip Hop Phenomenon	BT / Tsunami One
-B2/deepend	superwoman	Superwoman
+B2/deepend	superwoman	Superwoman	Rasmus
 B2/dilated	finsym	Finished Symphony	Hybrid
 B2/felix	slayboarder	Slayboarder	Mixmaster Mike / Rahzel
-B2/finger	superwoman	Superwoman
-B2/fspoon	superwoman	Superwoman
+B2/finger	superwoman	Superwoman	Rasmus
+B2/fspoon	superwoman	Superwoman	Rasmus
 B2/gdanse	bburner	Board Burner	Mixmaster Mike
 B2/placebo	slaybreak	SlayBreak
