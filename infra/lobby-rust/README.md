@@ -41,11 +41,11 @@ everything in memory, so no `StateDirectory` is declared. Config lives at
 `/etc/ssx3-lobby/lobby.toml` (read-only to the service); set
 `advertise_ip` there (or via `LOBBY_ADVERTISE_IP`).
 
-Dev loop on the Mac (outside the repo so no real config is committed):
+Dev loop on the Mac:
 
 ```sh
-cp lobby.example.toml /tmp/lobby.local.toml   # set advertise_ip
-cargo run -p ssx3-lobby -- /tmp/lobby.local.toml
+cp lobby.example.toml lobby.toml   # set advertise_ip
+cargo run -p ssx3-lobby -- lobby.toml
 ```
 
 Ports 11000/10901/13505 (TCP); relay UDP range 3658-3756 when

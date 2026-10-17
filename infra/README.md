@@ -63,11 +63,10 @@ cd ..
 ```
 
 `deploy-lobby-rust.sh` creates the dedicated `ssx3-lobby` user,
-installs the binary + unit + your operator-side config (`--config=PATH`
-or `LOBBY_CONFIG=PATH`; template `lobby-rust/lobby.example.toml`, set
-`advertise_ip` to your host's public IPv4, never commit it), opens the
-relay UDP range in ufw, enables/starts the unit, attests the running
-binary hash, and health-checks TCP 11000/10901/13505. Dry run:
+installs the binary + unit + `lobby-rust/lobby.toml` (edit
+`advertise_ip` to your host's public IPv4 first), opens the relay UDP
+range in ufw, enables/starts the unit, attests the running binary
+hash, and health-checks TCP 11000/10901/13505. Dry run:
 
 ```
 ./deploy-lobby-rust.sh --dry-run --host=<lobby_address> --binary=<path>
