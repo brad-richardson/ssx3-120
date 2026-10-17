@@ -31,6 +31,7 @@ mapnames = load('mapnames')
 slots = load('speech_slots')
 sil = load('silence_intro_banks')
 song = load('song_eaxa')
+banner = load('patch_music_inf')
 
 
 class EaxaTest(unittest.TestCase):
@@ -248,6 +249,59 @@ class SilenceTest(unittest.TestCase):
     def test_no_takes_fails(self):
         with self.assertRaises(AssertionError):
             sil.silence_member(b'\0' * 64)
+
+
+class BannerTest(unittest.TestCase):
+    FAKE = ('# synth config\r\n'
+            '\r\n#### First Song\r\n[First]\r\n'
+            '    ADDTOFE = 1\r\n    TITLE = "First Song"\r\n'
+            '    ARTIST = "First Artist"\r\n    ALBUM = "First Album"\r\n'
+            '    PATHDATA = "first.mpf"\r\n    MUSDATA = "first.mus"\r\n'
+            '    SONGBIG = 2\r\n\r\n\r\n#### Menu Bed\r\n[MenuBed]\r\n'
+            '    ADDTOFE = 0\r\n    ARTIST = ""\r\n    ALBUM = "Menu Album"\r\n'
+            '    PATHDATA = "menubed.mpf"\r\n    MUSDATA = "menubed.mus"\r\n'
+            '    SONGBIG = 1\r\n\r\n')
+
+    def test_patch_retitles_only_pool_slot(self):
+        mapping = [('first.mus', "Top Bomb", "")]
+        patched = banner.patch_inf(self.FAKE.encode('latin1'), mapping)
+        text = patched.decode('latin1')
+        self.assertIn('TITLE = "Top Bomb"', text)
+        self.assertIn('ARTIST = ""', text)
+        self.assertNotIn('TITLE = "First Song"', text)
+        self.assertNotIn('ARTIST = "First Artist"', text)
+        self.assertNotIn('ALBUM = "First Album"', text)
+        # menu section untouched (no TITLE key added, ARTIST/ALBUM kept)
+        self.assertNotIn('MenuBed"\r\n    TITLE', text)
+        self.assertIn('ALBUM = "Menu Album"', text)
+        self.assertIn('MUSDATA = "menubed.mus"', text)
+
+    def test_patch_missing_key_fails(self):
+        with self.assertRaises(AssertionError):
+            banner.patch_inf(self.FAKE.encode('latin1'), [('nosuch.mus', 'X', 'Y')])
+
+    def test_pad_exact_size(self):
+        short = banner.pad_exact(b'ab\r\n', 256)
+        self.assertEqual(len(short), 256)
+        self.assertTrue(short.endswith(b'\r\n'))
+        with self.assertRaises(AssertionError):
+            banner.pad_exact(b'x' * 257, 256)
+
+    def test_banner_default_map(self):
+        rows = [l.split('\t') for l in
+                (TRICKY / 'music-banner-default.tsv').read_text().splitlines()
+                if l and not l.startswith('#')]
+        self.assertEqual(len(rows), 35)
+        pool = {r[0]: r[1] for l in
+                (TRICKY / 'music-pool-default.tsv').read_text().splitlines()
+                if (l and not l.startswith('#'))
+                for r in [l.split('\t')]}
+        self.assertEqual({r[0] for r in rows}, set(pool))
+        self.assertEqual({(r[0], r[1]) for r in rows},
+                         {(s, pool[s]) for s in pool})
+        for r in rows:
+            title = r[2]
+            self.assertTrue(title and '"' not in title)
 
 
 if __name__ == '__main__':

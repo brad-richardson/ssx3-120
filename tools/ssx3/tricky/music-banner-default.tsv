@@ -1,0 +1,56 @@
+# TKP-banner default song-title map for patch_music_inf.py.
+# For each music-pool slot (music-pool-default.tsv B1/B2 rows), the Tricky
+# song's display TITLE and ARTIST as the race-start banner should show them.
+# Columns: slot | tricky song | TITLE | ARTIST (empty = none on Tricky's disc).
+#
+# Sources (all Tricky-disc, no SSX 3 strings below):
+# - TITLE/ARTIST pairs: SSX Tricky (USA) SLUS_203.26 jukebox table, ISO
+#   offsets 4027744-4028500, e.g. "Bass Invaders"/"John Morgan" @4027744/60,
+#   "Shake What Yo' Mama Gave Ya"/"Skank" @4027928/60,
+#   "System Overload"/"Huda Hudia" @4028352/68,
+#   "Finished Symphony"/"Hybrid" @4028408/32.
+#   "Top Bomb" @4028312, "Adam's Revenge" @4027816, "Gin & Sin" @4028288
+#   and "Superwoman" @4028336 carry no artist (duration follows the title).
+# - Song keys (MUSDATA .mus names): Tricky DATA/CONFIG/MUSIC.INF
+#   (ISO lbn 0xc8ec3, 6279 B), e.g. [Shake What Your Momma Gave Ya] ->
+#   MUSDATA "shakemomma.mus"; [Top Bomb] -> "topbomb.mus";
+#   [Reality Detached] -> "reality.mus"; [SlayBreak] -> "slaybreak.mus"
+#   (MUSICMAP TRICK-song, no jukebox row); [Menu] -> "ssxmenu.mus".
+# - Slot assignment: music-pool-default.tsv (TKP4b shared pool).
+# Empty ARTIST mirrors the stock file's own convention for untitled slots
+# (menu/hub sections carry ARTIST = "").
+B1/bep	moveit	Move It With Your Mind	Plump DJ's
+B1/go	bassinvader	Bass Invaders	John Morgan
+B1/hground	moveit	Move It With Your Mind	Plump DJ's
+B1/irobot	peaktime	Peaktime	Rasmus
+B1/janes	songfordot	Song For Dot	Space Raiders
+B1/kinky	peaktime	Peaktime	Rasmus
+B1/kos	systemover	System Overload	Huda Hudia
+B1/leave	topbomb	Top Bomb
+B1/likethis	shakemomma	Shake What Yo' Mama Gave Ya	Skank
+B1/nerd	topbomb	Top Bomb
+B1/poorleno	shakemomma	Shake What Yo' Mama Gave Ya	Skank
+B1/qoftsa	bburner	Board Burner	Mixmaster Mike
+B1/ride	adamsrev	Adam's Revenge
+B1/screwup	ssxmenu	Menu
+B1/snowptrl	reality	Reality Detached	The Forth
+B1/theman	slayboarder	Slayboarder	Mixmaster Mike / Rahzel
+B1/thrice	songfordot	Song For Dot	Space Raiders
+B1/wobble	ssxmenu	Menu
+B1/yellow	systemover	System Overload	Huda Hudia
+B1/mxpx	smartbomb	Smartbomb (Plump DJ's Remix)	BT
+B2/abullys	hiphop	Hip Hop Phenomenon	BT / Tsunami One
+B2/allnight	reality	Reality Detached	The Forth
+B2/apo	smartbomb	Smartbomb (Plump DJ's Remix)	BT
+B2/auto	slaybreak	SlayBreak
+B2/avalnch	smartbomb	Smartbomb (Plump DJ's Remix)	BT
+B2/bjaxx	finsym	Finished Symphony	Hybrid
+B2/buffet	reality	Reality Detached	The Forth
+B2/caesars	hiphop	Hip Hop Phenomenon	BT / Tsunami One
+B2/deepend	superwoman	Superwoman
+B2/dilated	finsym	Finished Symphony	Hybrid
+B2/felix	slayboarder	Slayboarder	Mixmaster Mike / Rahzel
+B2/finger	superwoman	Superwoman
+B2/fspoon	superwoman	Superwoman
+B2/gdanse	bburner	Board Burner	Mixmaster Mike
+B2/placebo	slaybreak	SlayBreak
