@@ -1638,9 +1638,26 @@ def ios_om1_receipt_path(work):
     return work / 'om1-stage.json'
 
 
-def ios_om1_current(work):
+OM1_OFFLINE_CORE_DIR = ROOT / 'tools/ssx3/offline-core'
+
+
+def om1_core_hashes(core_dir=None):
+    """SHA-256 of each canonical offline-core source. None when any of the
+    four is missing (R1: a missing source must never resume-skip)."""
+    base = Path(core_dir) if core_dir is not None else OM1_OFFLINE_CORE_DIR
+    hashes = {}
+    for name in OM1_OFFLINE_CORE:
+        try:
+            hashes[name] = sha(base / name)
+        except OSError:
+            return None
+    return hashes
+
+
+def ios_om1_current(work, core_dir=None):
     """Resume-skip predicate: the generated stage matches vendor pin,
-    manifest, ELF and file set (validate_om1_stage contract)."""
+    manifest, ELF, the four canonical offline-core sources (R1: changing any
+    of them regenerates) and file set (validate_om1_stage contract)."""
     try:
         receipt = json.loads(ios_om1_receipt_path(work).read_text())
     except (OSError, ValueError):
@@ -1654,6 +1671,12 @@ def ios_om1_current(work):
     except OSError:
         return False
     if receipt.get('elf_sha256') != elf_sha:
+        return False
+    want_core = receipt.get('core_sha256')
+    if not isinstance(want_core, dict):
+        return False
+    have_core = om1_core_hashes(core_dir)
+    if have_core is None or have_core != want_core:
         return False
     stage = work / 'om1-stage'
     try:
@@ -1744,14 +1767,17 @@ def ios_om1(a):
     stage.mkdir(parents=True, exist_ok=True)
     for area in OM1_AREAS:
         run(str(tool), str(OM1_MANIFEST), str(elf), area, str(stage))
-    offline_core = ROOT / 'tools/ssx3/offline-core'
     for name in OM1_OFFLINE_CORE:
-        shutil.copy2(offline_core / name, stage / name)
+        shutil.copy2(OM1_OFFLINE_CORE_DIR / name, stage / name)
     link_om1_vendor(stage, vendor)
     validate_om1_stage(stage)
+    core_hashes = om1_core_hashes()
+    if core_hashes is None:
+        raise ValueError('ios-om1: a canonical offline-core source is missing under '
+                         + str(OM1_OFFLINE_CORE_DIR))
     ios_om1_receipt_path(a.work).write_text(json.dumps({
         'replay_pin': OM1_REPLAY_PIN, 'manifest_sha256': sha(OM1_MANIFEST),
-        'elf_sha256': elf_sha}))
+        'elf_sha256': elf_sha, 'core_sha256': core_hashes}))
     print('  offline VU1 stage regenerated ' + str(stage))
     return stage
 

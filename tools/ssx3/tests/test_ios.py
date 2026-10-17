@@ -126,6 +126,10 @@ class Om1GenerateTest(unittest.TestCase):
         work = Path(root) / 'work'
         work.mkdir(parents=True, exist_ok=True)
         (work / 'SLUS_207.72').write_bytes(elf)
+        core_dir = Path(root) / 'core'
+        core_dir.mkdir(parents=True, exist_ok=True)
+        for name in build.OM1_OFFLINE_CORE:
+            (core_dir / name).write_text('// stub ' + name)
         stage = work / 'om1-stage'
         for name in build.OM1_STAGE_REQUIRED:
             target = stage / name
@@ -137,22 +141,25 @@ class Om1GenerateTest(unittest.TestCase):
         (work / 'om1-stage.json').write_text(json.dumps({
             'replay_pin': pin or build.OM1_REPLAY_PIN,
             'manifest_sha256': build.sha(build.OM1_MANIFEST),
-            'elf_sha256': build.sha(work / 'SLUS_207.72')}))
-        return work
+            'elf_sha256': build.sha(work / 'SLUS_207.72'),
+            'core_sha256': build.om1_core_hashes(core_dir)}))
+        return work, core_dir
 
     def test_current_true(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertTrue(build.ios_om1_current(self.make_work(temp)))
+            work, core_dir = self.make_work(temp)
+            self.assertTrue(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_on_pin_change(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertFalse(build.ios_om1_current(self.make_work(temp, pin='0' * 40)))
+            work, core_dir = self.make_work(temp, pin='0' * 40)
+            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_missing_area_file(self):
         with tempfile.TemporaryDirectory() as temp:
-            work = self.make_work(temp)
+            work, core_dir = self.make_work(temp)
             (work / 'om1-stage' / 'menus.s').unlink()
-            self.assertFalse(build.ios_om1_current(work))
+            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_no_receipt(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -160,10 +167,27 @@ class Om1GenerateTest(unittest.TestCase):
             work.mkdir()
             self.assertFalse(build.ios_om1_current(work))
 
+    def test_current_false_on_core_change(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir = self.make_work(temp)
+            (core_dir / build.OM1_OFFLINE_CORE[0]).write_text('// changed')
+            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_core_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir = self.make_work(temp)
+            (core_dir / build.OM1_OFFLINE_CORE[0]).unlink()
+            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_core_hashes_none_when_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertIsNone(build.om1_core_hashes(Path(temp)))
+
     def test_ensure_uses_current_stage(self):
         with tempfile.TemporaryDirectory() as temp:
-            work = self.make_work(temp)
-            with patch.object(build, 'ios_om1', side_effect=AssertionError('must skip')):
+            work, core_dir = self.make_work(temp)
+            with patch.object(build, 'ios_om1', side_effect=AssertionError('must skip')), \
+                 patch.object(build, 'OM1_OFFLINE_CORE_DIR', core_dir):
                 self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
 
     def test_ensure_generates_when_stale(self):
