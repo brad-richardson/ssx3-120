@@ -16,7 +16,9 @@ are read-only inputs; nothing game-derived is written into git.
 """
 import argparse
 import hashlib
+import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -46,7 +48,7 @@ TKP5_FINALS = {  # odin-play-tricky-tkp5/SHA256SUMS
     'mega': '8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
 }
 TKP5_COURSPIT = '3332b0af708db0b8d4ff8dc901c78f1521b777140158874949b26798414b6acb'
-FROZEN_COURSPIT = '6ad0f543f47586ca9997dd6f880ee872fce04ccd615f0adcfd49bfbdb6ae4d99'
+STOCK_COURSPIC = 'fb3f9d1e43a69a8f9773283e126d1a41a77e590747c53ed4ac5452fa0960c31b'
 
 # --------------------------------------------------------------------------
 # Course recipes. Placement args verbatim from the lane REPORTs / plan-all.
@@ -70,7 +72,14 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
 # worlds-final). Stages that a course has not wired yet are skipped with a
 # note (never silently): the oracles, not the rung list, are the gate.
 RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
-             'terrain', 'sg', 'cand', 'finalw', 'bind', 'floor', 'composite']
+             'terrain', 'sg', 'cand', 'finalw', 'bind', 'floor', 'composite',
+             'play', 'blend', 'fix', 's1', 's2', 's3', 's4', 's5']
+# Tail (TKP5 chain.sh order): play = TK37b composite10 of the floor final;
+# blend = TK42c materialize + patch_blend + composite to the staged TK49;
+# fix = TK56 class-row rebind of staged; s1 = TK53 triggers (mesa);
+# s2 = TK57 glass/blocks; s3 = TK51 proxies; s4 = TK58 hulls;
+# s5 = TKP5 relocate to the final preset world. Preview/COURSPIT is a
+# separate --course preview run (one archive for all courses).
 
 
 COURSES = {
@@ -99,6 +108,8 @@ COURSES = {
         composite_tool='tk30/make_composite30.py',
         oracle_tk49='b353d0614897de85520d3917a81e1c7aafc95011d270b147a80a30eb2810a4bc',
         floor_group=None, bind=None,
+        # staged == TK49; pipe passes the tail through to the TKP5 final.
+        oracle_staged='b353d0614897de85520d3917a81e1c7aafc95011d270b147a80a30eb2810a4bc',
         fix_group=None, preview_loc='BHP1',
     ),
     'untrack': dict(
@@ -131,6 +142,9 @@ COURSES = {
         composite_tool='tk30/make_composite30.py',
         oracle_tk49='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
         floor_group=None, bind=None,
+        # staged == TK49; s3 proxies feed the reloc below.
+        oracle_staged='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
+        oracle_s3='e6ea3205e05b901ad5c8c79dec5842c4173cd73bfc951ed087d8b51eba1f11cb',
         fix_group=None, preview_loc='ESS3',
     ),
     'snow': dict(
@@ -174,6 +188,13 @@ COURSES = {
         oracle_final='c850d63e5324a7d85957da9fa14f87270f5cd5394286d0029a14e7702b31e8c3',
         fix_group=56,
         oracle_fix='3df07de95bea6050b4f41be6f83c325dc549d79b20ce49433c3595867b02e54a',
+        oracle_play='b9da986022987d8a24cacc624aa30b1cf73c9f8a064fe14165270f3e4fef8295',
+        oracle_mat='8b6b14a85f0d96cdbe141ef43fb765541828d601320688debcd4c7544bf082f7',
+        oracle_blend='f2768fd9df165c9801e38a7dfd6358747ed3537fdde1c2f1982c31dd56dfa9ab',
+        oracle_staged='ddaa3c2fb411a754e5e113f32fada3bc2de4b05c287bf9a1878f0dbb2fbfede0',
+        oracle_s2='09a3f736f897f273c7a373fe20d33871074e3e99ffe11b148b4bf665dcd8b104',
+        oracle_s3='28687171e5d11271672963a98254fa1e820e6c27b8d18e006d4f70357753f51d',
+        oracle_s4='f394b59826a3f99e2bf361fcfcb7011d0851d6eff1a6091918674e5810a3d6a9',
         preview_loc='BRA2',
     ),
     'gari': dict(
@@ -231,6 +252,16 @@ COURSES = {
         # branch). Order: ... terrain, bind, floor, [TK42c stage TK49],
         # TK56 fix, TK57, TK51, TK58, reloc, preview, stage.
         oracle_fix='3e714aca99403fc8350dfa3e6ac81835174cd77b37d20cba4279275f0c0cc5ce',
+        oracle_play='ec33194a4a0f210eaff98ee2c549acea40fa4874073eb33d8f88f721045e2b4b',
+        oracle_mat='fc2939d0c9b6d06de4b60ab857af9109b68eb55f6cabc0df4213d5bba1cddc5d',
+        oracle_blend='7b9d955a135dc19a1c68674c0fcdc0aeb897eed1518f7bc9ab661df657124dfe',
+        # staged == oracle_tk49 above (TKP4 composite of the blend).
+        oracle_s2='51736b49ea9a4da28f52aaff64a6afec38638d0692c48759941ff059c188f286',
+        oracle_s3='5d27161d495c65fbfc1ac253830a7ca22aa69edef698b7c407fb14d813642340',
+        oracle_s4='5d27161d495c65fbfc1ac253830a7ca22aa69edef698b7c407fb14d813642340',
+        tk57_blocks=[145, 146, 147, 158, 520, 531, 532, 1087, 1088, 1101,
+                     1318, 1319, 1320, 2115, 2116, 2117, 2118, 2950, 2951,
+                     2952, 3170, 3186],
         preview_loc='ARA1',
     ),
     'mesa': dict(
@@ -283,6 +314,16 @@ COURSES = {
         oracle_final='93668ecfb8ebad07d958d8a0c7f8e7cf55c4312476a0c7c612009e29b3e0702d',
         fix_group=80,
         oracle_fix='ab8325d74363f91a88d6156e5a7f4431ca18d113fbb563f09b6b2d98178b58f6',
+        oracle_play='cea3bcce0b0acce82999a04fe6129c31b996b60e8ac2cbcacf5a515050da0ea7',
+        oracle_mat='ab62e169bff3192ae68a7667bf22e8c73817fd89c3ac0cb791e57ca32c69650c',
+        oracle_blend='9a37eaf88d29a661da4db98bae1e472baa804e3c8dee16928c8646509c034b7e',
+        oracle_staged='f5d08b10ae22337e85217348a00ae94556f85601f34f9b05f02a12807e627c90',
+        tk53_rids=[706, 842, 843, 856, 943, 989, 1485, 1486, 1702, 1706,
+                   1953, 1954, 1993, 1994],
+        oracle_s1='a550279a090fca1d93ef2a347f25d02c44416f00ae59342bf77fdef21fd21d41',
+        oracle_s2='f535e718843aaa5c53a059f154ebc4554d71535e4ac1eb332ff7085d381dca1e',
+        oracle_s3='20384b5cb8a878eec9d446b3ae61a23883cac3575fc8a5a2e243d0a4c7e3101d',
+        oracle_s4='f256ccf544a157ec18d545230bd6a6cdd2ee373752a5c8c42a112157f3dc18eb',
         preview_loc='CRA3',
     ),
     'merq': dict(
@@ -348,6 +389,13 @@ COURSES = {
         oracle_final='9fcced315bf5d0f9a8ab4b7232dc1f6a2a2d4386748332ef479aea99c967998c',
         fix_group=148,
         oracle_fix='b88422281a8138e6960316a7a4fc5e239f6309752a3c021da14df161af3368d7',
+        oracle_play='ebbfa60309508aaa9fa5cab59d984c05d9d1b224e61fa0ded9c3b9b6cff87478',
+        oracle_mat='34d7ebe1a930b44317a9b3d3092790182798775af205fb5e1622c45c77ccf11a',
+        oracle_blend='067b653a05724176739f9aab800f9106b3ff9b87d6ff5de23a0e1402bdeb2b5a',
+        oracle_staged='b71d561d1d329a652b03a6cccc5dbc5a06289224fd3216c11ebc2d5353655b38',
+        oracle_s2='0df07b6e2a6382a19062680ba71839280d102fcf7d17cfa82bbe86d2c6f3c0fc',
+        oracle_s3='cb6b07e2d47a2707eec014fb0ed28b1a2cf33b74a71202cb10ee0c55d1784984',
+        oracle_s4='89dd2561aea3904c33b16f2c962e8d5cc4478106e7c15aa83dc779cfaed02791',
         preview_loc='ERA5',
     ),
     'elys': dict(
@@ -408,6 +456,13 @@ COURSES = {
         oracle_final='169a8cf4ef60020e1604f82cb059c1ab7c140fe3a6ba2cf870a46c24afae3fd4',
         fix_group=135,
         oracle_fix='8d9e9f86e5a85e548834b20aaf8921782ee61b215d61a7c9112bb174e52b660f',
+        oracle_play='9fee3f4fd2b55b71b843862bc7584bc3c547e3d871fd4add5af120ea947e263a',
+        oracle_mat='dd64f261378d8d8414f791a23b339df8a5fe874a36afd1e70c938e3305314fd6',
+        oracle_blend='fb04d5034efd7d85a73b689a4b50501782f60abb54e2aaeea7b6a65a583eb5db',
+        blend_spec='blend-spec-elys2.json',
+        oracle_staged='60728a31dd088ff8572f0cfd6fa899b3e9390488750e87cc1bd1fb7c3596ae6d',
+        oracle_s2='caffab52336cf25cb21f101ba938ac2d82b15157f00dfbfba67899258f863b81',
+        oracle_s4='caffab52336cf25cb21f101ba938ac2d82b15157f00dfbfba67899258f863b81',
         preview_loc='EBC3',
     ),
     'aloha': dict(
@@ -456,6 +511,13 @@ COURSES = {
         oracle_final='11e6b9f8ac5ef2dcc7080a57c4f34d96aa56376fb2320588069c48f13a388bf5',
         fix_group=22,
         oracle_fix='10109cbcb9767e402b07e959bebddc380c4e5b26b542c453e937f2fac4de2abd',
+        oracle_play='f027776344dc70913be33d7595a558b0eeeae933b303b3c84cb20c135c189bfe',
+        oracle_mat='61f2c4322b9623cb0fce4f8a98f7fffc8eb8d97f79f32dcc7e9741f5c192bdd3',
+        oracle_blend='9c74ff34071e3894ce12854fb2520918de39318c4a1aa27970261003ffa226aa',
+        oracle_staged='c43b5a1247639e87a91754109041fe4c43146b8bf26eb0b92723ede61ec4d537',
+        oracle_s2='152500a194eb676b8363a88cd9db697fe06a0f74f2a5ed8de11497d4f2478940',
+        oracle_s3='c5cd4aa6add1dd24aa47835501d86cd022845bbfb48ac7589b1234aaa0038dcc',
+        oracle_s4='344fc3a1faaeced330ad9eaeb0bae5de8b7296ae2eda0abd04ad1830a22453b3',
         preview_loc='ABC1',
     ),
     'alaska': dict(
@@ -503,6 +565,10 @@ COURSES = {
         oracle_final='50e5b4db09598d18baa4a96570ec7ece7dd1336fbe1c7acf60de02ee342303f1',
         fix_group=115,
         oracle_fix='3a8b00dd4de23ccbf53b2c91427d5c4f0f43391a0f8169c5687718ec7024a005',
+        oracle_play='cdc2ef41649ba228898829b82398c66886cc402f90a2acba9ed57f5fccbeff12',
+        oracle_mat='c5a1d6c6cf2a103b3e83674789b3122ca56763ac0ff442e1b35999f8fdea3b20',
+        oracle_blend='c4a2e2fe4e9cff8a663bb3dcf8069b2e02c460471476ad52862b64cb104fac7b',
+        oracle_staged='7887e47e8e30d153bfa7030ff7b79ceb5718e8120e1272d6ff65f38b0ec5e6c6',
         preview_loc=None,
     ),
     'mega': dict(
@@ -548,6 +614,10 @@ COURSES = {
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
         floor_group=94,
         oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
+        # Play == staged == TKP5 final for Megaplex (no signs, no tail steps);
+        # reachable once mega-h/u2/c lands the floor input.
+        oracle_play='8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
+        oracle_staged='8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
         fix_group=None,
         oracle_fix=None,
         preview_loc=None,
@@ -932,6 +1002,208 @@ class Chain:
             check(out, r['oracle_tk49'], f'{c} tk49')
         return out
 
+    # -- rung: play composite (TK37b) -----------------------------------------
+    # make_composite of the floor final: the play world + the materialized
+    # full world (the blend mat input). Proven: gari ec33194a/fc2939d0.
+    def rung_play(self, c, r, final):
+        w = self.W / f'w-{c}-play'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        mat = w / 'mat.BIG'
+        run('play', sys.executable, self.T / 'tk10' / 'make_composite.py',
+            self.a.ssx3_iso, final, out, '--materialized', mat,
+            cwd=self.W, log=self.log(c, 'play'))
+        if r.get('oracle_play'):
+            check(out, r['oracle_play'], f'{c} play')
+        if r.get('oracle_mat'):
+            check(mat, r['oracle_mat'], f'{c} mat')
+        return out, mat
+
+    # -- rung: TK42c blend + staged composite ----------------------------------
+    # patch_blend of the mat world with the course spec, then make_composite
+    # to the staged TK49. Proven: gari 7b9d955a -> 1850bc0e.
+    def rung_blend(self, c, r, mat):
+        w = self.W / f'w-{c}-blend'
+        w.mkdir(parents=True, exist_ok=True)
+        bout = w / f'{c.upper()}-blend.BIG'
+        spec = self.T / 'data' / r.get('blend_spec', f'blend-spec-{c}.json')
+        run('blend', sys.executable, self.T / 'tk42c' / 'patch_blend.py',
+            mat, bout, '--spec', spec, '--receipt', w / 'blend.json',
+            cwd=self.W, log=self.log(c, 'blend'))
+        if r.get('oracle_blend'):
+            check(bout, r['oracle_blend'], f'{c} blend')
+        sout = w / f'{c.upper()}.BIG'
+        run('staged', sys.executable, self.T / 'tk10' / 'make_composite.py',
+            self.a.ssx3_iso, bout, sout,
+            cwd=self.W, log=self.log(c, 'staged'))
+        if r.get('oracle_staged'):
+            check(sout, r['oracle_staged'], f'{c} staged')
+        return sout
+
+    # -- rung: TK56 class-row rebind -------------------------------------------
+    # fix_binds of the staged TK49 (materializes internally). Proven: gari
+    # 1850bc0e -> 3e714aca.
+    def rung_fix(self, c, r, staged):
+        w = self.W / f'w-{c}-fix'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        run('fix', sys.executable, self.T / 'tk56' / 'fix_binds.py',
+            self.a.ssx3_iso, staged, out, '--group', str(r['fix_group']),
+            '--receipt', w / 'fix.json', '--work', w / 'work',
+            cwd=self.W, log=self.log(c, 'fix'))
+        if r.get('oracle_fix'):
+            check(out, r['oracle_fix'], f'{c} fix')
+        return out
+
+    # -- rung: TK53 invisible break triggers (mesa) ------------------------------
+    def rung_s1(self, c, r, fix):
+        w = self.W / f'w-{c}-s1'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        pins = Path(self.a.pins)
+        run('s1', sys.executable, self.T / 'tk53' / 'trigger_step.py',
+            self.a.ssx3_iso, fix, out, '--group', str(r['fix_group']),
+            '--rids', *[str(n) for n in r['tk53_rids']],
+            '--donor-pbd', pins / 'donor' / 'mesa' / 'mesa.pbd',
+            '--scenery', pins / 'scenery-effects' / 'scenery' /
+            'mesa-final-scenery.json',
+            '--receipt', w / 's1.json', '--work', w / 'work',
+            cwd=self.W, log=self.log(c, 's1'))
+        if r.get('oracle_s1'):
+            check(out, r['oracle_s1'], f'{c} s1')
+        return out
+
+    # -- rung: TK57 glass panes + blocks -----------------------------------------
+    # Glass specs (scenery/donor/specs) come from data/tk57-glass-targets.json;
+    # gari also passes --blocks. Proven: gari 3e714aca -> 51736b49.
+    def rung_s2(self, c, r, base):
+        w = self.W / f'w-{c}-s2'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        pins = Path(self.a.pins)
+        gt = json.loads((self.T / 'data' / 'tk57-glass-targets.json')
+                        .read_text())[c]
+        cmd = [sys.executable, self.T / 'tk57' / 'interact_step.py',
+               self.a.ssx3_iso, base, out, '--group', str(r['fix_group']),
+               '--scenery', pins / 'scenery-effects' / 'scenery' /
+               f"{gt['scenery']}-scenery.json",
+               '--donor-pbd', pins / 'donor' / gt['donor'] /
+               f"{gt['donor']}.pbd",
+               '--stock-bam', self.a.host_bam]
+        if r.get('tk57_blocks'):
+            cmd += ['--blocks', *[str(b) for b in r['tk57_blocks']]]
+        cmd += ['--glass', *gt['specs'], '--receipt', w / 's2.json',
+                '--work', w / 'work']
+        run('s2', *cmd, cwd=self.W, log=self.log(c, 's2'))
+        if r.get('oracle_s2'):
+            check(out, r['oracle_s2'], f'{c} s2')
+        return out
+
+    # -- rung: TK51 hidden riding proxies -----------------------------------------
+    # Census from data/; scenery/donor dirs default to pins (untrack donor
+    # falls back to the workdir donor tree, which the extract rung builds).
+    def rung_s3(self, c, r, base):
+        w = self.W / f'w-{c}-s3'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        pins = Path(self.a.pins)
+        stem = {'merq': 'merquer'}.get(c, r['donor'])
+        ddir = pins / 'donor'
+        if not (ddir / stem / f'{stem}.pbd').exists():
+            ddir = self.donor
+        run('s3', sys.executable, self.T / 'tk51' / 'patch_hidden_colliders.py',
+            base, out, '--course', c,
+            '--census', self.T / 'data' / 'tk51-hidden-census.json',
+            '--scenery-dir', pins / 'scenery-effects' / 'scenery',
+            '--donor-dir', ddir,
+            cwd=self.W, log=self.log(c, 's3'))
+        if r.get('oracle_s3'):
+            check(out, r['oracle_s3'], f'{c} s3')
+        return out
+
+    # -- rung: TK58 exact convex hull rebuild ---------------------------------------
+    # Untracked has no hull config: s3 passes through byte-identical (TKP5).
+    def rung_s4(self, c, r, base):
+        w = self.W / f'w-{c}-s4'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        pins = Path(self.a.pins)
+        stem = {'merq': 'merquer', 'elys': 'elysium'}.get(c, r['donor'])
+        ddir = pins / 'donor'
+        if c == 'untrack':
+            shutil.copy(base, out)
+            assert sha256(out) == sha256(base), 'untrack s4 copy'
+            print(f'{c} s4 copy (no hull config)', flush=True)
+            return out
+        run('s4', sys.executable, self.T / 'tk58' / 'fix_hulls.py',
+            base, out, '--course', c, '--donor-dir', ddir,
+            '--receipt', w / 's4.json',
+            cwd=self.W, log=self.log(c, 's4'))
+        if r.get('oracle_s4'):
+            check(out, r['oracle_s4'], f'{c} s4')
+        return out
+
+    # -- rung: TKP5 relocate ----------------------------------------------------------
+    # Programs = TK56 fix receipt plan (moved) + s3 patch.json (created).
+    # Pipe/Mega pass through (nothing to relocate). Proven: gari -> 991929fe.
+    def rung_s5(self, c, r, base, staged, fix_receipt):
+        w = self.W / f'w-{c}-s5'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        progs = []
+        if fix_receipt and Path(fix_receipt).exists():
+            plan = json.loads(Path(fix_receipt).read_text()).get('plan', [])
+            progs += [str(p['program_moved_to']) for p in plan
+                      if p.get('program_moved_to') is not None]
+        patch = self.W / f'w-{c}-s3' / f'{c.upper()}.patch.json'
+        if patch.exists():
+            cb = json.loads(patch.read_text()).get('class_binding')
+            if cb:
+                progs.append(str(cb['create_program']))
+        if not progs:
+            shutil.copy(base, out)
+            print(f'{c} s5 copy (nothing to relocate)', flush=True)
+        else:
+            run('s5', sys.executable, self.T / 'tkp5' / 'relocate_step.py',
+                self.a.ssx3_iso, base, out, '--group', str(r['fix_group']),
+                '--programs', *progs, '--reference', staged,
+                '--receipt', w / 's5.json', '--work', w / 'work',
+                cwd=self.W, log=self.log(c, 's5'))
+        if TKP5_FINALS.get(c):
+            check(out, TKP5_FINALS[c], f'{c} s5-final')
+        return out
+
+    # -- global: COURSPIT preview chain -------------------------------------------
+    # Frozen COURSPIT from the stock ISO, then one preview_step per course
+    # (members are disjoint, order fixed). Proven: 3332b0af (TKP5).
+    PREVIEW_ORDER = ['pipe', 'untrack', 'alaska', 'aloha', 'elys', 'gari',
+                     'mega', 'merq', 'mesa', 'snow']
+
+    def run_preview(self):
+        cp = self.W / 'cp'
+        cp.mkdir(parents=True, exist_ok=True)
+        base = cp / 'COURSPIT-base.BIG'
+        if not base.exists():
+            run('extract-courspic', sys.executable,
+                SHARED / 'inspect_disc.py', self.a.ssx3_iso,
+                '--extract', 'DATA/UI/COURSPIC.BIG', '--output', base,
+                cwd=self.W, log=self.log('preview', 'extract'))
+        # Proven (run6): the 10 preview steps fully overwrite TK9's slots,
+        # so stock COURSPIC is the base; no frozen intermediate is needed.
+        check(base, STOCK_COURSPIC, 'courspic stock')
+        cur = base
+        for c in self.PREVIEW_ORDER:
+            out = cp / f'COURSPIT-{c}.BIG'
+            run(f'preview-{c}', sys.executable,
+                self.T / 'tkp5' / 'preview_step.py',
+                '--courspit', cur, '--donor-iso', self.a.tricky_iso,
+                '--course', c, '--out', out,
+                '--receipt', cp / f'preview-{c}.json',
+                cwd=self.W, log=self.log('preview', c))
+            cur = out
+        check(cur, TKP5_COURSPIT, 'courspit final')
+        print(f'preview done {cur}', flush=True)
+
     def run_course(self, c, upto='all'):
         assert c in COURSES, c
         r = COURSES[c]
@@ -1005,10 +1277,63 @@ class Chain:
                 print(f'{c} floor skipped (not wired)', flush=True)
         if 'composite' in order:
             if r.get('composite_tool'):
-                self.rung_composite(c, r, cbig)
+                tk49 = self.rung_composite(c, r, cbig)
             else:
+                tk49 = None
                 print(f'{c} composite skipped (TK42c staging pending)',
                       flush=True)
+        else:
+            tk49 = None
+        latest = None
+        staged = None
+        fix_receipt = None
+        if 'play' in order:
+            if final is not None and r.get('oracle_play'):
+                play, mat = self.rung_play(c, r, final)
+                latest = play
+            else:
+                print(f'{c} play skipped (no floor final)', flush=True)
+        if 'blend' in order:
+            if latest is not None and r.get('oracle_blend'):
+                staged = self.rung_blend(c, r, mat)
+                latest = staged
+            elif r.get('oracle_staged') and tk49 is not None:
+                staged = tk49
+                latest = staged
+                print(f'{c} blend skipped (staged == TK49)', flush=True)
+            else:
+                print(f'{c} blend skipped (not wired)', flush=True)
+        if 'fix' in order:
+            if staged is not None and r.get('fix_group'):
+                latest = self.rung_fix(c, r, staged)
+                fix_receipt = str(self.W / f'w-{c}-fix' / 'fix.json')
+            else:
+                print(f'{c} fix skipped (TK56 unchanged)', flush=True)
+        if 's1' in order:
+            if r.get('tk53_rids'):
+                latest = self.rung_s1(c, r, latest)
+            else:
+                print(f'{c} s1 skipped (mesa only)', flush=True)
+        if 's2' in order:
+            if r.get('oracle_s2'):
+                latest = self.rung_s2(c, r, latest)
+            else:
+                print(f'{c} s2 skipped (no glass)', flush=True)
+        if 's3' in order:
+            if r.get('oracle_s3'):
+                latest = self.rung_s3(c, r, latest)
+            else:
+                print(f'{c} s3 skipped (no proxies)', flush=True)
+        if 's4' in order:
+            if r.get('oracle_s4') or c == 'untrack':
+                latest = self.rung_s4(c, r, latest)
+            else:
+                print(f'{c} s4 skipped (no hulls)', flush=True)
+        if 's5' in order:
+            if latest is not None and TKP5_FINALS.get(c):
+                self.rung_s5(c, r, latest, staged, fix_receipt)
+            else:
+                print(f'{c} s5 skipped (not wired)', flush=True)
         print(f'{c} done through {order[-1]}', flush=True)
 
 
@@ -1036,7 +1361,10 @@ def main():
     a = ap.parse_args()
     ch = Chain(a)
     ensure_world_report(ch)
-    ch.run_course(a.course, a.rung)
+    if a.course == 'preview':
+        ch.run_preview()
+    else:
+        ch.run_course(a.course, a.rung)
 
 
 if __name__ == '__main__':
