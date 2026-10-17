@@ -29,6 +29,8 @@ mpf = load('mpf3to4')
 atlas = load('make_hud_atlas')
 mapnames = load('mapnames')
 slots = load('speech_slots')
+sil = load('silence_intro_banks')
+song = load('song_eaxa')
 
 
 class EaxaTest(unittest.TestCase):
@@ -206,6 +208,46 @@ class DefaultDataTest(unittest.TestCase):
             self.assertTrue(all(math.isfinite(x)
                                 for x in p['source_anchor'] + p['gate_centre']))
             self.assertGreater(p['scale'], 0)
+
+
+class SilenceTest(unittest.TestCase):
+    def _member(self, amp=12000):
+        pcm = [[int(amp * math.sin(i / 5.0)) for i in range(280)]]
+        splits, chb = eaxa.encode_blocks(pcm, 280)
+        scdl = eaxa.packetize(splits, chb)
+        pt = bytes([0xFD, 0x82, 0x01, 0x01, 0x85, 0x01, 0x00, 0xFF])
+        sch = b'SCHl' + struct.pack('<I', 12 + len(pt)) + bytes(4) + pt
+        scel = b'SCEl' + struct.pack('<I', 8)
+        return sch + b'SCCl' + struct.pack('<I', 12) + struct.pack('<I', 1) + scdl[0] + scel
+
+    def _peak(self, blob):
+        _, _, pcm = song.decode(blob + b'\0' * 65536, 3600 * 32000)
+        n = min(len(x) for x in pcm)
+        return max(max(abs(v) for v in x[:n]) for x in pcm) if n else 0
+
+    def test_loud_member_decodes_loud(self):
+        self.assertGreater(self._peak(self._member()), 1000)
+
+    def test_silence_keeps_structure_kills_audio(self):
+        member = self._member()
+        quiet, takes, skipped = sil.silence_member(member)
+        self.assertEqual(len(quiet), len(member))
+        self.assertEqual(takes, 1)
+        self.assertEqual(skipped, [])
+        self.assertEqual(self._peak(quiet), 0)
+        # headers, counts, offsets and markers survive byte-for-byte
+        sch_len = struct.unpack('<I', member[4:8])[0]
+        self.assertEqual(quiet[:sch_len], member[:sch_len])
+        self.assertEqual(quiet[-8:], member[-8:])
+        qi = quiet.index(b'SCDl')
+        oi = member.index(b'SCDl')
+        self.assertEqual(qi, oi)
+        self.assertEqual(quiet[qi:qi + 16], member[oi:oi + 16])
+        self.assertTrue(all(b == 0 for b in quiet[qi + 16:qi + struct.unpack('<I', member[oi + 4:oi + 8])[0]]))
+
+    def test_no_takes_fails(self):
+        with self.assertRaises(AssertionError):
+            sil.silence_member(b'\0' * 64)
 
 
 if __name__ == '__main__':
