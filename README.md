@@ -1,5 +1,8 @@
 # ssx3-120
 
+Fan project, not affiliated with or endorsed by Electronic Arts. Bring your
+own disc; no game data is distributed.
+
 Upscaled, 120 fps, Tricky-capable SSX 3 with rudimentary online — built from
 **your own disc**. A few commands from this repo give an installable Android
 APK; Mac hosts also get a local runner for testing. No game data, art,
