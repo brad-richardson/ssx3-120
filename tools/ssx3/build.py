@@ -943,8 +943,8 @@ OM1_VENDOR_SHORT = '70a478c17'
 # (recorder sources + om1_replay driver + f-list tail fix). The ios-om1 step
 # fetches this series and rebuilds the offline VU1 stage from the user's disc.
 OM1_REPLAY_REPO = OM1_VENDOR_REPO
-OM1_REPLAY_PIN = '5feeabfcfebfca2b49dcc3fe6681656185b49607'
-OM1_REPLAY_SHORT = '5feeabfcf'
+OM1_REPLAY_PIN = '4daed3bf635c49570ba9354a25a6634699a8a323'
+OM1_REPLAY_SHORT = '4daed3bf6'
 OM1_AREAS = ('sp1', 'mid', 'full', 'menus', 'late', 'sv1', 'grav', 'rb', 'jx')
 OM1_MANIFEST = ROOT / 'tools/ssx3/ios/om1-manifest.json'
 OM1_OFFLINE_CORE = ('OfflineCore.cpp', 'OfflineBridge.cpp', 'OfflineCore.h', 'OM1StubHost.cpp')
