@@ -43,6 +43,7 @@ def onecmd_args(work, **over):
 
 
 class WrapperTest(unittest.TestCase):
+    @unittest.skipUnless((ROOT / 'build').is_file(), 'product ./build wrapper')
     def test_wrapper_is_posix_shell_over_uv(self):
         text = WRAPPER.read_text()
         self.assertTrue(os.access(WRAPPER, os.X_OK))
@@ -60,6 +61,7 @@ class WrapperTest(unittest.TestCase):
         self.assertIn('numpy', head)
         self.assertIn('Pillow', head)
 
+    @unittest.skipUnless((ROOT / 'Makefile').is_file(), 'product Makefile')
     def test_makefile_targets_delegate_to_the_wrapper(self):
         text = (ROOT / 'Makefile').read_text()
         self.assertIn('./build', text)

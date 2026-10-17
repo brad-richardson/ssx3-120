@@ -127,12 +127,12 @@ tools/ssx3/prebuilt.py	fork@5235b114	tools/ssx3/prebuilt.py	98eb922c8c79c32b03da
 tools/ssx3/remaster_font.py	fork@f7a96f23	tools/ssx3/remaster_font.py	c8ad4cf729002ff19a2671eb93f1a77d243d22964c039e68be6baecb2f199366	14254	verbatim
 tools/ssx3/test_prebuilt.py	fork@5235b114	tools/ssx3/test_prebuilt.py	ceb50741083edbdaa9da5bce11dae0177c21e3b8e475b5fce8a1b65fb9a379cf	25749	composition:contract-tests-read-the-engine-checkout
 tools/ssx3/tests/test_android_source_default.py	fork@5235b114	tools/ssx3/tests/test_android_source_default.py	3c8d58dbcff4bb1ddabcd4f3265c836aa47919c9abe572dadb7edcbf9f48649f	2538	verbatim
-tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	fe31fb4b8216ecee3829552864d2d9ab836e30de724428cfd1375893dd0bea57	9081	new
+tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	87cacced4657f81b773fb4918d2a2de3f53aa9d26105dd1c4446a44f114672b3	9237	new
 tools/ssx3/tests/test_public_install_stage.py	fork@f7a96f23	tools/ssx3/tests/test_public_install_stage.py	813fa2b912e0a259226f2451fdac0206f4f974c17b7b3f56dae553f830d66fe5	3715	composition:product-apps-layout-apk-path
 tools/ssx3/tests/test_remaster_font.py	fork@f7a96f23	tools/ssx3/tests/test_remaster_font.py	618c6f3e7df4c5cebb3909cc157f255295c9cda081cb6bc31dcac88d8996b43c	7875	verbatim
 tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a7525057ba5003705f95729d5d273d3ba8c8b43634672822525b8d3a5f3a2368	1242	verbatim
 tools/ssx3/tests/test_stage_fonts.py	fork@f7a96f23	tools/ssx3/tests/test_stage_fonts.py	7c033340c042818df6dea8567762c62567a9d25bad0dc3a7d81fdf8761f70d56	3839	verbatim
-tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	b4100b5e2d870c798c82d03359a94c92ff1bebc697f579eca69f26aad4bef32e	9734	new
+tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	c46f97fe50e3c7c981329a8b3b1c6ee6210aae5597eef7f9a199a449cac09da7	9828	new
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new

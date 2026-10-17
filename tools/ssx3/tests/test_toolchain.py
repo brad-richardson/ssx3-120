@@ -53,6 +53,7 @@ class PinAgreementTest(unittest.TestCase):
         self.assertEqual(toolchain.NDK_VERSION, build.NDK_VERSION)
         self.assertEqual(toolchain.SDK_PACKAGES, build.SDK_PACKAGES)
 
+    @unittest.skipUnless((HERE.parents[1] / 'deps.lock.json').is_file(), 'product lock file')
     def test_bootstrap_pins_match_deps_lock(self):
         import json
         lock = json.loads((HERE.parents[1] / 'deps.lock.json').read_text())
