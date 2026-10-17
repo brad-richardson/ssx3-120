@@ -70,10 +70,12 @@ void seed(const ps2x_microvu_state& state)
     VU1.VI[REG_MAC_FLAG].UL = state.mac;
     VU1.VI[REG_CLIP_FLAG].UL = state.clip;
     VU1.VI[REG_STATUS_FLAG].UL = state.status;
+    // Re-seeding a fresh job must preserve the exported sticky flags.
+    const uint32_t packedStatus = ps2x_microvu_pack_status(state.status);
     for (unsigned k = 0; k < 4; ++k) {
         VU1.micro_macflags[k] = state.mac;
         VU1.micro_clipflags[k] = state.clip;
-        VU1.micro_statusflags[k] = state.status;
+        VU1.micro_statusflags[k] = packedStatus;
     }
     VU1.macflag = state.mac;
     VU1.clipflag = state.clip;

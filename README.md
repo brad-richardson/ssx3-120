@@ -32,16 +32,17 @@ disc image, generated game code, cards and signing keys. The support
 libraries build from source by default: first-time cold build on a Mac
 mini (M5 Pro, 4 jobs, empty caches) is prepare ~80 s, Android libraries
 ~600 s, APK link+package ~260 s (resumed link). Your machine will differ;
-`build.py` prints per-stage timing. A verified prebuilt release, when one
-matches this checkout, is tried first and falls back to source
-automatically; details in [tools/ssx3](tools/ssx3/README.md).
+`build.py` prints per-stage timing. Support libraries build from source
+by default; pass `--prebuilt` to reuse a verified prebuilt release when one
+matches this checkout, with automatic fallback to source;
+details in [tools/ssx3](tools/ssx3/README.md).
 
 What the builder does with your disc: validates the ISO/ELF hashes, writes
 a slim image plus a hole table into `--work`, generates EE code with the
 pinned generator into `--work/codegen` (never into this repo), and links it
 with the pinned runtime. Game-free support libraries (runtime, renderer,
-microVU) build from source; a checksum mismatch or missing prebuilt
-archive falls back to source automatically.
+microVU) build from source; with `--prebuilt`, a checksum mismatch or
+missing prebuilt archive falls back to source automatically.
 
 ## Layout
 

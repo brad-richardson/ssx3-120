@@ -176,25 +176,20 @@ the source census, not a promise that every diagnostic knob is supported.
 
 Use JDK 17, Android SDK 34, NDK 28.2.13676358 and CMake 3.22.1. Set
 `ANDROID_HOME` and `JAVA_HOME` to your installs. EE output from `prepare` is
-shared with Android; no remote build host or PGO profile is needed. **Do not
-pass `--jnilibs`:** with no `--jnilibs`, `android` first uses the verified
-prebuilt support release pinned for this checkout when one exists (see
-[Android prebuilt support libraries](#android-prebuilt-support-libraries)),
-and otherwise falls back to building the JNI libraries from source:
+shared with Android; no remote build host or PGO profile is needed. The default
+Android path builds the JNI support libraries from source, then the APK:
 
 ```sh
+python3 tools/ssx3/build.py android-libs --work /path/to/private-build --ndk "$ANDROID_HOME/ndk/28.2.13676358" --jobs 4
 python3 tools/ssx3/build.py android --work /path/to/private-build --jobs 4
 python3 tools/ssx3/build.py install --work /path/to/private-build
 ```
 
-To force the source route instead, run `android-libs` first and point `android`
-at its output:
-
-```sh
-python3 tools/ssx3/build.py android-libs --work /path/to/private-build --ndk "$ANDROID_HOME/ndk/28.2.13676358" --jobs 4
-python3 tools/ssx3/build.py android --work /path/to/private-build --jnilibs /path/to/private-build/jniLibs --jobs 4
-python3 tools/ssx3/build.py install --work /path/to/private-build
-```
+**Optional: prebuilt libraries.** Pass `--prebuilt` to reuse a verified
+prebuilt support release instead of compiling the support libraries. It only
+applies when a release matches your checkout (see
+[Android prebuilt support libraries](#android-prebuilt-support-libraries));
+otherwise the build falls back to source.
 
 The signed public build defaults to `com.ssx3.recomp`, with its own
 Android `files/` directory and card. Use `--app-id your.dotted.package` on
@@ -229,6 +224,18 @@ The public `android` step downloads the pinned release in
 packages both. `--no-turnip` omits them. A failed download prints a warning
 and builds with the system Vulkan driver. Adreno selects Turnip when present;
 a load failure falls back to the system driver.
+Third-party driver trust: the pinned `binary` is a community Mesa build
+(StevenMXZ Gen8 V37, Odin-validated in Part 3), not our CI artifact, so it
+carries no build-provenance attestation, so the manifest's double SHA-256
+pin — the archive bytes plus the extracted `library` member — is the
+integrity check, enforced identically by `build.py` and `verify-turnip.sh`
+(fail closed). New assets we publish must carry attestation
+(`verify-turnip.sh` requires it unless the manifest entry says otherwise);
+both current pins are documented SHA-only exceptions — the driver because it
+is third-party, `notices` because it comes from our ad094bb9 release, which
+predates attestation (the r1/r2/r3 releases were never published: those runs
+failed). The next green CI build regenerates attested notices. Mesa itself is
+MIT-licensed; its licence texts ship via `notices`.
 The APK stays under `apps/android/app/build/outputs/apk/release` locally.
 
 `android-libs` invokes the pinned ARMSX2 public source dependency recipe
@@ -302,16 +309,17 @@ Preserve dependency licences from their source checkouts.
 
 ### Android prebuilt support libraries
 
-`android-libs` and `android` default to `--prebuilt=auto`. A release matching
-this checkout's source and toolchain contract is downloaded, required to match
-the archive hash pinned in [`prebuilt-releases.json`](../../deps/PS2Recomp/tools/ssx3/prebuilt-releases.json),
+`android-libs` and `android` build the support libraries from source by
+default; `--prebuilt` opts in. With `--prebuilt`, a release matching this
+checkout's source and toolchain contract is downloaded, required to match the
+archive hash pinned in [`prebuilt-releases.json`](../../deps/PS2Recomp/tools/ssx3/prebuilt-releases.json),
 unpacked with a strict file allowlist, and verified file by file.
 `SHA256SUMS` only guards the download in transit; it is the committed pin
 that authenticates the archive, so a tampered re-upload under the same tag is
 refused and falls back to the source build. Releases also carry SLSA
 build-provenance attestations (`gh attestation verify --repo
 brad-richardson/PS2Recomp <archive>`). No release exists for contracts without
-a pin entry yet, so `auto` still builds from source there; the maintainer
+a pin entry yet, so `--prebuilt` still builds from source there; the maintainer
 prints the pin entry to commit after `prebuilt.py build`.
 The runtime and platform bootstrap are static archives; GE1, microVU and the
 hardware shim remain shared libraries. Your generated game library is linked
@@ -321,24 +329,23 @@ ELF, ISO, saves or APK. MComm is not built or included.
 Verified bundles are cached in `WORK/prebuilt-cache`; `--prebuilt-cache PATH`
 selects another cache. A matching cache works offline. A missing release,
 checksum mismatch, invalid archive, or source/toolchain mismatch falls back to
-the source build. Source fallback needs the NDK and the usual public source
-build dependencies. `--prebuilt=off` always selects source libraries. Custom
-application IDs also use source libraries because the prebuilt bootstrap binds
-the public app's external-data path.
+the source build, which needs the NDK and the usual public source build
+dependencies. Custom application IDs also use source libraries because the
+prebuilt bootstrap binds the public app's external-data path.
 
 ```sh
+# Source libraries (default):
 python3 tools/ssx3/build.py android-libs --work /path/to/private-build --ndk /path/to/ndk/28.2.13676358
 python3 tools/ssx3/build.py android --work /path/to/private-build
-# Explicit source reference:
-python3 tools/ssx3/build.py android-libs --prebuilt=off --work /path/to/private-build --ndk /path/to/ndk/28.2.13676358
-python3 tools/ssx3/build.py android --prebuilt=off --work /path/to/private-build
+# Opt in to a verified prebuilt release:
+python3 tools/ssx3/build.py android --prebuilt --work /path/to/private-build
 ```
 
 The consumer checks the source contract again at CMake configure time. At
 load, separate guards check the generated-code ABI and the requested runtime
 contract; stale combinations fail loudly. Static runtime archives preserve the
 existing final game-library link and avoid a cyclic runtime/game shared-library
-dependency. The exact source route remains available with `--prebuilt=off`.
+dependency. The source route is the default.
 
 Maintainer release recipe (game-free, on an Android build host):
 
@@ -360,4 +367,5 @@ The release archive includes GPL/third-party notices and `notices/SOURCES.json`;
 `SHA256SUMS` covers the archive. There is no separate vendor release dependency:
 the PS2Recomp workflow builds and publishes the complete paired bundle. The
 initial tag/release and CI acceptance must be completed before claiming a
-prebuilt download is available; until then `auto` uses the source fallback.
+prebuilt download is available; until then `--prebuilt` uses the source
+fallback.

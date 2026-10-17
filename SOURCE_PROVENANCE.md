@@ -6,16 +6,16 @@ for the composition. Per-file bytes, origins and sizes: `SOURCE_MANIFEST.tsv`
 (`status=verbatim` for all 96 snapshot files; composition edits follow as
 reviewable diffs on top).
 
-## Pinned sources (frozen 2026-10-15)
+## Pinned sources (frozen 2026-10-16, engine bumped s120-pin-1)
 
 | Source | Pin | Content |
 | --- | --- | --- |
-| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `f7a96f23…1453` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
+| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `5235b114…73a8` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
 | `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
 | Vendor `brad-richardson/armsx2` | `afad5a04c2668a10e12adadaa51d54c46f832236` | renderer/VU source; support-archive identity in `deps.lock.json` |
-| Turnip (optional Vulkan driver) | `turnip-ssx3-ad094bb9` (`tools/ssx3/turnip.json`) | hashes in `deps.lock.json` |
+| Turnip (optional Vulkan driver) | StevenMXZ Gen8 V37 community zip (`tools/ssx3/turnip.json`) | archive + driver + notices hashes in `deps.lock.json`; double-SHA pin is the integrity check (unattested third-party build; see trust note in `tools/ssx3/README.md`) |
 
 ## Path remaps (rename-only, bytes preserved)
 
@@ -46,6 +46,20 @@ reviewable diffs on top).
   `apps/android/` (product layout) instead of the engine's `android/`.
 - `tools/ssx3/test_prebuilt.py`: contract/drift git queries read the engine
   checkout (`prebuilt.ENGINE`), not the product root.
+- s120-pin-1 (engine `f7a96f23` → `5235b114`): re-synced `build.py`
+  (`verified_driver` community-zip path, `--prebuilt` opt-in flag),
+  `prebuilt.py` (contract `5cfcdafd…`: SND headers moved to the game
+  module, `ps2_pcm_ring.h` added), `presets/ps2x.env` (online rows
+  dropped until 120 netplay, GPU-aware autotune default), `knobs.tsv`
+  (+8 netsync knobs, default off), `turnip.json` (V37 community zip),
+  `OfflineBridge.cpp` (packed microVU STATUS reseed); carried the new
+  `verify-turnip.sh`, `build_tk_font.py`, `build_tk_list_art.py`,
+  `tests/test_android_source_default.py` and
+  `tests/test_turnip_driver.py` verbatim. Product edits re-applied:
+  `apps/android` APK path, engine-relative `prebuilt-releases.json`
+  link, `prebuilt.ENGINE` test retarget, signed-off play-policy preset
+  tail. Vendor armsx2 stays `afad5a04` (the engine at the new pin still
+  pins it in `build.py`/`prebuilt.py`).
 
 ## Lobby source (vendored, lobby-src-1)
 

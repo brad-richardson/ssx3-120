@@ -244,7 +244,9 @@ DECISIONS = {
 # Dropped groups (not preset policy, checked elsewhere): PS2X_NET* (online
 # default-off; online lanes own it), GE1_TEX_REPLACE/PRELOAD + GE1_ONDEVICE_UPSCALE
 # (pack-gated; base preset is pack-free, stage path covered by
-# tools/ssx3/tests/test_stage_fonts.py), GE1_TEX_UPLOAD_* (knob removed).
+# tools/ssx3/tests/test_stage_fonts.py), GE1_TEX_UPLOAD_* (knob removed),
+# TU_AUTOTUNE_ALGO (device-gates-1 H5: preset leaves it unset so the GPU-aware
+# backend picks prefer_sysmem only under the Adreno 8xx Turnip).
 # Profiles: android60, android120, ios60, ios120, macplay, macref.
 # CFG1 Part 2 extends D1 (iOS bundle) and D4 (Mac PLAY_ENV) past the Part-1 set.
 CHECKS = {
@@ -297,7 +299,6 @@ CHECKS = {
     "PS2X_TRICKY_HUD_ASYNC": {"android60": "1", "android120": "1"},  # PB41: GSW1 Tricky HUD async composite (inert off Tricky courses)
     "PS2X_GS_WAKE_LOWWATER": {"android60": "4096", "android120": "4096"},  # PB41: GSW2 GS queue wake low-water
     "PS2X_MTVU_STAGE_PARK2": {"android60": "1", "android120": "1"},  # PB43: SPN1 park MTVU-VIF/MTVU-GIF producer waits (exact; )
-    "TU_AUTOTUNE_ALGO": {"android60": "prefer_sysmem", "android120": "prefer_sysmem"},  # PB43: TUR1 Turnip sysmem autotune (output-only, 0 px diff)
     "WAIT_SPIN_MICROSECONDS": {"android60": "5", "android120": "5"},  # PB43: PRF1 GS Back short spin (output-side timing)
     "PS2X_GS_GIF_BATCH": {"android60": "1", "android120": "1"},  # PB45: GSB1 GIF batch command (exact host transport; Elysium +7.7 %)
     "PS2X_GS_GIF_ARENA": {"android60": "1", "android120": "1"},  # PB50: GSB2 zero-copy GIF batches, arena views (exact host transport, needs GIF_BATCH=1; MTVU-GIF -65 % on Elysium; exact-defaults rule)

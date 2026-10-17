@@ -274,7 +274,6 @@ class ContractInputsTests(unittest.TestCase):
         'ps2xRuntime/src/lib/Kernel/Stubs/Pad.cpp',
         'ps2xRuntime/src/lib/Kernel/Stubs/RPC.cpp',
         'ps2xRuntime/src/lib/Kernel/Stubs/SIF.cpp',
-        'ps2xRuntime/src/lib/Kernel/Stubs/Ssx3Movie.cpp',
         'ps2xRuntime/src/lib/Kernel/Stubs/System.cpp',
         'ps2xRuntime/src/lib/Kernel/Stubs/TTY.cpp',
         'ps2xRuntime/src/lib/Kernel/Stubs/Unimplemented.cpp',

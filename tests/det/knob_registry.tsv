@@ -3,6 +3,7 @@ name	class	owner_lane	evidence	batch
 GE1_ADRENO_AD_ACCU	active-lane	GE1 adapter, host and replay (	lanes:AX4,AX4b	keep
 GE1_ADRENO_BLEND_MIX	play-default	CF2	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU19,AX4,AX4b,CFG1,ISH1,MPW1	keep
 GE1_ADRENO_DSTREAD	diag	CF2	tests/det/knob_matrix.py; lanes:AU19,AX4b,CFG1,ISH1,MPW1	keep
+GE1_ADRENO_FETCH_WORKAROUND	play-default	device-gates-1	fork ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:321 GPU-aware fetch default from vendorID (explicit env wins); device-gates-1 H2+H6	keep
 GE1_ADRENO_OVERONE	dead	GE1 adapter, host and replay (	no setter	B4d
 GE1_ANISO	play-default	CFG1	ps2_knobs.h compiled default; tests/det/boot/ssx3_boot.py; lab archive research/EBN1/tooling/eebench.py; lab archive tooling/bench/knobs.tsv; tests/det/knob_matrix.py; lab archive tooling/perf/eebench/eebench.p	keep
 GE1_BACKTHREAD	diag	CF2	tests/det/knob_matrix.py; lanes:AU19,AX4,AX4b,CFG1,ISH1,LT1,LT1b,MPW1	keep
@@ -170,6 +171,7 @@ PS2X_IOS_AUDIO_SESSION	diag	IA1	lab archive tooling/build/ios_build.sh; lanes:AU
 PS2X_IOS_DOCUMENTS	active-lane	QSR1	host-set by ps2_ios_runtime.mm to the app Documents path (quick-save slot dir), not a user knob; lanes:QSR1	keep
 PS2X_IOS_TOUCH_EVENTS	user-toggle	IN4	fork src/lib/ps2_ios_runtime.mm; lanes:IN3,IN4	keep
 PS2X_LAUNCH_HZ	user-toggle	TG1	fork android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	keep
+PS2X_LAB_UNCAPPED	diag	mac-speed-1	fork ps2xRuntime/src/lib/ps2_runtime.cpp:4947 lab-only host-present decoupling (=1 drops FPS limiter + GL vsync wait; guest untouched)	keep
 PS2X_LAUNCH_LAYER	user-toggle	TKO1	fork android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	keep
 PS2X_MC_ROOT	play-default	I26	odin ps2x.env; ios bundled ps2x.env; fork src/lib/ps2_ios_runtime.mm; tests/det/boot/ssx3_boot.py; tools/bench/bench-android.sh; lab archive research/EBN1/tooling/eebench.py; tools/bench/bench-android.py; l	keep
 PS2X_MICROVU_BRIDGE_LEAN	dead	MP1	no setter	B4d
@@ -298,6 +300,7 @@ PS2X_TK12_AP_TO	active-lane	APH1	lanes:APH1,TK19c,TK24,TK24a,TK24b,TK24c,TK26,TK
 PS2X_TK12_CLIP	active-lane	APH1	lanes:APH1,FLK1,TK19c,TK24,TK24c,TK30,TK31,TK36	keep
 PS2X_TK_MENU_1_DIAG	diag	tk-menu-1	lane diag: logs one line per navigator decision; fork ps2xRuntime/include/ps2_ssx3_tricky_list.h:38,42	keep
 PS2X_TK_MENU_1_SHOT	diag	tk-menu-1	lane diag shots: saves the host present to a prefix dir; fork ps2xRuntime/src/lib/ps2_runtime.cpp:8343,8345	keep
+PS2X_TK_MENU_2_SHOT	diag	tk-menu-2	lane diag shots: saves the host present to a prefix dir (remove-with-lane); fork ps2xRuntime/src/lib/ps2_runtime.cpp:8421,8424	keep
 PS2X_TRACE_SYSCALLS	dead	T18/T22	KNC2 B3: deleted at 5417c2a8; retired syscall file logger; evidence in inventory.tsv	KNC2-B3 (removed)
 PS2X_TRACE_SYSCALLS_PC	dead	T18/T22	KNC2 B3: deleted at 5417c2a8; retired syscall file logger; evidence in inventory.tsv	KNC2-B3 (removed)
 PS2X_TS2_CASE_COUNT	dead	TS3	no setter	B3
@@ -375,6 +378,14 @@ PS2X_TRICKY_HUD_GPU	active-lane	HUD5	KNC6 registry reconciliation: ps2xRuntime/s
 PS2X_TRICKY_HUD_GPU_DIAG	diag	HUD5	KNC6 registry reconciliation: ps2xRuntime/src/lib/gs/ps2_gs_external_backend.cpp:420; tools/ssx3/knobs.tsv	keep
 PS2X_VIF_UNPACK_FAST	active-lane	VUP1	KNC6 registry reconciliation: ps2xRuntime/src/lib/ps2_memory.cpp:411; tools/ssx3/knobs.tsv	keep
 PS2X_NET	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
+PS2X_NETSYNC	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:292 master switch, default off (120-only session gate); tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_EVERY	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:329 sync period; tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_IDELAY	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:334 input delay; tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_PEER	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:327 peer slot (default 1-slot); tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_RELAY	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:307 relay host:port (default 127.0.0.1:36595); tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_SLOT	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:324 own slot; tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_TIMEOUT_MS	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:337 peer timeout ms; tools/ssx3/knobs.tsv	keep
+PS2X_NETSYNC_TOKEN	active-lane	netsync-spike-1	fork ps2xRuntime/include/ps2_netsync.h:322 session token (required when on); tools/ssx3/knobs.tsv	keep
 PS2X_NET_SERVER	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
 PS2X_NET_LOGIN	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep
 PS2X_NET_PORT_BASE	active-lane	ONL6	lab archive research/ONL6/REPORT.md:31 registration handback; inherited incoming ONL6 merge	keep

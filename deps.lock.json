@@ -3,7 +3,7 @@
   "engine": {
     "repo": "https://github.com/brad-richardson/PS2Recomp.git",
     "ref": "ssx3",
-    "pin": "f7a96f233a7e66928271dbf447ed511616c51453",
+    "pin": "5235b1144d8274b2ab2fd2e9a0dfe642c41f73a8",
     "submodule": "deps/PS2Recomp",
     "runner_invariant_base": "c5a9d02573410a2085a4b4b831b0b68ba3515440",
     "upstream_base": "2c5fbb9389e11dd95693385969490c9e8e6f57b4"
@@ -21,8 +21,10 @@
     "plutovg": "v1.1.0",
     "plutosvg": "v0.0.7",
     "turnip": {
-      "release": "turnip-ssx3-ad094bb9",
-      "binary_sha256": "ad094bb99750e9793c887fe99551e0868ee58f9a0911f21f66b6c27a372bbb92",
+      "release": "StevenMXZ/Adreno-Tools-Drivers v37 (community zip, Odin-validated)",
+      "archive_sha256": "d0335542ec996fe33e83dfbec0d86aed301da95d22b671a88b40a4722d115b48",
+      "library": "libvulkan_freedreno.so",
+      "binary_sha256": "b6d445f512d15bb94be3d46bb2e2d27f604f161bf7400f32ed6008de59844c7f",
       "notices_sha256": "514bffd1c642245e59efe3e40666d4b05642c072557625343ed9afd850c4d8c0"
     }
   },
@@ -38,7 +40,7 @@
     "android_abi": "arm64-v8a"
   },
   "archive_identity": {
-    "contract": "140b4176d99fe1c05477275e8bee7123998cc618cb89a3f3c60b031338403945",
+    "contract": "5cfcdafdf703ff7fa494addc12d993a997a75148db511eb562e03bdb012cf106",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
   },
   "inputs": {

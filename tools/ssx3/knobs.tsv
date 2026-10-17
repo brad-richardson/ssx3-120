@@ -206,3 +206,11 @@ PS2X_SETTINGS_PERF	user-toggle	SET2
 PS2X_SET2_TEST_PAD	diag	SET2
 PS2X_SET2_SHOT	diag	SET2
 PS2X_NETPLAY_CANON_HASH	active-lane	np-checksum-1
+PS2X_NETSYNC	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_RELAY	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_TOKEN	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_SLOT	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_PEER	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_EVERY	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_IDELAY	guest-affecting-when-on	netsync-spike-1
+PS2X_NETSYNC_TIMEOUT_MS	guest-affecting-when-on	netsync-spike-1

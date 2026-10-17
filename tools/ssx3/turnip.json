@@ -1,10 +1,16 @@
 {
   "binary": {
-    "url": "https://github.com/brad-richardson/mesa/releases/download/turnip-ssx3-ad094bb9/libvulkan_freedreno.so",
-    "sha256": "ad094bb99750e9793c887fe99551e0868ee58f9a0911f21f66b6c27a372bbb92"
+    "url": "https://github.com/StevenMXZ/Adreno-Tools-Drivers/releases/download/v37/Turnip_Gen8_V37.zip",
+    "archive_sha256": "d0335542ec996fe33e83dfbec0d86aed301da95d22b671a88b40a4722d115b48",
+    "library": "libvulkan_freedreno.so",
+    "sha256": "b6d445f512d15bb94be3d46bb2e2d27f604f161bf7400f32ed6008de59844c7f",
+    "attested": false,
+    "source": "StevenMXZ/Adreno-Tools-Drivers v37, third-party Mesa build (Odin-validated Part 3). Mesa is MIT-licensed; licence notices come from our own Mesa build in `notices`."
   },
   "notices": {
     "url": "https://github.com/brad-richardson/mesa/releases/download/turnip-ssx3-ad094bb9/turnip-notices.zip",
-    "sha256": "514bffd1c642245e59efe3e40666d4b05642c072557625343ed9afd850c4d8c0"
+    "sha256": "514bffd1c642245e59efe3e40666d4b05642c072557625343ed9afd850c4d8c0",
+    "attested": false,
+    "source": "Our SSX 3 Turnip ad094bb9 release (only published notices asset; r1/r2/r3 runs failed so those releases were never created). Static Mesa licence texts; predates build-provenance attestation. Regenerate attested notices with the next green CI build."
   }
 }
