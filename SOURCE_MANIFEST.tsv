@@ -7,7 +7,7 @@ LICENSE	fork@f7a96f23	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c
 Makefile	authored:builder-ux-1	-	5d5d7a088d8ebd203f4a8ba3e0262fa13334de3904cc2e32a4f44bb5ee16306b	1248	new
 README.md	authored:readme	-	0abd4c15b0e9721494d20e1a8151d1087a5abf756884c34cbf56bf8e0b003bfb	7122	new
 SOURCE_PROVENANCE.md	authored:provenance	-	0dff3692ad8ea815850381fb2ae40e9f09376604b235ccc3c397a19f25576c11	6611	new
-THIRD_PARTY_NOTICES.md	authored:notices	-	07f7afae3106aeb62fa7bd32bc7cd13252f771524bb68332ff1be306576b42f9	2332	new
+THIRD_PARTY_NOTICES.md	authored:notices	-	bbe79b32bfc10b74cf600e0c9fbbc8c47bedca1eb19ad48673429ae6c35641ac	4480	new
 apps/android/README.md	fork@f7a96f23	android/README.md	b9306de582f19343587c3209ea97c1ad3032807ba93d5a158814c45c953b81bc	6974	composition:product-paths-and-host-support
 apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	995256a7022d0455dd2e909cfd95d36eb6ea2bfb1d20cd55495662208aff9f57	9455	composition:explicit-engine-cmake-path
 apps/android/app/src/main/AndroidManifest.xml	fork@f7a96f23	android/app/src/main/AndroidManifest.xml	95ab3f30f752538f0553c957c97edc93d3ee6090df4cc6a6fdd45caa2efbe463	3380	verbatim
