@@ -591,6 +591,12 @@ struct GameSession {
     last_active: Instant,
     writer: GameWriter,
     owner: u64,
+    /// online-stock-2: the stock client alternates `quik KIND=DeathRace`
+    /// (search) and `quik KIND=*` (stop searching; MComm de-queues it). A
+    /// stopped client rejects a +ses (answers `chal PERS=*` and searches on
+    /// alone), so its +ses waits here until its next search echo.
+    searching: bool,
+    pending_ses: Option<Vec<u8>>,
 }
 
 #[allow(dead_code)] // presence record kept for ops
@@ -1185,6 +1191,8 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                             last_active: Instant::now(),
                             writer: wr.clone(),
                             owner,
+                            searching: false,
+                            pending_ses: None,
                         },
                     );
                 }
@@ -1273,6 +1281,16 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                 // echo still precedes any +ses try_pair may push.
                 let mut full = false;
                 let mut pair_after_echo = false;
+                let deferred_ses = {
+                    let mut games = state.games.lock().unwrap();
+                    match games.get_mut(&me) {
+                        Some(g) => {
+                            g.searching = kind != "*";
+                            if g.searching { g.pending_ses.take() } else { None }
+                        }
+                        None => None,
+                    }
+                };
                 if !paired {
                     // Expire stale waiters (f2 back-out leaves no cancel).
                     {
@@ -1351,6 +1369,12 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                 if gsend_wire(&wr, &wire).await.is_err() {
                     break;
                 }
+                if let Some(ses) = deferred_ses {
+                    info!("deferred +ses delivered on the next search");
+                    if gsend_wire(&wr, &ses).await.is_err() {
+                        break;
+                    }
+                }
                 if pair_after_echo {
                     try_pair(&state).await;
                 }
@@ -1361,11 +1385,8 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
             "~png" => {
                 let _ = gsend(&wr, types::PNG, types::SUB_ZERO, &[], &[]).await;
             }
-            // online-stock-2: a client still waiting in quick match when
-            // its +ses arrives (its last quik was a poll) answers with
-            // `chal PERS=*` and opens the P2P link only after the server
-            // echoes it (MComm ChalMessageIn: PERS=* -> Broadcast(this)).
-            // Unanswered, the waiting side never linked (o4/o5/q3).
+            // online-stock-2: `chal PERS=*` (clear my challenge) is echoed
+            // back, as MComm's ChalMessageIn does (PERS=* -> Broadcast).
             "chal" => {
                 let pairs: Vec<(&str, &str)> =
                     msg.pairs.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
@@ -1718,17 +1739,24 @@ async fn try_pair(state: &Arc<State>) {
     let track = track.to_string();
     let mode = state.cfg.session.quick_mode.to_string();
     for (who, addr, from) in [(a_name, a_addr, a_from), (b_name, b_addr, b_from)] {
-        let writer = state
-            .games
-            .lock()
-            .unwrap()
-            .get(&who)
-            .map(|g| g.writer.clone());
+        let body = ses_pairs_for(&pair, &who, &addr, &from, &track, &mode);
+        let refs: Vec<(&str, &str)> =
+            body.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+        let wire = ssx3_proto::encode(types::SES, types::SUB_ZERO, &refs, &[]);
+        let writer = {
+            let mut games = state.games.lock().unwrap();
+            match games.get_mut(&who) {
+                Some(g) if g.searching => Some(g.writer.clone()),
+                Some(g) => {
+                    // Stopped searcher: deliver after its next search echo.
+                    g.pending_ses = Some(wire.clone());
+                    info!("+ses deferred until the stopped searcher searches again");
+                    None
+                }
+                None => None,
+            }
+        };
         if let Some(wr) = writer {
-            let body = ses_pairs_for(&pair, &who, &addr, &from, &track, &mode);
-            let refs: Vec<(&str, &str)> =
-                body.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-            let wire = ssx3_proto::encode(types::SES, types::SUB_ZERO, &refs, &[]);
             if gsend_wire(&wr, &wire).await.is_err() {
                 warn!("session push failed");
             }
@@ -2182,7 +2210,9 @@ mod tests {
         let (mut ga, _ba) = login(&state, lp, gp, bp, "lob1a").await;
         let (mut gb, _bb) = login(&state, lp, gp, bp, "lob1b").await;
 
-        // A searches, then polls; B searches -> pair forms on B's search.
+        // A searches, then stops (KIND=*); B searches -> the pair forms on
+        // B's search, B gets +ses at once, A's +ses waits for A's next
+        // search (a stopped stock client rejects a +ses).
         ga.send(types::QUIK, &[("KIND", "DeathRace"), ("QMFP", "1,1,1,1,1")])
             .await;
         let r = ga.recv().await;
@@ -2195,12 +2225,18 @@ mod tests {
             .await;
         let r = gb.recv().await;
         gb.expect(&r, "quik");
-
-        // Both sides get +ses pushed (A unprompted, B right after echo).
-        let sa = ga.recv().await;
-        ga.expect(&sa, "+ses");
         let sb = gb.recv().await;
         gb.expect(&sb, "+ses");
+        assert!(
+            tokio::time::timeout(Duration::from_millis(300), ga.recv()).await.is_err(),
+            "no +ses to a stopped searcher"
+        );
+        ga.send(types::QUIK, &[("KIND", "DeathRace"), ("QMFP", "1,1,1,1,1")])
+            .await;
+        let r = ga.recv().await;
+        ga.expect(&r, "quik");
+        let sa = ga.recv().await;
+        ga.expect(&sa, "+ses");
         assert_eq!(sa.get("NAME"), sb.get("NAME"));
         assert_eq!(sa.get("SEED"), sb.get("SEED"));
         assert_eq!(sa.get("SELF"), Some("lob1a"));
