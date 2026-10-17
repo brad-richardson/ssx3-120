@@ -1,5 +1,5 @@
 new_path	origin	old_path	sha256	bytes	status
-.github/workflows/product-checks.yml	authored:ci	-	435ba67e4535baf84089271f03a095e3730ed9f4a1cbf249bbdf443edde9ee2b	2401	new
+.github/workflows/product-checks.yml	authored:ci	-	d53c6948324141e5e90e28e1189c1e66bf98ca1d9fa3576710716a937844c339	2590	new
 .gitignore	authored:hygiene	-	39e9ef752d52f193bc1fc8784ce3e9bba7654ee7f5b0bdef1a8e061c5376d6eb	319	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
@@ -46,7 +46,9 @@ docs/research/ssx3-engine-timing.md	lab@ed718e09	docs/research/ssx3-engine-timin
 docs/ssx3-build.md	fork@f7a96f23	docs/ssx3-build.md	1c909218dfad4fadd57b29df643c5ee7eaaa75c41469e79127f1c3009f392a1a	5212	composition:product-paths-and-landed-builder-state
 docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe032e5be80160d6380b99202ca6e02feb08004c	2373	composition:product-paths-and-host-support
 docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
+docs/symbols.md	authored:symbols-map-1	-	f8333c6de5d364295b5140658c3148740493e430e367fbc946d232c294532e99	2409	new
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
+games/ssx3/ssx3-symbols.tsv	authored:symbols-map-1	-	756ce732e405d5b2a88e90f2553eaf15e2aaa5a2738a8f8ff574c43b3578f2fa	378959	new
 games/ssx3/ssx3.toml	fork@f7a96f23	games/ssx3/ssx3.toml	929c6997f11bc319a91fe3a232f3ec962ed2ae4bea28b15eddc65c77930819d0	57910	composition:public-fix-1-scrubbed-lab-pointer
 infra/README.md	infra-staged	public-infra/README.md	4c6576cd748e47fc6781dc60aa6bd2cc50ccd8e68739eeb69feb3cae14bf2d78	4465	verbatim
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	5cf8c8b5aa4603ff9e4374e3f1ce6792944f690c0e7a39b5bc3ec49c1da9bd15	1339	verbatim
@@ -104,6 +106,8 @@ tests/det/knob_registry.tsv	lab@0ac8b01f	local/tooling/knob_registry.tsv	2c09af9
 tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	7fa7cf436d92246c16dbe6fe08e47a8e1bbb5242496efe696fb83a9ed3a7222c	10811	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
 tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
+tests/symbols_allowlist.tsv	authored:symbols-map-1	-	254eaceed526e275d437f0c7b46909ec1e03cd1487790f8325446aa4e1057439	214	new
+tests/test_symbols_map.py	authored:symbols-map-1	-	262dae1eb5bbe168fa1e109baac25bd09f777f05407944dea4a6397b0b5e4234	7698	new
 tools/bench/README.md	authored:bench-docs	-	1ee6975a0f741d3d1d3519cb79f724a99fa001057fab9550a5593fddc915f97b	3350	new
 tools/bench/bench-android.py	lab@ed718e09	local/tooling/odin_run.py	7a0f1ed94229fe8f8d8cb3e1dd74aa7dee97c8eb506d55083cc2f9e45895a403	80879	composition:generic-device-layer
 tools/bench/bench-android.sh	lab@ed718e09	local/tooling/odin_bench.sh	43434ce837b6674940e3d2f7a56adffd4aa7237226ccdbe02d2d19e55be05aa8	10765	composition:rewritten-generic-driver

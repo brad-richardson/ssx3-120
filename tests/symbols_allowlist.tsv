@@ -1,0 +1,4 @@
+address	reason
+0xffffff	bitmask kGsGifBatchSubLenMask, not a guest address
+0x1ffffff	bitmask kRamMask (32 MB RDRAM), not a guest address
+0x1000000	host-side test touch-id base kTestTouchIdBase, not a guest address
