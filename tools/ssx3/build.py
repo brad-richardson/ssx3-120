@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Local SSX 3 preparation. Never downloads or publishes game data."""
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["numpy", "Pillow"]
+# ///
+"""Local SSX 3 preparation. Never downloads or publishes game data.
+
+Run directly (`python3 tools/ssx3/build.py ...`) or with only `uv`
+installed (`./build ...`, which execs `uv run --script` on this file).
+The inline metadata above lets uv provision Python plus the font-pack
+dependencies (numpy/Pillow, used by the remaster_font subprocess).
+"""
 import argparse
 import hashlib
 import json
@@ -15,6 +25,10 @@ import sys
 import time
 import urllib.request
 import zipfile
+
+# Sibling imports (toolchain, prebuilt) resolve when this file runs as a
+# script; they must also resolve when tests load it by path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 ROOT = Path(__file__).resolve().parents[2]
 # Product/engine split (repo-split-2 step 2): the runtime, recompiler and
@@ -145,6 +159,16 @@ def doctor(a):
         ok, detail = probe(['brew', '--prefix'])
         check('Homebrew', ok, detail, 'install Homebrew and the dependencies in tools/ssx3/README.md')
     else:
+        if getattr(a, 'work', None):
+            # A managed toolchain under --work counts as found (read-only;
+            # doctor never downloads). Explicit environment still wins.
+            import toolchain
+            found_jdk, found_sdk, _, _ = toolchain.discover(
+                a.work, getattr(a, 'jdk', None), getattr(a, 'ndk', None))
+            if found_jdk is not None:
+                os.environ.setdefault('JAVA_HOME', str(found_jdk))
+            if found_sdk is not None:
+                os.environ.setdefault('ANDROID_HOME', str(found_sdk))
         java_home = os.environ.get('JAVA_HOME')
         java = str(Path(java_home, 'bin/java')) if java_home else 'java'
         keytool = str(Path(java_home, 'bin/keytool')) if java_home else 'keytool'
@@ -158,7 +182,9 @@ def doctor(a):
         sdk_fix = ('install Android command-line tools; export ANDROID_HOME=/path/to/sdk; '
                    'run "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ' +
                    ' '.join('"' + package + '"' for package in SDK_PACKAGES) +
-                   '; review and accept the SDK licenses with sdkmanager --licenses')
+                   '; review and accept the SDK licenses with sdkmanager --licenses; '
+                   'or run ./build android --ssx3-iso <ISO> --work <DIR> '
+                   '--accept-android-licenses to fetch the pinned toolchain')
         check('ANDROID_HOME', bool(sdk and sdk.is_dir()), str(sdk), sdk_fix)
         if sdk:
             check('SDK platform 34', (sdk / 'platforms/android-34/android.jar').is_file(),
@@ -503,6 +529,7 @@ def next_version_code(work):
 
 
 def android(a):
+    ensure_android_toolchain(a)
     bundle = support_bundle(a)
     if bundle is not None:
         a.jnilibs = bundle / 'jniLibs'
@@ -820,7 +847,7 @@ def pin_android_deps(deps_root):
 
 
 def android_libs(a):
-    a.ndk = ndk_root(a.ndk)
+    ensure_android_toolchain(a)
     bundle = support_bundle(a)
     if bundle is not None:
         # Stage precisely the verified files; retain the existing command sequence.
@@ -966,9 +993,33 @@ def verified_disc_payload(work, inputs):
             (work / 'SLUS_207.72', 'SLUS_207.72')]
 
 
+def ensure_install_toolchain(a):
+    """Discovery-only toolchain for install (never downloads).
+
+    install only shells out to keytool/aapt2/adb: an installed or managed
+    toolchain is picked up when present, otherwise the existing precise
+    keytool/ANDROID_HOME errors speak. The managed-SDK licence gate still
+    applies when the managed SDK is the one in use.
+    """
+    import toolchain
+    java_home, sdk, sdk_managed, ndk = toolchain.discover(
+        a.work, getattr(a, 'jdk', None), getattr(a, 'ndk', None))
+    if java_home is not None:
+        os.environ.setdefault('JAVA_HOME', str(java_home))
+    if sdk is not None:
+        os.environ.setdefault('ANDROID_HOME', str(sdk))
+    if ndk is not None:
+        a.ndk = ndk
+    java_env = str(java_home) if java_home is not None else os.environ.get('JAVA_HOME')
+    if sdk_managed and java_env:
+        toolchain.require_licenses(sdk, getattr(a, 'accept_android_licenses', False), java_env)
+
+
 def install(a):
     if a.app_id == PLAY_APP_ID:
         raise ValueError('public install refuses the maintainer play package')
+    if not a.dry_run:
+        ensure_install_toolchain(a)
     inputs = json.loads((a.work / 'inputs.json').read_text())
     disc_sources = verified_disc_payload(a.work, inputs)
     if a.dry_run:
@@ -1035,6 +1086,108 @@ def install(a):
     print('Installed ' + a.app_id + ' with matching files; existing cards and saves were not removed.')
 
 
+TRICKY_LATER = ('Tricky courses arrive in a later version: --tricky-iso %s '
+                'validated (ISO9660, %d bytes) but this checkout has no Tricky port')
+
+
+def tricky_supported():
+    """Whether this checkout can consume a Tricky disc (tk-build-1 wires it)."""
+    return ((ROOT / 'games' / 'tricky').is_dir()
+            or globals().get('build_tricky') is not None)
+
+
+def validate_tricky_iso(path):
+    """Accept and validate --tricky-iso; fail clearly until the port lands."""
+    iso = Path(path)
+    if not iso.is_file():
+        raise ValueError('tricky ISO not found: ' + str(iso))
+    with iso.open('rb') as f:
+        f.seek(16 * SECTOR)
+        if f.read(7) != b'\x01CD001\x01':
+            raise ValueError('not an ISO9660 disc image: ' + str(iso))
+    if not tricky_supported():
+        raise ValueError(TRICKY_LATER % (str(iso), iso.stat().st_size))
+    return iso
+
+
+def prepare_current(work):
+    """Whether prepare's outputs are current (same disc, ELF, slim, codegen)."""
+    try:
+        inputs = json.loads((work / 'inputs.json').read_text())
+    except (OSError, ValueError):
+        return False
+    if inputs.get('iso_sha256') != ISO_SHA:
+        raise ValueError('work dir prepared from a different disc; use a fresh --work directory')
+    return ((work / 'SLUS_207.72').is_file() and (work / 'codegen').is_dir()
+            and Path(inputs.get('slim_iso') or '').is_file())
+
+
+def android_libs_current(work):
+    """Whether android-libs' staged libraries and resources are current."""
+    jni = work / 'jniLibs/arm64-v8a'
+    return ((jni / 'libge1_gs.so').is_file() and (jni / 'libmv2_microvu.so').is_file()
+            and (work / 'android-resources').is_dir())
+
+
+def ensure_android_toolchain(a):
+    """Point this process at a usable JDK/SDK/NDK, fetching only when allowed.
+
+    Uses the builder-managed toolchain under --work when present, otherwise
+    system and common installs; downloads the pinned archives when missing
+    unless --no-auto-download is set. Any use of the managed SDK requires
+    --accept-android-licenses (or an interactive yes). Sets a.ndk to the
+    pinned NDK. Idempotent: repeat calls only re-run read-only discovery.
+    """
+    import toolchain
+    if toolchain.NDK_VERSION != NDK_VERSION or toolchain.SDK_PACKAGES != SDK_PACKAGES:
+        raise ValueError('toolchain pin drift: toolchain.py disagrees with build.py')
+    if not getattr(a, 'work', None):
+        raise ValueError('--work is required for Android builds')
+    env = toolchain.resolve(a.work, jdk_explicit=getattr(a, 'jdk', None),
+                            ndk_explicit=getattr(a, 'ndk', None),
+                            auto_download=not getattr(a, 'no_auto_download', False),
+                            accept_licenses=getattr(a, 'accept_android_licenses', False))
+    toolchain.apply(env)
+    a.ndk = Path(env['ANDROID_NDK_HOME'])
+    return env
+
+
+def android_onecmd(a):
+    """One-command Android build: doctor → prepare → android-libs → android (→ install).
+
+    Resumable: prepare and android-libs are skipped when their outputs are
+    current for this disc. android always runs (Gradle is incremental); pass
+    --install to push to a connected device afterwards.
+    """
+    if a.tricky_iso:
+        validate_tricky_iso(a.tricky_iso)
+    if not a.work:
+        a.work = Path.home() / 'ssx3-work'
+    a.work = a.work.resolve()
+    if a.work == ROOT or ROOT in a.work.parents:
+        raise ValueError('--work must be outside the source checkout')
+    ensure_android_toolchain(a)
+    a.target = 'android'
+    a.iso = a.ssx3_iso.resolve()
+    doctor(a)
+    if prepare_current(a.work):
+        print('prepare: outputs current for this disc, skipping')
+    else:
+        prepare(a)
+    if android_libs_current(a.work):
+        print('android-libs: staged libraries current, skipping')
+    else:
+        android_libs(a)
+    if not a.prebuilt:
+        # Source route: the staged libraries are current (just built or
+        # skipped as current), so android must not rebuild them. With
+        # --prebuilt the bundle lookup in android() decides instead.
+        a.jnilibs = a.work / 'jniLibs'
+    android(a)
+    if a.install:
+        install(a)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install'])
@@ -1042,6 +1195,17 @@ def main():
     p.add_argument('--target', choices=['prepare', 'android', 'mac'], default='android', help='doctor prerequisite set')
     p.add_argument('--tools-only', action='store_true', help='prepare the native generator without reading a disc')
     p.add_argument('--iso', type=Path, help='own supported USA disc image (prepare only)')
+    p.add_argument('--ssx3-iso', '--ssx3-disc', dest='ssx3_iso', type=Path,
+                   help='own supported USA disc image: android becomes the one-command build (doctor, prepare, android-libs, android)')
+    p.add_argument('--tricky-iso', '--tricky-disc', dest='tricky_iso', type=Path,
+                   help='own Tricky disc image: validated now; the Tricky port arrives in a later version')
+    p.add_argument('--install', action='store_true',
+                   help='with android --ssx3-iso: install to a connected device after the build')
+    p.add_argument('--accept-android-licenses', action='store_true',
+                   help='accept the Android SDK licences for the builder-managed SDK (required to fetch or use it; terms print first, never silent)')
+    p.add_argument('--no-auto-download', action='store_true',
+                   help='never fetch JDK/SDK/NDK: use only installed toolchains, else fail with a precise missing-X message')
+    p.add_argument('--jdk', type=Path, help='local JDK 17 installation (default: JAVA_HOME, managed toolchain, common paths)')
     p.add_argument('--symbol-names', type=Path, help='optional local names sidecar for development codegen')
     p.add_argument('--serial', help='adb device serial for install')
     p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
@@ -1084,6 +1248,15 @@ def main():
         p.error('--jobs must be 1..16')
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+', a.app_id):
         p.error('--app-id must be a dotted Android application id')
+    if a.tricky_iso:
+        validate_tricky_iso(a.tricky_iso)
+    if a.step == 'android' and a.ssx3_iso:
+        android_onecmd(a)
+        return
+    if a.ssx3_iso:
+        p.error('--ssx3-iso is only valid with the android step')
+    if a.install:
+        p.error('--install is only valid with android --ssx3-iso')
     if a.step == 'prepare' and not a.iso and not a.tools_only:
         p.error('prepare requires --iso')
     if a.step != 'prepare' and not (a.work / 'inputs.json').is_file():

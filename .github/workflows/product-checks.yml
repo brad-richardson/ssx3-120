@@ -46,4 +46,5 @@ jobs:
       - name: Shell syntax
         run: |
           for s in $(git ls-files '*.sh'); do sh -n "$s"; done
-          python3 -m py_compile build.py tools/ssx3/build.py tools/ssx3/prebuilt.py tools/ssx3/test_prebuilt.py tools/bench/bench-android.py tools/replay/padrec_complete.py tools/replay/padrec_replay_env.py tests/det/boot/baseline.py tests/det/knob_registry.py tests/det/knob_matrix.py
+          sh -n build
+          python3 -m py_compile build.py tools/ssx3/build.py tools/ssx3/toolchain.py tools/ssx3/prebuilt.py tools/ssx3/test_prebuilt.py tools/ssx3/tests/test_build_onecmd.py tools/ssx3/tests/test_toolchain.py tools/bench/bench-android.py tools/replay/padrec_complete.py tools/replay/padrec_replay_env.py tests/det/boot/baseline.py tests/det/knob_registry.py tests/det/knob_matrix.py

@@ -37,7 +37,38 @@
       "platform-tools"
     ],
     "android_api": 29,
-    "android_abi": "arm64-v8a"
+    "android_abi": "arm64-v8a",
+    "bootstrap": {
+      "note": "builder-ux-1: fetched into WORK/toolchain/ only when missing (no system install). Temurin SHAs are authoritative (Adoptium release API); command-line-tools SHAs are observed (Google publishes none; sdkmanager verifies SDK packages from Google metadata during install).",
+      "jdk_release": "17.0.20.1+1",
+      "jdk": {
+        "linux-x64": {
+          "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz",
+          "sha256": "3808d1d15e3ec6bd5b84057fb5d84c33d8a1536a258146bcea2e603fc726e08e"
+        },
+        "linux-aarch64": {
+          "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.20.1_1.tar.gz",
+          "sha256": "457b57af8f9c93ec39080bb8c764f559dc8c89a6da1a39d718a400b7890d3e41"
+        },
+        "mac-aarch64": {
+          "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.20.1_1.tar.gz",
+          "sha256": "196d13ba5f10414bef7f6a05a9b3f00edacb18ebacef2b99485db9e2ee18f0e8"
+        }
+      },
+      "cmdline_tools_build": "15859902",
+      "cmdline_tools": {
+        "linux": {
+          "url": "https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip",
+          "sha256": "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583",
+          "bytes": 181833628
+        },
+        "mac": {
+          "url": "https://dl.google.com/android/repository/commandlinetools-mac_arm64-15859902_latest.zip",
+          "sha256": "835b62a26162b229b441d1f6d4680383815a270809eb33522c0d480fa5002c4e",
+          "bytes": 156083281
+        }
+      }
+    }
   },
   "archive_identity": {
     "contract": "5cfcdafdf703ff7fa494addc12d993a997a75148db511eb562e03bdb012cf106",

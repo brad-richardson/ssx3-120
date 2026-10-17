@@ -20,6 +20,31 @@ the caller's supported disc image. One boot reached the "Press START button"
 title screen. The optional suite, Android and iOS were not validated by that
 acceptance run.
 
+## One command (needs only `uv`)
+
+From the repo root, with only `uv` installed:
+
+```sh
+./build android --ssx3-iso /path/to/your/SSX3.iso --work /path/to/private-build --accept-android-licenses
+```
+
+This runs doctor → prepare → android-libs → android in order and resumes
+(prepare and android-libs skip when their outputs are current for the disc).
+The JDK and Android SDK/NDK are fetched automatically when missing: pinned
+Temurin JDK 17 plus Google's command-line tools and SDK packages,
+SHA-256-verified (pins in `deps.lock.json` → `toolchains.bootstrap`), into
+`WORK/toolchain/` — project-local, no system install, no shell-profile
+edits, no sudo. Google's SDK licence must be accepted:
+`--accept-android-licenses` is the documented path (interactive runs may
+answer the prompt instead; without either the build fails with the
+documented message). `--install` pushes to a connected device afterwards;
+`--prebuilt` uses a verified prebuilt support release when one matches;
+`--tricky-iso` validates a Tricky disc (the port arrives in a later
+version). `--no-auto-download` never fetches and fails with a precise
+"missing X; set Y or drop --no-auto-download" message instead. `make
+android ISO=…` wraps the same command; `python3 build.py` (root) and the
+step-by-step commands below keep working unchanged for debugging.
+
 ## Mac
 
 Install Xcode with its command-line and Metal toolchains, Python 3, Git,
@@ -45,8 +70,10 @@ python3 tools/ssx3/build.py run --work /path/to/private-build
 Use Ubuntu 24.04 with native Python, Git, CMake, Ninja, Clang, a C++ standard
 library and JDK 17. Windows users first install WSL2 Ubuntu, then run every
 command inside Ubuntu; keep the checkout and work directory on its Linux
-filesystem, rather than `/mnt/c`. The builder does not install system packages
-or accept SDK licenses for you.
+filesystem, rather than `/mnt/c`. The one-command build fetches the JDK and
+the Android SDK/NDK itself when they are missing (see above); the builder
+never installs system packages. The manual SDK setup below remains for
+debugging and for `--no-auto-download` runs.
 
 Install the host packages **before** cloning — a clean machine has no Git yet —
 then clone the public source tree and run the steps from its root. `sudo` is

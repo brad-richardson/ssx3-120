@@ -14,13 +14,41 @@ reported as such. An emulator's 2× speedhack is fast-forward, not 120.
 ## Build from your own disc
 
 Supported build hosts: macOS Apple silicon, Linux x86_64/arm64 (Windows
-users: Ubuntu in WSL2). Play targets: Android arm64, iOS. You need a JDK,
-the Android SDK/NDK, CMake and Ninja — `doctor` tells you exactly what is
-missing.
+users: Ubuntu in WSL2). Play targets: Android arm64, iOS. The only
+prerequisite is [`uv`](https://docs.astral.sh/uv/) (plus CMake, Ninja and a
+C compiler, which `doctor` checks):
 
 ```sh
 git clone --recurse-submodules <this-repo> ssx3-120
 cd ssx3-120
+./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
+```
+
+That one command runs doctor → prepare → android-libs → android in order
+and resumes (prepare and android-libs are skipped when their outputs are
+current). The JDK and the Android SDK/NDK are fetched automatically when
+missing — pinned Temurin JDK 17 plus Google's command-line tools and SDK
+packages, SHA-256-verified, into `--work/toolchain/` (project-local; no
+system install, no sudo). Google's SDK licence must be accepted:
+`--accept-android-licenses` is the documented path (interactive runs may
+answer the prompt instead). Add `--install` to push to a connected device
+afterwards, `--prebuilt` to reuse a verified prebuilt support release when
+one matches, and `--tricky-iso <Tricky.iso>` to validate your Tricky disc
+(the Tricky port arrives in a later version, so the build stops with that
+message for now). `make android ISO=~/SSX3.iso` wraps the same command.
+
+Prefer your own toolchain? `--no-auto-download` never fetches: the builder
+uses only what it finds and fails with a precise
+"missing X; set Y or drop --no-auto-download" message. Search order: JDK =
+`--jdk`, `JAVA_HOME`, managed `WORK/toolchain/jdk-*`, common installs
+(Android Studio, Temurin/system JDKs); SDK = `ANDROID_HOME` (or
+`ANDROID_SDK_ROOT`), managed `WORK/toolchain/android-sdk`, common installs
+(`~/Android/Sdk`, `~/Library/Android/sdk`, …); NDK = `--ndk`,
+`ANDROID_NDK_HOME`, `<sdk>/ndk/28.2.13676358`.
+
+Step-by-step (for debugging; the subcommands keep working unchanged):
+
+```sh
 python3 build.py doctor --target android   # or: prepare, mac
 python3 build.py prepare --work ~/ssx3-work --iso ~/SSX3.iso
 python3 build.py android-libs --work ~/ssx3-work
@@ -46,6 +74,7 @@ missing prebuilt archive falls back to source automatically.
 
 ## Layout
 
+- `build` — one-command wrapper (needs only `uv`; `make android ISO=…` wraps it).
 - `build.py` — product entrypoint (forwards to `tools/ssx3/` with the pinned engine).
 - `tools/ssx3/` — builder, doctor, host recipes, font/shader transforms.
 - `games/ssx3/` — game metadata (TOML + function map) for code generation.

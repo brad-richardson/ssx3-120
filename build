@@ -1,0 +1,22 @@
+#!/bin/sh
+# ssx3-120 one-command builder (builder-ux-1).
+#
+# The only prerequisite is `uv`. Everything else (Python, the font-pack
+# libraries, and -- with the android one-command -- the JDK and Android
+# SDK/NDK) is provisioned by the builder itself:
+#
+#   ./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
+#
+# Step-by-step debugging path: python3 build.py <step> --help.
+set -eu
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo "error: 'uv' is required to run the ssx3-120 builder." >&2
+    echo "install it with:" >&2
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+    exit 1
+fi
+
+exec uv run --script "$here/tools/ssx3/build.py" "$@"
