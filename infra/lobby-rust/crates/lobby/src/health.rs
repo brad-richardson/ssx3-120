@@ -15,6 +15,9 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::state_sync::QpStatus;
+use crate::State;
+
 /// Pure status classifier (unit-tested, including the 503 branch).
 pub fn classify(method: &str, path: &str, selfcheck_ok: bool) -> u16 {
     if (method == "HEAD" || method == "GET") && path == "/healthz" {
@@ -23,8 +26,47 @@ pub fn classify(method: &str, path: &str, selfcheck_ok: bool) -> u16 {
         } else {
             503
         }
+    } else if (method == "HEAD" || method == "GET") && path == "/statusz" {
+        200
     } else {
         404
+    }
+}
+
+/// `/statusz` readout (Part 7): counts only — no names, addresses or
+/// tokens. `idle` is true only when every count is zero.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Statusz {
+    pub tcp_sessions: usize,
+    pub qp_queued: usize,
+    pub qp_rooms: usize,
+    pub slots_alive: usize,
+}
+
+impl Statusz {
+    pub fn idle(&self) -> bool {
+        self.tcp_sessions == 0
+            && self.qp_queued == 0
+            && self.qp_rooms == 0
+            && self.slots_alive == 0
+    }
+
+    pub fn json(&self) -> String {
+        format!(
+            "{{\"tcp_sessions\":{},\"qp_queued\":{},\"qp_rooms\":{},\"slots_alive\":{},\"idle\":{}}}",
+            self.tcp_sessions, self.qp_queued, self.qp_rooms, self.slots_alive,
+            self.idle()
+        )
+    }
+
+    fn assemble(state: &State, qp: &Mutex<QpStatus>) -> Self {
+        let q = *qp.lock().unwrap();
+        Self {
+            tcp_sessions: state.tcp_sessions(),
+            qp_queued: q.queued,
+            qp_rooms: q.rooms,
+            slots_alive: q.slots_alive,
+        }
     }
 }
 
@@ -133,6 +175,8 @@ async fn handle(
     gate: Arc<Gate>,
     lobby_port: u16,
     game_port: u16,
+    state: Arc<State>,
+    qp: Arc<Mutex<QpStatus>>,
 ) {
     let mut buf = [0u8; 1024];
     let n = match tokio::time::timeout(Duration::from_secs(5), stream.read(&mut buf)).await {
@@ -142,31 +186,49 @@ async fn handle(
     let line = String::from_utf8_lossy(&buf[..n]);
     let mut parts = line.split_whitespace();
     let (method, path) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
-    let code = if !gate.allow(peer) {
-        429
-    } else if (method == "HEAD" || method == "GET") && path == "/healthz" {
-        classify(method, path, self_check(lobby_port, game_port).await)
+    let get_or_head = method == "HEAD" || method == "GET";
+    let (code, text) = if !gate.allow(peer) {
+        (429, body(429, method).to_owned())
+    } else if get_or_head && path == "/statusz" {
+        let text = if method == "GET" {
+            Statusz::assemble(&state, &qp).json()
+        } else {
+            String::new()
+        };
+        (200, text)
     } else {
-        classify(method, path, false)
+        let c = if get_or_head && path == "/healthz" {
+            classify(method, path, self_check(lobby_port, game_port).await)
+        } else {
+            classify(method, path, false)
+        };
+        (c, body(c, method).to_owned())
     };
-    let body = body(code, method);
     let reply = format!(
-        "HTTP/1.1 {code} {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {code} {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{text}",
         reason(code),
-        body.len()
+        text.len()
     );
     let _ = stream.write_all(reply.as_bytes()).await;
 }
 
 /// Serve health forever on `listener` (one task per connection).
-pub async fn serve(listener: TcpListener, lobby_port: u16, game_port: u16) {
+pub async fn serve(
+    listener: TcpListener,
+    lobby_port: u16,
+    game_port: u16,
+    state: Arc<State>,
+    qp: Arc<Mutex<QpStatus>>,
+) {
     let gate = Arc::new(Gate::default());
     loop {
         let Ok((stream, addr)) = listener.accept().await else {
             break;
         };
         let gate = gate.clone();
-        tokio::spawn(handle(stream, addr.ip(), gate, lobby_port, game_port));
+        let state = state.clone();
+        let qp = qp.clone();
+        tokio::spawn(handle(stream, addr.ip(), gate, lobby_port, game_port, state, qp));
     }
 }
 
@@ -180,10 +242,38 @@ mod tests {
         assert_eq!(classify("GET", "/healthz", true), 200);
         assert_eq!(classify("HEAD", "/healthz", false), 503);
         assert_eq!(classify("GET", "/healthz", false), 503);
+        assert_eq!(classify("GET", "/statusz", true), 200);
+        assert_eq!(classify("HEAD", "/statusz", false), 200);
+        assert_eq!(classify("POST", "/statusz", true), 404);
         assert_eq!(classify("GET", "/nope", true), 404);
         assert_eq!(classify("POST", "/healthz", true), 404);
         assert_eq!(classify("get", "/healthz", true), 404);
         assert_eq!(classify("", "", true), 404);
+    }
+
+    #[test]
+    fn idle_rule_needs_every_count_zero() {
+        let base = Statusz { tcp_sessions: 0, qp_queued: 0, qp_rooms: 0, slots_alive: 0 };
+        assert!(base.idle());
+        for s in [
+            Statusz { tcp_sessions: 1, ..base },
+            Statusz { qp_queued: 1, ..base },
+            Statusz { qp_rooms: 1, ..base },
+            Statusz { slots_alive: 1, ..base },
+        ] {
+            assert!(!s.idle());
+        }
+    }
+
+    #[test]
+    fn statusz_json_carries_counts_only() {
+        let s = Statusz { tcp_sessions: 2, qp_queued: 1, qp_rooms: 1, slots_alive: 2 };
+        assert_eq!(
+            s.json(),
+            "{\"tcp_sessions\":2,\"qp_queued\":1,\"qp_rooms\":1,\"slots_alive\":2,\"idle\":false}"
+        );
+        let idle = Statusz { tcp_sessions: 0, qp_queued: 0, qp_rooms: 0, slots_alive: 0 };
+        assert!(idle.json().ends_with("\"idle\":true}"));
     }
 
     #[test]

@@ -7,6 +7,9 @@
 # MComm data (/srv/ssx3-lobby/data) is untouched.
 # Usage: infra/deploy-lobby-rust.sh [--dry-run] [--host=IP] [--user=ssx3]
 #        [--binary=PATH] [--unit=PATH] [--config=PATH]
+#        [--when-idle] [--when-idle-timeout=SECS]
+# --when-idle polls GET /statusz until the lobby reports idle:true
+# (default any-time deploy until the public post; see Part 7).
 set -eu
 
 HOST=""
@@ -18,11 +21,15 @@ CONFIG=""
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/oci_ssx3}"
 SSH_OPTS="-i $SSH_KEY -o IdentitiesOnly=yes -o ConnectTimeout=10"
 DRY_RUN=0
+WHEN_IDLE=0
+WHEN_IDLE_TIMEOUT=1800
 RELAY_UDP="3658:3757"
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
+    --when-idle) WHEN_IDLE=1 ;;
+    --when-idle-timeout=*) WHEN_IDLE_TIMEOUT="${arg#--when-idle-timeout=}" ;;
     --host=*) HOST="${arg#--host=}" ;;
     --user=*) USER="${arg#--user=}" ;;
     --binary=*) BINARY="${arg#--binary=}" ;;
@@ -51,6 +58,46 @@ done
 EXPECTED_HASH="$(shasum -a 256 "$BINARY" | awk '{print $1}')"
 
 step() { printf '%s\n' "$*"; }
+
+if [ "$WHEN_IDLE" -eq 1 ]; then
+  HEALTH_PORT="$(CONFIG_PATH="$CONFIG" python3 -c "
+import os, tomllib
+cfg = tomllib.load(open(os.environ['CONFIG_PATH'], 'rb'))
+print(cfg.get('health', {}).get('port', 0))")"
+  if [ "$HEALTH_PORT" = "0" ]; then
+    step "FAIL: --when-idle needs [health] port set in $CONFIG"
+    exit 1
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    step "would poll GET /statusz until idle:true (timeout ${WHEN_IDLE_TIMEOUT}s)"
+  else
+  step "0. waiting for idle:true over ssh loopback (timeout ${WHEN_IDLE_TIMEOUT}s)"
+  IDLE_DEADLINE=$(( $(date +%s) + WHEN_IDLE_TIMEOUT ))
+  IDLE_LAST="none yet"
+  while true; do
+    IDLE_REPLY="$(ssh $SSH_OPTS "$TARGET" "python3 -c \"
+import socket
+s = socket.create_connection(('127.0.0.1', $HEALTH_PORT), timeout=10)
+s.sendall(b'GET /statusz HTTP/1.1\r\nHost: x\r\n\r\n')
+d = b''
+while True:
+    c = s.recv(1024)
+    if not c: break
+    d += c
+print(d.decode('utf-8', 'replace'))\"" 2>/dev/null || true)"
+    case "$IDLE_REPLY" in
+      *'"idle":true}'*) step "idle confirmed; deploying"; break ;;
+      *'HTTP/1.1 200'*) IDLE_LAST="busy: $(printf '%s' "$IDLE_REPLY" | tail -c 160)" ;;
+      *) IDLE_LAST="no-statusz: $(printf '%s' "$IDLE_REPLY" | tail -c 160)" ;;
+    esac
+    if [ "$(date +%s)" -ge "$IDLE_DEADLINE" ]; then
+      step "FAIL: not deploying ($IDLE_LAST after ${WHEN_IDLE_TIMEOUT}s)"
+      exit 1
+    fi
+    sleep 5
+  done
+  fi
+fi
 
 ssh_run() {
   if [ "$DRY_RUN" -eq 1 ]; then

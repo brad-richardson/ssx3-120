@@ -21,7 +21,7 @@
 use ssx3_proto::netplay::*;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::net::UdpSocket;
 use tracing::info;
@@ -160,6 +160,14 @@ impl Tracker {
         }
         self.dropped.push(slot);
         true
+    }
+
+    /// Slots with a STATE inside the alive window (Part 7 `/statusz`).
+    pub fn alive(&self, now: Instant) -> usize {
+        self.last_recv
+            .values()
+            .filter(|t| now.saturating_duration_since(**t) <= ALIVE_WINDOW)
+            .count()
     }
 
     /// Timeout sweep: the slots that newly went silent past the timeout
@@ -322,6 +330,18 @@ pub struct Stats {
     pub limited: u64,
 }
 
+/// How long after its last STATE a slot counts as alive (Part 7).
+const ALIVE_WINDOW: Duration = Duration::from_secs(10);
+
+/// Quick Play counts for `/statusz` (Part 7): counts only, never
+/// names, addresses or tokens.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct QpStatus {
+    pub queued: usize,
+    pub rooms: usize,
+    pub slots_alive: usize,
+}
+
 /// The pure matchmaking + relay state machine.
 pub struct Hub {
     cfg: Sscfg,
@@ -359,6 +379,15 @@ impl Hub {
 
     pub fn rooms(&self) -> usize {
         self.rooms.len()
+    }
+
+    /// Point-in-time `/statusz` counts (Part 7).
+    pub fn qp_status(&self, now: Instant) -> QpStatus {
+        QpStatus {
+            queued: self.waiters.len(),
+            rooms: self.rooms.len(),
+            slots_alive: self.rooms.values().map(|r| r.tracker.alive(now)).sum(),
+        }
     }
 
     fn frame(&mut self, session: &[u8; 16], kind: u8, payload: &[u8]) -> Vec<u8> {
@@ -726,7 +755,11 @@ impl Hub {
 }
 
 /// Socket driver.
-pub async fn run(cfg: Sscfg, mut stop: tokio::sync::watch::Receiver<bool>) {
+pub async fn run(
+    cfg: Sscfg,
+    mut stop: tokio::sync::watch::Receiver<bool>,
+    qp: Arc<Mutex<QpStatus>>,
+) {
     let sock = match UdpSocket::bind((cfg.bind.as_str(), cfg.port)).await {
         Ok(s) => Arc::new(s),
         Err(e) => {
@@ -759,8 +792,10 @@ pub async fn run(cfg: Sscfg, mut stop: tokio::sync::watch::Receiver<bool>) {
         tokio::select! {
             _ = stop.changed() => break,
             _ = tick.tick() => {
-                let outs = hub.on_tick(Instant::now());
+                let now = Instant::now();
+                let outs = hub.on_tick(now);
                 send(&sock, outs);
+                *qp.lock().unwrap() = hub.qp_status(now);
                 if stat_t.elapsed() >= Duration::from_secs(60) {
                     stat_t = Instant::now();
                     info!(waiting = hub.waiting(), rooms = hub.rooms(), made = hub.stats.rooms_made,
@@ -895,6 +930,25 @@ mod tests {
         let r = hub.on_datagram(addr(7), &join(3, 120), t2);
         assert_eq!(kinds(&r), vec![(7, KIND_QP_WAIT)]);
         assert_eq!(hub.waiting(), 1);
+    }
+    #[test]
+    fn qp_status_counts_queue_rooms_and_alive_window() {
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        assert_eq!(
+            hub.qp_status(t0),
+            QpStatus { queued: 0, rooms: 0, slots_alive: 0 }
+        );
+        hub.on_datagram(addr(1), &join(1, 120), t0);
+        assert_eq!(hub.qp_status(t0).queued, 1);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        hub.on_datagram(addr(1), &state_frame(&room, 0, 6, 0, 0.0), t1);
+        let s = hub.qp_status(t1);
+        assert_eq!((s.queued, s.rooms, s.slots_alive), (0, 1, 1));
+        // Past the alive window the streamed slot no longer counts.
+        let s = hub.qp_status(t1 + Duration::from_secs(11));
+        assert_eq!((s.rooms, s.slots_alive), (1, 0));
     }
     #[test]
     fn stale_ticks_drop() {

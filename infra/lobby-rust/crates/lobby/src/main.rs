@@ -642,6 +642,12 @@ fn new_hex(n: usize) -> String {
 }
 
 impl State {
+    /// Live TCP connections across the lobby/game/buddy listeners
+    /// (Part 7 `/statusz` input).
+    fn tcp_sessions(&self) -> usize {
+        *self.total_conns.lock().unwrap()
+    }
+
     fn reserve_name(
         &self,
         requested: &str,
@@ -1820,12 +1826,13 @@ async fn main() {
     let buddy_l = TcpListener::bind(format!("{bind}:{bp}"))
         .await
         .expect("bind buddy");
+    let qp_status = Arc::new(Mutex::new(state_sync::QpStatus::default()));
     let hp = state.cfg.health.port;
     if hp != 0 {
         let health_l = TcpListener::bind(format!("{bind}:{hp}"))
             .await
             .expect("bind health");
-        tokio::spawn(health::serve(health_l, lp, gp));
+        tokio::spawn(health::serve(health_l, lp, gp, state.clone(), qp_status.clone()));
     }
     *state.game_port.lock().unwrap() = game_l.local_addr().expect("game addr").port();
     *state.buddy_port.lock().unwrap() = buddy_l.local_addr().expect("buddy addr").port();
@@ -1858,7 +1865,7 @@ async fn main() {
             serve(lobby_l, state.clone(), "lobby"),
             serve(game_l, state.clone(), "game"),
             serve(buddy_l, state.clone(), "buddy"),
-            state_sync::run(ssc, stop_rx),
+            state_sync::run(ssc, stop_rx, qp_status),
         );
     } else {
         let _ = tokio::join!(
@@ -2542,9 +2549,21 @@ mod tests {
     async fn boot_health(state: &Arc<State>, lp: u16, gp: u16) -> u16 {
         let l = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let hp = l.local_addr().unwrap().port();
-        tokio::spawn(health::serve(l, lp, gp));
-        let _ = state;
+        let qp = Arc::new(Mutex::new(state_sync::QpStatus::default()));
+        tokio::spawn(health::serve(l, lp, gp, state.clone(), qp));
         hp
+    }
+
+    /// /statusz on a fresh boot reports all-zero counts and idle:true.
+    #[tokio::test]
+    async fn statusz_idle_when_fresh() {
+        let (state, lp, gp, _bp) = boot("off").await;
+        let hp = boot_health(&state, lp, gp).await;
+        let r = http_raw(hp, "GET /statusz HTTP/1.1\r\nHost: x\r\n\r\n").await;
+        assert!(r.starts_with("HTTP/1.1 200"), "{r}");
+        assert!(r.ends_with("\"idle\":true}"), "{r}");
+        assert!(r.contains("\"tcp_sessions\":0"), "{r}");
+        let _ = state;
     }
 
     /// Health endpoint: 200 + 429 + HEAD-no-body + 404.
