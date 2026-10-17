@@ -158,6 +158,10 @@ def doctor(a):
             check('Xcode ' + tool, ok, detail, 'install Xcode and its Metal toolchain')
         ok, detail = probe(['brew', '--prefix'])
         check('Homebrew', ok, detail, 'install Homebrew and the dependencies in tools/ssx3/README.md')
+    elif a.target == 'ios':
+        check('iOS target', system == 'Darwin' and machine == 'arm64', system + ' ' + machine,
+              'ios/ios-libs/run require macOS Apple silicon; select --target android on Linux')
+        doctor_ios(a, check)
     else:
         if getattr(a, 'work', None):
             # A managed toolchain under --work counts as found (read-only;
@@ -909,6 +913,594 @@ def android_libs(a):
     shutil.copytree(vendor / 'bin/resources', a.work / 'android-resources', dirs_exist_ok=True)
 
 
+# --- iOS device build (ios-builder-1). Same shape as the Android flow:
+# doctor checks, resumable ios-libs, an `ios` app step, and a one-command
+# `ios --ssx3-iso` (doctor -> prepare -> ios-libs -> app, then --install).
+# macOS Apple silicon only. Game sources come from the user's own disc via
+# prepare; the offline VU1 stage (--om1-stage) is the user's own locally
+# generated tables (the portable recording recipe is still incomplete, so
+# the builder validates a supplied stage instead of generating one).
+
+GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
+GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
+GE1_VENDOR_SHORT = 'e8ed655ec6'
+
+# Vendored iOS dependency sources missing from the vendor tree (the rest of
+# the GE1_IOS_DEPS set ships inside it). Same-generation pins as the
+# Android table where the dependency overlaps; seated on commits because
+# tags are mutable.
+IOS_DEPS = [
+    ('libpng', 'https://github.com/pnggroup/libpng', 'v1.6.51',
+     '49363adcfaf098748d7a4c8c624ad8c45a8c3a86'),
+    ('libjpeg-turbo', 'https://github.com/libjpeg-turbo/libjpeg-turbo', '3.1.4.1',
+     '9217719d3a58633923b096af4c1d50d304768a64'),
+    ('zstd', 'https://github.com/facebook/zstd', 'v1.5.7',
+     'f8745da6ff1ad1e7bab384bd1f9d742439278e99'),
+    ('lz4', 'https://github.com/lz4/lz4', 'v1.10.0',
+     'ebb370ca83af193212df4dcbadcc5d87bc0de2f0'),
+    ('libwebp', 'https://github.com/webmproject/libwebp', 'v1.6.0',
+     '4fa21912338357f89e4fd51cf2368325b59e9bd9'),
+    ('freetype', 'https://github.com/freetype/freetype', 'VER-2-14-1',
+     '526ec5c47b9ebccc4754c85ac0c0cdf7c85a5e9b'),
+    ('sdl3', 'https://github.com/libsdl-org/SDL', 'release-3.2.26',
+     'badbf8da4ee72b3ef599c721ffc9899e8d7c8d90'),
+]
+IOS_DEPS_TREE = ('rapidyaml', 'plutovg', 'plutosvg')
+
+SDL2_TAG = 'release-2.32.10'
+SDL2_TARBALL = ('https://github.com/libsdl-org/SDL/releases/download/'
+                'release-2.32.10/SDL2-2.32.10.tar.gz')
+SDL2_TARBALL_SHA = '5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165'
+
+FFMPEG_TARBALL = 'https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz'
+FFMPEG_TARBALL_SHA = '733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1'
+
+# OM1 stage files the engine requires (ps2xRuntime/CMakeLists.txt OM1 block).
+OM1_STAGE_REQUIRED = ('OfflineCore.cpp', 'OfflineBridge.cpp', 'OM1StubHost.cpp',
+                      'armsx2/pcsx2/Config.h', 'armsx2/tests/ctest/core/StubHost.cpp')
+
+
+def default_bundle_id(team):
+    """Per-team bundle id: unique per signer, never collides across users."""
+    return 'com.ssx3recomp.' + team.lower()
+
+
+def check_team(a):
+    team = getattr(a, 'team', None)
+    if not team:
+        raise ValueError('ios needs --team <APPLE_TEAM_ID> (your Apple Developer Team ID; '
+                         'find it at developer.apple.com/account or in Xcode Settings > Accounts)')
+    if not re.fullmatch(r'[A-Z0-9]{10}', team):
+        raise ValueError('--team must be the 10-character Apple Team ID (got ' + team + ')')
+    return team
+
+
+def check_bundle_id(value):
+    if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*)+', value):
+        raise ValueError('--bundle-id must be a dotted bundle identifier (got ' + value + ')')
+    return value
+
+
+def signing_identity(team):
+    """Fingerprint of the user's codesigning identity for this team."""
+    ok, detail = probe(['security', 'find-identity', '-v', '-p', 'codesigning'])
+    if not ok:
+        raise ValueError('cannot list signing identities: ' + detail)
+    for line in detail.splitlines():
+        if '(' + team + ')' in line:
+            match = re.search(r'^\s*\d+\)\s+([0-9A-F]+)\s', line)
+            if match:
+                return match[1]
+    raise ValueError('no signing identity for team ' + team + ' in the keychain; '
+                     'sign into Xcode with your Apple ID (Xcode > Settings > Accounts) '
+                     'and let Xcode create the Apple Development certificate')
+
+
+def doctor_ios(a, check):
+    """iOS doctor checks. check(label, ok, detail, fix) mirrors doctor()."""
+    for tool in ('clang', 'metal', 'metallib'):
+        ok, detail = probe(['xcrun', '--find', tool])
+        check('Xcode ' + tool, ok, detail, 'install Xcode and its Metal toolchain')
+    ok, detail = probe(['cmake', '--version'])
+    check('cmake', ok, detail.splitlines()[0] if detail else 'missing',
+          'install CMake (brew install cmake)')
+    team = getattr(a, 'team', None)
+    if team:
+        try:
+            fingerprint = signing_identity(team)
+            check('signing identity', True, team + ' ' + fingerprint,
+                  'sign into Xcode with your Apple ID')
+        except ValueError as error:
+            check('signing identity', False, str(error),
+                  'sign into Xcode with your Apple ID (Xcode > Settings > Accounts); '
+                  'free Apple ID personal teams work, re-sign weekly')
+    else:
+        print('SKIP signing identity: pass --team <APPLE_TEAM_ID> to check it')
+    if getattr(a, 'device', None):
+        try:
+            resolve_device(getattr(a, 'device', None), getattr(a, 'install', False))
+            check('iOS device', True, str(getattr(a, 'device', None)), '')
+        except ValueError as error:
+            check('iOS device', False, str(error),
+                  'connect the device over USB, trust the computer, and pass its UDID '
+                  '(xcrun devicectl list devices)')
+
+
+def pin_ios_deps(deps_root):
+    """Clone the iOS dependency sources and seat each on its pinned commit."""
+    deps_root.mkdir(parents=True, exist_ok=True)
+    resolved = {}
+    for name, url, tag, commit in IOS_DEPS:
+        d = deps_root / name
+        if not d.is_dir():
+            run('git', 'clone', '--depth=1', '--branch', tag, url, d)
+        actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+        if actual != commit:
+            run('git', '-C', str(d), 'fetch', 'origin', commit)
+            run('git', '-C', str(d), 'checkout', '--detach', commit)
+            actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
+                                             text=True).strip()
+        if actual != commit:
+            raise ValueError('dependency pin mismatch: ' + str(d))
+        resolved[name] = actual
+    (deps_root / 'ios-dependency-pins.json').write_text(
+        json.dumps(resolved, indent=2, sort_keys=True) + '\n')
+    return resolved
+
+
+def fetch_tarball(url, want_sha, dest, want_bytes=None):
+    """Fetch a pinned release tarball; any size or SHA mismatch fails closed."""
+    dest = Path(dest)
+    if dest.is_file() and sha(dest) == want_sha:
+        return dest
+    tmp = dest.with_name(dest.name + '.download')
+    tmp.unlink(missing_ok=True)
+    try:
+        print('+ fetch ' + url)
+        with urllib.request.urlopen(url, timeout=120) as src, tmp.open('wb') as out:
+            shutil.copyfileobj(src, out)
+        if want_bytes is not None and tmp.stat().st_size != want_bytes:
+            raise ValueError('size mismatch for ' + url)
+        if sha(tmp) != want_sha:
+            raise ValueError('SHA-256 mismatch for ' + url)
+        tmp.replace(dest)
+        return dest
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def validate_om1_stage(path):
+    """Fail clearly when the user's offline VU1 stage is incomplete."""
+    stage = Path(path)
+    if not stage.is_dir():
+        raise ValueError('--om1-stage must be a directory holding your locally generated '
+                         'offline VU1 tables (got ' + str(path) + '); see '
+                         'tools/ssx3/offline-core/README.md')
+    missing = [name for name in OM1_STAGE_REQUIRED if not (stage / name).is_file()]
+    if missing:
+        raise ValueError('--om1-stage is missing: ' + ', '.join(missing))
+    if not list(stage.glob('*.s')) or not list(stage.glob('*_tables.c')):
+        raise ValueError('--om1-stage needs the recorded assembly (*.s) and tables (*_tables.c); '
+                         'the portable recording recipe is still incomplete, so generate the '
+                         'stage with the lane tooling (see tools/ssx3/offline-core/README.md)')
+    return stage
+
+
+def ios_libs_current(work):
+    """Whether ios-libs' staged archives are present (resume skip)."""
+    libs = work / 'ios-libs'
+    return ((libs / 'libge1_gs.a').is_file() and (libs / 'libPCSX2.a').is_file()
+            and (libs / 'libcommon.a').is_file()
+            and (libs / 'libSDL2.a').is_file()
+            and (libs / 'MoltenVK.framework').is_dir()
+            and (work / 'ios-ffmpeg/lib/libavcodec.a').is_file())
+
+
+def ios_libs(a):
+    vendor = a.work / 'ios-vendor'
+    source(GE1_VENDOR_REPO, GE1_VENDOR_PIN, vendor)
+    actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'],
+                                     text=True).strip()
+    if actual != GE1_VENDOR_PIN:
+        raise ValueError('GE1 vendor pin mismatch: ' + actual)
+    # Fail loud while the vendor is fresh in mind: the upscale flip, the
+    # Metal shader count and the font count the app configure asserts.
+    marker = vendor / 'pcsx2/GS/Renderers/HW/GSTextureOnDeviceUpscale.cpp'
+    if 'PrescaleTargetLocked' not in marker.read_text():
+        raise ValueError('GE1 vendor changed: prescale code missing at ' + GE1_VENDOR_SHORT)
+    metal = list((vendor / 'pcsx2/GS/Renderers/Metal').glob('*.metal'))
+    if len(metal) != 8:
+        raise ValueError('GE1 vendor changed: expected 8 .metal shaders, found ' + str(len(metal)))
+    fonts = [p for p in (vendor / 'bin/resources/fonts').glob('*')
+             if p.suffix in ('.ttf', '.otf') and p.is_file()]
+    if len(fonts) != 5:
+        raise ValueError('GE1 vendor changed: expected 5 PCSX2 fonts, found ' + str(len(fonts)))
+    resolved = pin_ios_deps(a.work / 'ios-deps-src')
+    # Assemble the GE1_IOS_DEPS bundle: fetched sources plus the three that
+    # ship inside the vendor tree.
+    bundle = a.work / 'ios-deps-bundle'
+    for name, _, _, _ in IOS_DEPS:
+        link = bundle / name
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link)
+        bundle.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(a.work / 'ios-deps-src' / name, target_is_directory=True)
+    for name in IOS_DEPS_TREE:
+        link = bundle / name
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link)
+        link.symlink_to(vendor / '3rdparty' / name, target_is_directory=True)
+    # SDL2 for iOS (the app links SDL2main + libSDL2.a via raylib's SDL platform).
+    sdl_src = a.work / 'ios-sdl2-src'
+    fetch_tarball(SDL2_TARBALL, SDL2_TARBALL_SHA, a.work / 'ios-sdl2.tar.gz')
+    if not sdl_src.is_dir():
+        sdl_src.mkdir(parents=True)
+        with tarfile.open(a.work / 'ios-sdl2.tar.gz', 'r:gz') as t:
+            members = t.getnames()
+            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
+                raise ValueError('unsafe SDL2 archive path')
+            t.extractall(sdl_src)
+    roots = [p for p in sdl_src.iterdir() if p.is_dir()]
+    if len(roots) != 1:
+        raise ValueError('SDL2 layout changed in ' + SDL2_TARBALL)
+    sdl_prefix = a.work / 'ios-sdl2'
+    run('cmake', '-S', roots[0], '-B', a.work / 'ios-sdl2-build', '-G', 'Ninja',
+        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_SYSTEM_NAME=iOS',
+        '-DCMAKE_OSX_SYSROOT=iphoneos', '-DCMAKE_OSX_ARCHITECTURES=arm64',
+        '-DCMAKE_OSX_DEPLOYMENT_TARGET=17.0', '-DSDL_SHARED=OFF', '-DSDL_STATIC=ON',
+        '-DCMAKE_INSTALL_PREFIX=' + str(sdl_prefix))
+    run('cmake', '--build', a.work / 'ios-sdl2-build', '--parallel', a.jobs)
+    run('cmake', '--install', a.work / 'ios-sdl2-build')
+    # Minimal FFmpeg 7.1.1 for iOS, verbatim from the engine recipe
+    # (ps2xRuntime/cmake/iOS-FFmpeg-7.1.1.md): MPEG-1/2 decode for movies.
+    ff_src = a.work / 'ios-ffmpeg-src'
+    fetch_tarball(FFMPEG_TARBALL, FFMPEG_TARBALL_SHA, a.work / 'ios-ffmpeg.tar.xz')
+    if not ff_src.is_dir():
+        ff_src.mkdir(parents=True)
+        with tarfile.open(a.work / 'ios-ffmpeg.tar.xz', 'r:xz') as t:
+            members = t.getnames()
+            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
+                raise ValueError('unsafe FFmpeg archive path')
+            t.extractall(ff_src)
+    ff_roots = [p for p in ff_src.iterdir() if p.is_dir()]
+    if len(ff_roots) != 1:
+        raise ValueError('FFmpeg layout changed in ' + FFMPEG_TARBALL)
+    ff_prefix = a.work / 'ios-ffmpeg'
+    sdk = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'],
+                                  text=True).strip()
+    configure_cmd = ['./configure', '--target-os=darwin', '--arch=aarch64', '--cpu=generic',
+        '--enable-cross-compile', '--cc=xcrun -sdk iphoneos clang', '--sysroot=' + sdk,
+        '--extra-cflags=-arch arm64 -mios-version-min=17.0 -isysroot ' + sdk,
+        '--extra-ldflags=-arch arm64 -mios-version-min=17.0 -isysroot ' + sdk,
+        '--disable-everything', '--disable-programs', '--disable-doc', '--disable-avdevice',
+        '--disable-avfilter', '--disable-avformat', '--disable-swresample', '--disable-network',
+        '--disable-iconv', '--disable-bzlib', '--disable-lzma', '--disable-zlib',
+        '--enable-decoder=mpeg2video', '--enable-parser=mpegvideo', '--enable-swscale',
+        '--disable-asm', '--enable-static', '--disable-shared', '--disable-debug',
+        '--prefix=' + str(ff_prefix)]
+    print('+', ' '.join(configure_cmd), flush=True)
+    subprocess.run(configure_cmd, cwd=ff_roots[0], check=True)
+    subprocess.run(['make', '-j2'], cwd=ff_roots[0], check=True)
+    subprocess.run(['make', 'install'], cwd=ff_roots[0], check=True)
+    # GE1 + PCSX2 static archives via the pinned engine recipe
+    # (ps2xRuntime/third_party/armsx2/build.sh ios).
+    for old in list(a.work.glob('ios-asm-*')) + list(a.work.glob('ios-build-*')) + \
+            list(a.work.glob('ios-deps-*')):
+        if old.is_dir() and not old.is_symlink():
+            shutil.rmtree(old)
+    env = os.environ.copy()
+    env['SSX3_IOS_DEPS'] = str(bundle)
+    build_sh = ENGINE / 'ps2xRuntime/third_party/armsx2/build.sh'
+    proc = subprocess.run(['bash', str(build_sh), 'ios', '--armsx2', str(vendor),
+                           '--build-root', str(a.work), '--jobs', str(a.jobs)],
+                          env=env, cwd=str(a.work), text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    print(proc.stdout)
+    if proc.returncode:
+        raise ValueError('GE1 iOS build failed (see output above)')
+    match = re.search(r'^BUILD_DIR=(.+)$', proc.stdout, re.M)
+    if not match:
+        raise ValueError('GE1 iOS build printed no BUILD_DIR')
+    ge1_build = Path(match[1].strip())
+    ge1_lib = ge1_build / 'ge1-adapter/libge1_gs.a'
+    pcsx2_lib = ge1_build / 'pcsx2/libPCSX2.a'
+    if not ge1_lib.is_file() or not pcsx2_lib.is_file():
+        raise ValueError('GE1 iOS build is missing libge1_gs.a or libPCSX2.a')
+    # MoltenVK device framework from the pinned upstream release tarball.
+    mvk = json.loads((ROOT / 'tools/ssx3/moltenvk.json').read_text())
+    fetch_tarball(mvk['url'], mvk['archive_sha256'], a.work / 'ios-moltenvk.tar',
+                  mvk['archive_size'])
+    mvk_src = a.work / 'ios-moltenvk-src'
+    if not mvk_src.is_dir():
+        mvk_src.mkdir(parents=True)
+        with tarfile.open(a.work / 'ios-moltenvk.tar', 'r:') as t:
+            members = t.getnames()
+            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
+                raise ValueError('unsafe MoltenVK archive path')
+            t.extractall(mvk_src)
+    mvk_fw = mvk_src / mvk['device_framework']
+    if not (mvk_fw / 'MoltenVK').is_file():
+        raise ValueError('MoltenVK layout changed in ' + mvk['url'])
+    libs = a.work / 'ios-libs'
+    if libs.is_dir():
+        shutil.rmtree(libs)
+    libs.mkdir(parents=True)
+    shutil.copy2(ge1_lib, libs / 'libge1_gs.a')
+    shutil.copy2(pcsx2_lib, libs / 'libPCSX2.a')
+    for name in ('common/libcommon.a',):
+        src = ge1_build / name
+        if not src.is_file():
+            raise ValueError('GE1 iOS build is missing ' + name)
+        shutil.copy2(src, libs / 'libcommon.a')
+    sdl_lib = sdl_prefix / 'lib/libSDL2.a'
+    if not sdl_lib.is_file():
+        raise ValueError('SDL2 install is missing lib/libSDL2.a')
+    shutil.copy2(sdl_lib, libs / 'libSDL2.a')
+    shutil.copytree(mvk_fw, libs / 'MoltenVK.framework')
+    (a.work / 'ios-libs.json').write_text(json.dumps({
+        'ge1_vendor': GE1_VENDOR_PIN, 'ge1_build': str(ge1_build),
+        'ios_dep_pins': resolved, 'sdl2_tarball_sha256': SDL2_TARBALL_SHA,
+        'ffmpeg_tarball_sha256': FFMPEG_TARBALL_SHA,
+        'moltenvk': mvk['url'] + ' @ ' + mvk['archive_sha256'],
+        'libge1_gs_sha256': sha(libs / 'libge1_gs.a'),
+        'libPCSX2_sha256': sha(libs / 'libPCSX2.a')}, indent=2, sort_keys=True) + '\n')
+    print('iOS libraries staged in ' + str(libs))
+
+
+def devicectl_devices():
+    """Raw `devicectl list devices` output (read-only probe)."""
+    proc = subprocess.run(['xcrun', 'devicectl', 'list', 'devices'], text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          timeout=60, check=False)
+    return proc.returncode == 0, proc.stdout
+
+
+def resolve_device(want, for_install=False):
+    """Resolve an iOS device UDID: explicit --device wins, else the single
+    connected device. Never guesses among several."""
+    ok, listing = devicectl_devices()
+    if not ok:
+        raise ValueError('cannot list devices:\n' + listing)
+    found = re.findall(r'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}', listing)
+    seen = list(dict.fromkeys(found))
+    if want:
+        if want in seen or want in listing:
+            return want
+        raise ValueError('device ' + want + ' not connected:\n' + listing)
+    if not for_install:
+        raise ValueError('--device <udid> is required (connected: '
+                         + (', '.join(seen) if seen else 'none') + ')')
+    if len(seen) == 1:
+        return seen[0]
+    raise ValueError('pass --device <udid> (connected: '
+                     + (', '.join(seen) if seen else 'none') + '):\n' + listing)
+
+
+def find_provisioning_profile(team, bundle_id, profiles_dir=None):
+    """Newest valid iOS provisioning profile for this team + bundle id.
+
+    Xcode's automatic signing creates and refreshes these; the builder
+    reuses them to sign the staged app (staging adds the disc payload
+    after the build, which invalidates any build-time signature)."""
+    import plistlib
+    from datetime import datetime, timezone
+    wanted = team + '.' + bundle_id
+    base = Path(profiles_dir) if profiles_dir is not None else Path.home()
+    profiles = sorted(base.glob(
+        'Library/MobileDevice/Provisioning Profiles/*.mobileprovision'))
+    best, best_expiry = None, None
+    now = datetime.now(timezone.utc)
+    for profile in profiles:
+        try:
+            proc = subprocess.run(['security', 'cms', '-D', '-i', str(profile)],
+                                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                  timeout=30, check=False)
+            if proc.returncode:
+                continue
+            data = plistlib.loads(proc.stdout)
+        except Exception:
+            continue
+        try:
+            expiry = data.get('ExpirationDate')
+            if expiry is not None and expiry.tzinfo is None:
+                # plist dates carry no zone; Apple writes them in UTC.
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            app_id = (data.get('Entitlements') or {}).get('application-identifier')
+            platforms = data.get('Platform') or []
+        except Exception:
+            continue
+        if app_id != wanted or not expiry or expiry <= now:
+            continue
+        if 'iOS' not in platforms:
+            continue
+        if best_expiry is None or expiry > best_expiry:
+            best, best_expiry = profile, expiry
+    if best is None:
+        raise ValueError('no valid provisioning profile for ' + wanted + '; '
+                         'build once with Xcode automatic signing (or open the built '
+                         'project in Xcode) so Xcode registers the bundle id, then re-run')
+    return best
+
+
+def sign_staged_app(work, stage_app, team, bundle_id):
+    """Sign the staged app with the user's team (profile from Xcode's
+    automatic signing; entitlements generated, never committed)."""
+    import plistlib
+    identity = signing_identity(team)
+    profile = find_provisioning_profile(team, bundle_id)
+    shutil.copy2(profile, stage_app / 'embedded.mobileprovision')
+    entitlements = {'application-identifier': team + '.' + bundle_id,
+                    'com.apple.developer.team-identifier': team,
+                    'get-task-allow': True}
+    ent_file = work / 'ios-entitlements.plist'
+    with open(ent_file, 'wb') as f:
+        plistlib.dump(entitlements, f)
+    info = stage_app / 'Info.plist'
+    with open(info, 'rb') as f:
+        plist = plistlib.load(f)
+    if plist.get('CFBundleIdentifier') != bundle_id:
+        # The engine plist template hardcodes its own id; the build setting
+        # carries the user's id for provisioning, so align the staged copy
+        # before sealing (recorded, not silent).
+        print('Info.plist CFBundleIdentifier was ' + str(plist.get('CFBundleIdentifier'))
+              + '; staging as ' + bundle_id)
+        plist['CFBundleIdentifier'] = bundle_id
+        with open(info, 'wb') as f:
+            plistlib.dump(plist, f)
+    framework = stage_app / 'Frameworks/MoltenVK.framework'
+    run('codesign', '--force', '--sign', identity, '--timestamp=none', framework)
+    run('codesign', '--force', '--sign', identity, '--timestamp=none',
+        '--entitlements', ent_file, stage_app)
+    run('codesign', '--verify', '--strict', '--verbose=2', stage_app)
+    return identity
+
+
+def ios(a):
+    team = check_team(a)
+    bundle_id = check_bundle_id(getattr(a, 'bundle_id', None) or default_bundle_id(team))
+    if a.dry_run:
+        print('Would build the iOS app (no Xcode, no device touched):')
+        print('  team ' + team + ', bundle id ' + bundle_id)
+        print('  engine ' + str(ENGINE))
+        print('  GE1 vendor ' + GE1_VENDOR_REPO + ' @ ' + GE1_VENDOR_SHORT)
+        print('  offline VU1 stage ' + str(getattr(a, 'om1_stage', None) or '(missing --om1-stage)'))
+        print('  prepare outputs ' + ('current' if prepare_current(a.work) else 'MISSING (run prepare)') + ': '
+              + str(a.work / 'codegen'))
+        print('  ios-libs ' + ('current' if ios_libs_current(a.work) else 'MISSING (run ios-libs)') + ': '
+              + str(a.work / 'ios-libs'))
+        print('  stage into ' + str(a.work / 'ios-stage') + ' (SLUS_207.72, slim ISO, '
+              'presets/ios.env, presets/full120-ios.env, Settings.bundle, MoltenVK.framework)')
+        if getattr(a, 'install', False):
+            print('  install with xcrun devicectl to ' + str(getattr(a, 'device', None) or 'the connected device'))
+        return
+    inputs = json.loads((a.work / 'inputs.json').read_text())
+    if not ios_libs_current(a.work):
+        raise ValueError('ios-libs outputs are missing or stale; run ios-libs in this work directory first')
+    om1_stage = validate_om1_stage(getattr(a, 'om1_stage', None))
+    receipt = json.loads((a.work / 'ios-libs.json').read_text())
+    ge1_build, vendor = Path(receipt['ge1_build']), a.work / 'ios-vendor'
+    if not ge1_build.is_dir() or not vendor.is_dir():
+        raise ValueError('ios-libs build directory is gone; re-run ios-libs')
+    build_dir = a.work / 'ios-app-build'
+    run('cmake', '-S', ENGINE, '-B', build_dir, '-G', 'Xcode',
+        '-DCMAKE_TOOLCHAIN_FILE=' + str(ROOT / 'tools/ssx3/ios/toolchain.cmake'),
+        '-DCMAKE_CONFIGURATION_TYPES=Release',
+        '-DPS2X_BUILD_RECOMP=OFF', '-DPS2X_BUILD_ANALYZER=OFF',
+        '-DPS2X_BUILD_TEST=OFF', '-DPS2X_BUILD_STUDIO=OFF',
+        '-DPS2X_ENABLE_SCCACHE=OFF', '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF',
+        '-DPS2X_ENABLE_RUNTIME_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
+        '-DPS2X_ENABLE_FFMPEG=ON', '-DPS2X_FFMPEG_IOS_ROOT=' + str(a.work / 'ios-ffmpeg'),
+        '-DSDL2_DIR=' + str(a.work / 'ios-sdl2/lib/cmake/SDL2'),
+        '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+        '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
+        '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
+        '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(ge1_build),
+        '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
+        '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
+        '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
+    run('cmake', '--build', build_dir, '--config', 'Release',
+        '--target', 'ps2EntryRunner', '--', '-jobs', str(a.jobs))
+    built = build_dir / 'ps2xRuntime/Release-iphoneos/ps2EntryRunner.app'
+    if not built.is_dir():
+        raise ValueError('iOS app bundle missing after build: ' + str(built))
+    (a.work / 'ios-source-binary-sha.txt').write_text(
+        sha(built / 'ps2EntryRunner') + '  ps2EntryRunner\n')
+    import plistlib
+    with open(built / 'Info.plist', 'rb') as f:
+        built_id = plistlib.load(f).get('CFBundleIdentifier')
+    print('built bundle id: ' + str(built_id))
+    disc = verified_disc_payload(a.work, inputs)
+    files = {relative: source for source, relative in disc}
+    stage_dir = a.work / 'ios-stage'
+    app = stage_dir / (bundle_id + '.app')
+    if app.exists():
+        shutil.rmtree(app)
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(built, app, symlinks=True)
+    shutil.copy2(files['SLUS_207.72'], app / 'SLUS_207.72')
+    shutil.copy2(files['SSX3.iso'], app / 'SSX3.iso')
+    shutil.copy2(files['SSX3.iso.holes'], app / 'SSX3.iso.holes')
+    for name in ('ios.env', 'full120-ios.env'):
+        src = ROOT / 'presets' / name
+        if not src.is_file():
+            raise ValueError('missing shipped preset: ' + str(src))
+        shutil.copy2(src, app / ('ps2x.env' if name == 'ios.env' else name))
+    shutil.copytree(ENGINE / 'ps2xRuntime/ios/Settings.bundle', app / 'Settings.bundle')
+    frameworks = app / 'Frameworks'
+    frameworks.mkdir(exist_ok=True)
+    shutil.copytree(a.work / 'ios-libs/MoltenVK.framework',
+                    frameworks / 'MoltenVK.framework', symlinks=True)
+    pack = font_pack(a, inputs)
+    if pack is not None:
+        target = app / 'font-pack'
+        shutil.copytree(pack, target)
+        env_file = app / 'ps2x.env'
+        lines = [line for line in env_file.read_text().splitlines()
+                 if not line.startswith('GE1_TEX_REPLACE=')
+                 and not line.startswith('GE1_TEX_PRELOAD=')]
+        lines += ['GE1_TEX_REPLACE=${BUNDLE}/font-pack', 'GE1_TEX_PRELOAD=1']
+        env_file.write_text('\n'.join(lines) + '\n')
+    subprocess.run(['find', str(app), '-name', '._*', '-delete'], check=False)
+    identity = sign_staged_app(a.work, app, team, bundle_id)
+    (a.work / 'ios-app.json').write_text(json.dumps({
+        'team': team, 'bundle_id': bundle_id, 'identity': identity,
+        'engine': subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
+                                          text=True).strip(),
+        'ge1_vendor': GE1_VENDOR_PIN, 'om1_stage': str(om1_stage),
+        'slim_sha256': inputs['slim_sha256'], 'elf_sha256': inputs['elf_sha256'],
+        'signed_binary_sha256': sha(app / 'ps2EntryRunner'),
+        'preset_sha256': sha(app / 'ps2x.env')}, indent=2, sort_keys=True) + '\n')
+    print('Staged signed iOS app in ' + str(app))
+    print('Install it with: ./build.py ios --ssx3-iso <ISO> --work <DIR> --team ' + team
+          + ' --om1-stage <STAGE> --install (plain install; existing cards and saves are kept)')
+
+
+def ios_install(a):
+    apps = sorted((a.work / 'ios-stage').glob('*.app'))
+    if len(apps) != 1:
+        raise ValueError('ios install needs exactly one staged app in '
+                         + str(a.work / 'ios-stage') + '; run ios first')
+    udid = resolve_device(getattr(a, 'device', None), for_install=True)
+    # Plain install only: devicectl install never uninstalls, so the app's
+    # Documents (cards, saves, settings) survive every upgrade.
+    run('xcrun', 'devicectl', 'device', 'install', 'app', '--device', udid,
+        '--timeout', '1200', apps[0])
+    print('Installed on ' + udid + '; existing cards and saves were not removed.')
+
+
+def ios_onecmd(a):
+    """One-command iOS build: doctor -> prepare -> ios-libs -> ios (-> install).
+
+    Resumable: prepare and ios-libs are skipped when their outputs are
+    current for this disc. ios always runs (Xcode is incremental)."""
+    if a.tricky_iso:
+        validate_tricky_iso(a.tricky_iso)
+    if not a.work:
+        a.work = Path.home() / 'ssx3-work'
+    a.work = a.work.resolve()
+    if a.work == ROOT or ROOT in a.work.parents:
+        raise ValueError('--work must be outside the source checkout')
+    check_team(a)
+    a.target = 'ios'
+    a.iso = a.ssx3_iso.resolve()
+    doctor(a)
+    if a.dry_run:
+        ios(a)
+        return
+    if prepare_current(a.work):
+        print('prepare: outputs current for this disc, skipping')
+    else:
+        prepare(a)
+    if ios_libs_current(a.work):
+        print('ios-libs: staged libraries current, skipping')
+    else:
+        ios_libs(a)
+    ios(a)
+    if a.install:
+        ios_install(a)
+
+
 def stage(a):
     app_id_file = a.work / 'app-id.txt'
     if not app_id_file.is_file():
@@ -1190,9 +1782,9 @@ def android_onecmd(a):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install'])
+    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs'])
     p.add_argument('--work', type=Path, help='external private output directory')
-    p.add_argument('--target', choices=['prepare', 'android', 'mac'], default='android', help='doctor prerequisite set')
+    p.add_argument('--target', choices=['prepare', 'android', 'mac', 'ios'], default='android', help='doctor prerequisite set')
     p.add_argument('--tools-only', action='store_true', help='prepare the native generator without reading a disc')
     p.add_argument('--iso', type=Path, help='own supported USA disc image (prepare only)')
     p.add_argument('--ssx3-iso', '--ssx3-disc', dest='ssx3_iso', type=Path,
@@ -1208,6 +1800,10 @@ def main():
     p.add_argument('--jdk', type=Path, help='local JDK 17 installation (default: JAVA_HOME, managed toolchain, common paths)')
     p.add_argument('--symbol-names', type=Path, help='optional local names sidecar for development codegen')
     p.add_argument('--serial', help='adb device serial for install')
+    p.add_argument('--team', help='Apple Developer Team ID for ios (10 characters; Xcode signs with this team)')
+    p.add_argument('--device', help='iOS device UDID for ios install (default: the single connected device)')
+    p.add_argument('--bundle-id', help='iOS bundle id (default: com.ssx3recomp.<team>)')
+    p.add_argument('--om1-stage', type=Path, help='own locally generated offline VU1 stage directory (ios app only)')
     p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
     p.add_argument('--jnilibs', type=Path, help='own source-built Android JNI libraries')
     p.add_argument('--prebuilt', action='store_true', help='opt in to verified prebuilt Android support libraries (default: build them from source)')
@@ -1235,7 +1831,7 @@ def main():
         return
     if not supported_host():
         p.error('supported hosts: macOS Apple silicon, Linux x86_64/arm64; Windows users run Ubuntu in WSL2')
-    if a.step in ('mac', 'mac-libs', 'run') and platform.system() != 'Darwin':
+    if a.step in ('mac', 'mac-libs', 'run', 'ios', 'ios-libs') and platform.system() != 'Darwin':
         p.error(a.step + ' requires macOS Apple silicon; Linux hosts build Android APKs')
     if not a.work:
         p.error('--work is required for build steps')
@@ -1253,17 +1849,21 @@ def main():
     if a.step == 'android' and a.ssx3_iso:
         android_onecmd(a)
         return
+    if a.step == 'ios' and a.ssx3_iso:
+        ios_onecmd(a)
+        return
     if a.ssx3_iso:
-        p.error('--ssx3-iso is only valid with the android step')
+        p.error('--ssx3-iso is only valid with the android/ios steps')
     if a.install:
-        p.error('--install is only valid with android --ssx3-iso')
+        p.error('--install is only valid with android/ios --ssx3-iso')
     if a.step == 'prepare' and not a.iso and not a.tools_only:
         p.error('prepare requires --iso')
     if a.step != 'prepare' and not (a.work / 'inputs.json').is_file():
         p.error('run prepare in this work directory first')
     a.work.mkdir(parents=True, exist_ok=True)
     {'prepare': prepare, 'mac': mac, 'android': android, 'mac-libs': libs, 'run': play,
-     'android-libs': android_libs, 'stage': stage, 'install': install}[a.step](a)
+     'android-libs': android_libs, 'stage': stage, 'install': install,
+     'ios-libs': ios_libs, 'ios': ios}[a.step](a)
 
 
 if __name__ == '__main__':

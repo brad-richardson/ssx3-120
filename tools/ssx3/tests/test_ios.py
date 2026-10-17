@@ -1,0 +1,226 @@
+"""iOS builder flow: team/bundle validation, device resolution, OM1 stage
+validation, dry-run listing, shipped preset hygiene, MoltenVK manifest.
+
+No network, no disc, no Xcode, no device: devices and identities are
+mocked; the preset and manifest are read from the checkout.
+"""
+import importlib.util
+import io
+import json
+import plistlib
+import tempfile
+import types
+import unittest
+from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import patch
+
+BUILD = Path(__file__).resolve().parents[1] / 'build.py'
+SPEC = importlib.util.spec_from_file_location('ssx3_build', BUILD)
+build = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(build)
+
+
+def args(**overrides):
+    base = dict(team='LQ3V7772Q1', bundle_id=None, device=None, install=False,
+                dry_run=False, om1_stage=None, jobs=8, stock_dump=None,
+                skip_fonts=True, ssx3_iso=None, tricky_iso=None)
+    base.update(overrides)
+    return types.SimpleNamespace(**base)
+
+
+class TeamTest(unittest.TestCase):
+    def test_bundle_id_derives_from_team(self):
+        self.assertEqual(build.default_bundle_id('AB12CD34EF'), 'com.ssx3recomp.ab12cd34ef')
+
+    def test_team_required(self):
+        with self.assertRaises(ValueError):
+            build.check_team(args(team=None))
+
+    def test_team_format(self):
+        self.assertEqual(build.check_team(args(team='AB12CD34EF')), 'AB12CD34EF')
+        with self.assertRaises(ValueError):
+            build.check_team(args(team='short'))
+        with self.assertRaises(ValueError):
+            build.check_team(args(team='lowercase12'))
+
+    def test_bundle_id_format(self):
+        self.assertEqual(build.check_bundle_id('com.example.ssx3'), 'com.example.ssx3')
+        with self.assertRaises(ValueError):
+            build.check_bundle_id('not a bundle id')
+        with self.assertRaises(ValueError):
+            build.check_bundle_id('single')
+
+
+class IdentityTest(unittest.TestCase):
+    def test_parses_fingerprint_for_team(self):
+        listing = ('  1) 295EFB42E6734599E5726A9A5EF47EBD1EFEF7B1 '
+                   '"Apple Development: A User (AB12CD34EF)"\n')
+        with patch.object(build, 'probe', return_value=(True, listing)):
+            self.assertEqual(build.signing_identity('AB12CD34EF'),
+                             '295EFB42E6734599E5726A9A5EF47EBD1EFEF7B1')
+
+    def test_missing_team_fails_clearly(self):
+        listing = '  1) DEADBEEF "Apple Development: A User (ZZ99ZZ99ZZ)"\n'
+        with patch.object(build, 'probe', return_value=(True, listing)):
+            with self.assertRaises(ValueError) as ctx:
+                build.signing_identity('AB12CD34EF')
+        self.assertIn('Xcode', str(ctx.exception))
+
+
+class DeviceTest(unittest.TestCase):
+    LISTING = ('Devices:\n'
+               '  My iPad (00008112-001224302184A01E)\n'
+               '  Other Phone (00008110-000A1B2C3D4E5F60)\n')
+
+    def test_explicit_device_hit(self):
+        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
+            self.assertEqual(build.resolve_device('00008112-001224302184A01E'), '00008112-001224302184A01E')
+
+    def test_explicit_device_miss(self):
+        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
+            with self.assertRaises(ValueError):
+                build.resolve_device('00000000-0000000000000000')
+
+    def test_single_device_auto_pick(self):
+        one = 'Devices:\n  Solo iPad (00008112-001224302184A01E)\n'
+        with patch.object(build, 'devicectl_devices', return_value=(True, one)):
+            self.assertEqual(build.resolve_device(None, for_install=True), '00008112-001224302184A01E')
+
+    def test_several_devices_need_flag(self):
+        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
+            with self.assertRaises(ValueError) as ctx:
+                build.resolve_device(None, for_install=True)
+        self.assertIn('--device', str(ctx.exception))
+
+
+class Om1StageTest(unittest.TestCase):
+    def make_stage(self, root, with_tables=True):
+        stage = Path(root) / 'stage'
+        for name in build.OM1_STAGE_REQUIRED:
+            target = stage / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('// stub')
+        if with_tables:
+            (stage / 'sp1.s').write_text('// asm')
+            (stage / 'sp1_tables.c').write_text('// tables')
+        return stage
+
+    def test_valid_stage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertEqual(build.validate_om1_stage(self.make_stage(temp)), self.make_stage(temp))
+
+    def test_missing_dir(self):
+        with self.assertRaises(ValueError) as ctx:
+            build.validate_om1_stage('/no/such/stage')
+        self.assertIn('offline-core', str(ctx.exception))
+
+    def test_missing_tables(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError) as ctx:
+                build.validate_om1_stage(self.make_stage(temp, with_tables=False))
+        self.assertIn('recording recipe', str(ctx.exception))
+
+
+class DryRunTest(unittest.TestCase):
+    def test_listing_touches_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            work.mkdir()
+            out = io.StringIO()
+            with redirect_stdout(out):
+                build.ios(args(work=work, dry_run=True))
+            text = out.getvalue()
+            self.assertIn('LQ3V7772Q1', text)
+            self.assertIn('com.ssx3recomp.lq3v7772q1', text)
+            self.assertIn('MISSING', text)
+            self.assertFalse((work / 'ios-app-build').exists())
+            self.assertFalse((work / 'ios-stage').exists())
+
+
+class DoctorIosTest(unittest.TestCase):
+    def test_reports_failures_through_check(self):
+        seen = []
+        with patch.object(build, 'probe', return_value=(False, 'missing')):
+            with patch.object(build, 'signing_identity', side_effect=ValueError('nope')):
+                build.doctor_ios(args(device=None), lambda *row: seen.append(row))
+        labels = [row[0] for row in seen]
+        self.assertIn('Xcode clang', labels)
+        self.assertIn('cmake', labels)
+        self.assertIn('signing identity', labels)
+        self.assertTrue(all(row[1] is False for row in seen))
+
+
+class ProfileTest(unittest.TestCase):
+    def write_profile(self, home, name, app_id, days_valid):
+        prof_dir = Path(home) / 'Library/MobileDevice/Provisioning Profiles'
+        prof_dir.mkdir(parents=True, exist_ok=True)
+        data = {'Entitlements': {'application-identifier': app_id},
+                'Platform': ['iOS'],
+                'ExpirationDate': datetime.now(timezone.utc) + timedelta(days=days_valid)}
+        (prof_dir / name).write_bytes(plistlib.dumps(data))
+
+    def fake_security(self, path):
+        payload = Path(path).read_bytes()
+        return types.SimpleNamespace(returncode=0, stdout=payload)
+
+    def test_newest_valid_profile_wins(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.write_profile(temp, 'old.mobileprovision', 'AB12CD34EF.com.ssx3recomp.ab12cd34ef', 3)
+            self.write_profile(temp, 'new.mobileprovision', 'AB12CD34EF.com.ssx3recomp.ab12cd34ef', 30)
+            self.write_profile(temp, 'other.mobileprovision', 'ZZ99ZZ99ZZ.com.other.app', 30)
+            with patch.object(build.subprocess, 'run',
+                              side_effect=lambda cmd, **kw: self.fake_security(cmd[-1])):
+                found = build.find_provisioning_profile(
+                    'AB12CD34EF', 'com.ssx3recomp.ab12cd34ef', profiles_dir=temp)
+            self.assertTrue(str(found).endswith('new.mobileprovision'))
+
+    def test_no_match_fails_clearly(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError) as ctx:
+                build.find_provisioning_profile('AB12CD34EF', 'com.ssx3recomp.ab12cd34ef',
+                                                profiles_dir=temp)
+        self.assertIn('provisioning profile', str(ctx.exception))
+
+
+class PresetHygieneTest(unittest.TestCase):
+    def test_no_private_bits_in_shipped_preset(self):
+        text = (build.ROOT / 'presets/ios.env').read_text()
+        content = [line for line in text.splitlines()
+                   if line and not line.startswith('#')]
+        keys = [line.split('=', 1)[0] for line in content]
+        joined = '\n'.join(content)
+        for required in ('PS2X_OM1_LEAN', 'PS2X_OM1_SCAN', 'PS2X_PERF_LOG',
+                         'PS2X_SSX3_NATIVE_WORLD', 'PS2X_VIF_UNPACK_FAST',
+                         'PS2X_GS_GIF_BATCH', 'PS2X_GS_GIF_ARENA',
+                         'GE1_ONDEVICE_UPSCALE', 'PS2X_NET', 'PS2X_NET_SERVER'):
+            self.assertIn(required, keys)
+        for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_SKIP_MOVIE=',
+                          'PS2X_PAD_SCRIPT', 'PS2X_ACHIEVEMENTS', 'tricky/',
+                          'APP_PACK', 'mobileprovision'):
+            self.assertNotIn(forbidden, joined)
+
+    def test_play_values_are_explicit(self):
+        values = {}
+        for line in (build.ROOT / 'presets/ios.env').read_text().splitlines():
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                values[key] = value
+        self.assertEqual(values['GE1_UPSCALE'], '2')
+        self.assertEqual(values['GE1_CAS'], '0.25')
+        self.assertEqual(values['PS2X_GE1_EXPORT_SIZE'], 'display')
+        self.assertEqual(values['PS2X_NET_SERVER'], 'ssx.bradr.dev')
+
+
+class MoltenvkManifestTest(unittest.TestCase):
+    def test_manifest_shape(self):
+        mvk = json.loads((build.ROOT / 'tools/ssx3/moltenvk.json').read_text())
+        for key in ('url', 'archive_sha256', 'archive_size', 'device_framework'):
+            self.assertIn(key, mvk)
+        self.assertRegex(mvk['archive_sha256'], r'^[0-9a-f]{64}$')
+        self.assertTrue(mvk['url'].startswith('https://github.com/KhronosGroup/MoltenVK/'))
+
+
+if __name__ == '__main__':
+    unittest.main()

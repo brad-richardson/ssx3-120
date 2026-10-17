@@ -1,0 +1,9 @@
+{
+  "archive_sha256": "b5d947b1660e6e9fed40b9cd2387e160aaab9e80b775c0cef7e14059405178c1",
+  "archive_size": 34535424,
+  "device_framework": "MoltenVK/MoltenVK/dynamic/MoltenVK.xcframework/ios-arm64/MoltenVK.framework",
+  "inner_root": "MoltenVK/MoltenVK/dynamic/MoltenVK.xcframework",
+  "note": "Upstream iOS release tarball (no submodule, no source build): the builder fetches it, checks size + SHA-256, and stages the device framework beside the app. Tarball SHA observed 2026-10-17 (Google publishes no checksum file; GitHub release assets are immutable); the device binary inside (sha256 6cd5888490d08b36356d04c50c05e2eda5b9bcb3d0338ece693a28987de96aff) is byte-identical to the lab's long-used pinned copy.",
+  "url": "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-ios.tar",
+  "version": "1.4.2"
+}
