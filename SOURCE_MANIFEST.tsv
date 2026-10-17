@@ -1,11 +1,11 @@
 new_path	origin	old_path	sha256	bytes	status
-.github/workflows/product-checks.yml	authored:ci	-	d53c6948324141e5e90e28e1189c1e66bf98ca1d9fa3576710716a937844c339	2590	new
+.github/workflows/product-checks.yml	authored:ci	-	82bd231cfb9e9592d1560cf485ad94998301a8aa334708cd395fcb024226563c	2627	new
 .gitignore	authored:hygiene	-	39e9ef752d52f193bc1fc8784ce3e9bba7654ee7f5b0bdef1a8e061c5376d6eb	319	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
 LICENSE	fork@f7a96f23	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c71fd3712bdb44a	34903	verbatim
-Makefile	authored:builder-ux-1	-	5d5d7a088d8ebd203f4a8ba3e0262fa13334de3904cc2e32a4f44bb5ee16306b	1248	new
-README.md	authored:readme	-	0abd4c15b0e9721494d20e1a8151d1087a5abf756884c34cbf56bf8e0b003bfb	7122	new
+Makefile	authored:builder-ux-1	-	1b67dee2592a0341ace8da647e69eb3962136886c2c4fcdecf5df13f293d432c	1276	new
+README.md	authored:readme	-	ef0d0a7f644b1f26628dfb83631688a4f81e8c1ffcc97c075798e15f933adf34	7874	new
 SOURCE_PROVENANCE.md	authored:provenance	-	0ac5f8ebad86068f7b4fc51c58bb0f89cda7a29471a8ef24d2674b384564c59d	8422	new
 THIRD_PARTY_NOTICES.md	authored:notices	-	bbe79b32bfc10b74cf600e0c9fbbc8c47bedca1eb19ad48673429ae6c35641ac	4480	new
 apps/android/README.md	fork@f7a96f23	android/README.md	b9306de582f19343587c3209ea97c1ad3032807ba93d5a158814c45c953b81bc	6974	composition:product-paths-and-host-support
@@ -47,6 +47,7 @@ docs/ssx3-build.md	fork@f7a96f23	docs/ssx3-build.md	248cc80ea7ae3a62889fbc324b8b
 docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe032e5be80160d6380b99202ca6e02feb08004c	2373	composition:product-paths-and-host-support
 docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
 docs/symbols.md	authored:symbols-map-1	-	f8333c6de5d364295b5140658c3148740493e430e367fbc946d232c294532e99	2409	new
+docs/tricky-inputs.md	authored:tk-build-1	-	4dea73263b984602b1ca605f051ea987fc4f23f18fb89c9707f76c7f01c810d7	2242	new
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
 games/ssx3/ssx3-symbols.tsv	authored:symbols-map-1	-	4bc02dbdcb03af04fcc9dc1f60f95b1c98aa3e4df99fba38d48c802f3fabd5cf	381667	new
 games/ssx3/ssx3.toml	fork@f7a96f23	games/ssx3/ssx3.toml	929c6997f11bc319a91fe3a232f3ec962ed2ae4bea28b15eddc65c77930819d0	57910	composition:public-fix-1-scrubbed-lab-pointer
@@ -118,9 +119,9 @@ tools/bench/legs.example.json	authored:bench-template	-	0c9553b492a3032ac0c44a38
 tools/bench/winseries.py	lab@0ac8b01f	local/tooling/perf/winseries.py	69917d801fa0044492f04cfa4e29a9988cf90677b408ca081d8ba6386f3e1330	9309	composition:product-docstring
 tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17dc54ab2a6d511238945fcd4999767e5d90d74168a76722f72c3cbce121a8c1	6842	verbatim
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
-tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	e78c442acb508d235b431551047dc248a70f12370fabaea9b58000d90d45f65d	24008	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
+tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	d4647f70eef0e68bf2ed306afbcb4a2836b0bcfd3a11549763da2715b51c95c3	24791	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	0d418b28e5e98eb8a7b4b0c52785e0dedd39fbd5f4d20c1ea2d2a8ad9b15622a	144635	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
+tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	67037da97feaa149ddbe17dfd549ef0ebc1be1c3cfff87092d964a9f0166ca40	159105	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
 tools/ssx3/knobs.tsv	fork@b9bf530a	tools/ssx3/knobs.tsv	c84fb700dc1057a71764d112030e9b8694b7a8d376ce353426fe09a468f9015b	7528	verbatim
@@ -144,6 +145,7 @@ tools/ssx3/tests/test_stage_fonts.py	fork@f7a96f23	tools/ssx3/tests/test_stage_f
 tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	c46f97fe50e3c7c981329a8b3b1c6ee6210aae5597eef7f9a199a449cac09da7	9828	new
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
 tools/ssx3/tests/test_vu0_stage.py	authored:build-parity-fix-1	-	5ce8350d633b9e5cbef49c87de24d870d88113dbe7759414d7912a70a2aaf1e1	19719	new
+tools/ssx3/tests/test_tricky_step.py	authored:tk-build-1	-	f1880d935aeadd4376b7233f7571f4d0fa4511f3b308d1eddc44b01a0f550708	18347	new
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim

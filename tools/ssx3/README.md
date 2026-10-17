@@ -39,8 +39,9 @@ edits, no sudo. Google's SDK licence must be accepted:
 answer the prompt instead; without either the build fails with the
 documented message). `--install` pushes to a connected device afterwards;
 `--prebuilt` uses a verified prebuilt support release when one matches;
-`--tricky-iso` validates a Tricky disc (the port arrives in a later
-version). `--no-auto-download` never fetches and fails with a precise
+`--tricky-iso` validates a Tricky disc and runs the `tricky` step when the
+converter driver is present (supported discs:
+[docs/tricky-inputs.md](../../docs/tricky-inputs.md)). `--no-auto-download` never fetches and fails with a precise
 "missing X; set Y or drop --no-auto-download" message instead. `make
 android ISO=…` wraps the same command; `python3 build.py` (root) and the
 step-by-step commands below keep working unchanged for debugging.
@@ -211,6 +212,20 @@ python3 tools/ssx3/build.py android-libs --work /path/to/private-build --ndk "$A
 python3 tools/ssx3/build.py android --work /path/to/private-build --jobs 4
 python3 tools/ssx3/build.py install --work /path/to/private-build
 ```
+
+**Optional: Tricky courses.** With a prepared work directory, generate the
+Tricky layer from your own Tricky disc (supported discs:
+[docs/tricky-inputs.md](../../docs/tricky-inputs.md)):
+
+```sh
+python3 tools/ssx3/build.py tricky --iso '/path/to/your/SSX Tricky (USA).iso' --work /path/to/private-build
+python3 tools/ssx3/build.py install --dry-run --work /path/to/private-build   # lists the Tricky payload too
+```
+
+`stage`/`install` pick the layer up when present, re-verify it against
+`tricky_inputs.json`, and push it beside the stock files; `tricky --dry-run`
+validates the disc and lists the planned payload without building. With no
+Tricky layer the app boots stock SSX 3 only.
 
 **Optional: prebuilt libraries.** Pass `--prebuilt` to reuse a verified
 prebuilt support release instead of compiling the support libraries. It only

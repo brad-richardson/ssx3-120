@@ -2614,6 +2614,7 @@ def stage(a):
     (files / 'mc0').mkdir(exist_ok=True)
     device = '/storage/emulated/0/Android/data/' + a.app_id + '/files'
     stage_fonts(a, inputs, files, device)
+    tricky_staged, tricky_trees = stage_tricky(a, files)
     apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     print('Staged device layout in ' + str(files))
     if a.step != 'stage':
@@ -2633,6 +2634,11 @@ def stage(a):
     if (files / 'font-pack').is_dir():
         print('  adb push ' + str(files / 'font-pack') + ' ' + device + '/')
         print('  adb shell chmod -R o+rX ' + device + '/font-pack')
+    for _, relative in tricky_staged:
+        print('  adb push ' + str(files / relative) + ' ' + device + '/' + relative)
+    for tree in tricky_trees:
+        print('  adb push ' + str(files / tree) + ' ' + device + '/')
+        print('  adb shell chmod -R o+rX ' + device + '/' + tree)
     print('  adb shell chmod -R o+rX ' + device + '/ge1-resources')
     print('  adb shell chmod o+r ' + device + '/SLUS_207.72 ' + device + '/SSX3.iso ' +
           device + '/SSX3.iso.holes ' + device + '/ps2x.env ' + device + '/full120.env')
@@ -2692,6 +2698,15 @@ def ensure_install_toolchain(a):
         toolchain.require_licenses(sdk, getattr(a, 'accept_android_licenses', False), java_env)
 
 
+def verified_tricky_payload(work, record):
+    """Re-verify the Tricky disc and outputs before pushing (slow: hashes 2.9 GB)."""
+    iso = Path(record['tricky_iso'])
+    if sha(iso) != record['tricky_iso_sha256']:
+        raise ValueError('Tricky disc changed since the tricky step')
+    verify_tricky_outputs(work, record)
+    return True
+
+
 def install(a):
     if a.app_id == PLAY_APP_ID:
         raise ValueError('public install refuses the maintainer play package')
@@ -2699,10 +2714,28 @@ def install(a):
         ensure_install_toolchain(a)
     inputs = json.loads((a.work / 'inputs.json').read_text())
     disc_sources = verified_disc_payload(a.work, inputs)
+    record = tricky_record(a.work)
     if a.dry_run:
         for source_path, relative in disc_sources:
             print(f'Would copy {source_path} ({source_path.stat().st_size} bytes) to {relative}')
+        if record is not None:
+            tricky = Path(a.work) / 'tricky'
+            for name in TRICKY_DEVICE_FILES:
+                candidate = tricky / name
+                if candidate.is_file():
+                    print(f'Would copy {candidate} ({candidate.stat().st_size} bytes) to {name}')
+            for name in TRICKY_DEVICE_TREES:
+                members = [p for p in (tricky / name).rglob('*') if p.is_file()] \
+                    if (tricky / name).is_dir() else []
+                if members:
+                    total = sum(p.stat().st_size for p in members)
+                    print(f'Would copy {tricky / name} ({len(members)} files, '
+                          f'{total} bytes) to {name}/')
+        else:
+            print('No Tricky layer in this work directory; stock SSX 3 only.')
         return
+    if record is not None:
+        verified_tricky_payload(a.work, record)
     files = stage(a)
     apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     if not apk.is_file():
@@ -2733,6 +2766,8 @@ def install(a):
         adb(a, 'shell', 'am', 'force-stop', a.app_id)
     sources = disc_sources + [(files / 'ps2x.env', 'ps2x.env'),
                               (files / 'full120.env', 'full120.env')]
+    tricky_staged, tricky_trees = tricky_device_sources(files, record)
+    sources += tricky_staged
     for source_path, relative in sources:
         remote = device + '/' + relative
         expected = sha(source_path)
@@ -2748,7 +2783,7 @@ def install(a):
         if actual != expected:
             raise ValueError('device SHA256 mismatch: ' + relative)
         adb(a, 'shell', 'chmod', 'o+r', shlex.quote(remote))
-    for tree in ('ge1-resources', 'font-pack'):
+    for tree in ('ge1-resources', 'font-pack') + tuple(tricky_trees):
         local = files / tree
         if not local.is_dir():
             continue
@@ -2764,17 +2799,25 @@ def install(a):
 
 
 TRICKY_LATER = ('Tricky courses arrive in a later version: --tricky-iso %s '
-                'validated (ISO9660, %d bytes) but this checkout has no Tricky port')
+                'validated (ISO9660, %d bytes) but this checkout has no Tricky '
+                'converter driver (expected tools/ssx3/tricky/build_tricky.py)')
+
+
+TRICKY_DRIVER = Path(__file__).resolve().parent / 'tricky' / 'build_tricky.py'
 
 
 def tricky_supported():
-    """Whether this checkout can consume a Tricky disc (tk-build-1 wires it)."""
-    return ((ROOT / 'games' / 'tricky').is_dir()
-            or globals().get('build_tricky') is not None)
+    """Whether this checkout can consume a Tricky disc.
+
+    True once the Tricky converter port lands its driver at
+    tools/ssx3/tricky/build_tricky.py (tk-port-1/tk-port-2); until then
+    --tricky-iso validates cheaply and stops with TRICKY_LATER.
+    """
+    return ((ROOT / 'games' / 'tricky').is_dir() or TRICKY_DRIVER.is_file())
 
 
-def validate_tricky_iso(path):
-    """Accept and validate --tricky-iso; fail clearly until the port lands."""
+def check_tricky_iso_file(path):
+    """Cheap --tricky-iso checks (exists + ISO9660); no driver gate."""
     iso = Path(path)
     if not iso.is_file():
         raise ValueError('tricky ISO not found: ' + str(iso))
@@ -2782,6 +2825,12 @@ def validate_tricky_iso(path):
         f.seek(16 * SECTOR)
         if f.read(7) != b'\x01CD001\x01':
             raise ValueError('not an ISO9660 disc image: ' + str(iso))
+    return iso
+
+
+def validate_tricky_iso(path):
+    """Accept and validate --tricky-iso; fail clearly until the port lands."""
+    iso = check_tricky_iso_file(path)
     if not tricky_supported():
         raise ValueError(TRICKY_LATER % (str(iso), iso.stat().st_size))
     return iso
@@ -2804,6 +2853,269 @@ def android_libs_current(work):
     jni = work / 'jniLibs/arm64-v8a'
     return ((jni / 'libge1_gs.so').is_file() and (jni / 'libmv2_microvu.so').is_file()
             and (work / 'android-resources').is_dir())
+
+
+TRICKY_ELF_NAME = 'SLUS_203.26'
+# Pinned Tricky disc identities: full-ISO SHA-256 -> serial, region, exact
+# byte size and MD5. Only locally measured dumps are keys (see
+# docs/tricky-inputs.md); any other pressing, including PAL/JP, is refused
+# until its dump is measured and keyed here.
+TRICKY_DISCS = {
+    'deae53c10447e59c2c4cd1d3a904a1ed04cbc818444f4883962a0060da837970': {
+        'serial': 'SLUS-20326', 'region': 'NTSC-U', 'bytes': 2902425600,
+        'md5': '7d8ee567145bdf0c236ce5f5c679108a'},
+}
+# Internal markers after the ELF name: the per-course model archive and the
+# music archive whose v3 .mpf members the music converter checks itself.
+TRICKY_MARKERS = ('DATA/MODELS/GARI.BIG', 'DATA/AUDIO/MUSIC.BIG')
+# Device-bound Tricky payload the stage step copies from <work>/tricky/:
+# top-level files push beside ps2x.env; tricky-ov/ pushes as one tree.
+TRICKY_DEVICE_FILES = ('speech-tricky-big', 'music-tricky-big',
+                       'music2-tricky-big', 'm-tricky.txt', 'tricky.env',
+                       'trickyhud.bin', 'tricky-song.wav',
+                       'tricky-gems.tsv', 'tricky-resetvol.tsv')
+TRICKY_DEVICE_TREES = ('tricky-ov',)
+# Text payloads whose baked device paths follow the app id (same treatment
+# as ps2x.env's PUBLIC_APP_ID replace). The converter driver writes
+# PUBLIC_APP_ID-based device paths; stage rewrites them to the built id.
+TRICKY_ID_REWRITES = ('m-tricky.txt', 'tricky.env')
+
+
+def sha2(path):
+    """Double-read SHA-256 (inputs are re-read and compared, per lane convention)."""
+    first, second = sha(path), sha(path)
+    if first != second:
+        raise ValueError('unstable read (two SHAs differ): ' + str(path))
+    return first
+
+
+def tricky_disc_identity(iso):
+    """Full disc identity for a validated Tricky ISO (slow: hashes 2.9 GB).
+
+    Checks the pinned key table, the exact byte size, the ELF name in the
+    disc root and the internal markers, in that order. Refuses with the
+    docs/tricky-inputs.md pointer on any mismatch.
+    """
+    iso = Path(iso)
+    digest = sha(iso)
+    try:
+        disc = TRICKY_DISCS[digest]
+    except KeyError:
+        raise ValueError('unsupported Tricky disc SHA256; see docs/tricky-inputs.md')
+    if iso.stat().st_size != disc['bytes']:
+        raise ValueError('Tricky ISO byte size mismatch for ' + disc['serial'])
+    names = {name.upper() for name, _, _ in iso_records(iso)}
+    if TRICKY_ELF_NAME not in names:
+        raise ValueError(TRICKY_ELF_NAME + ' missing from the Tricky disc root')
+    for marker in TRICKY_MARKERS:
+        if marker not in names:
+            raise ValueError('Tricky disc marker missing: ' + marker)
+    return {'sha256': digest, 'serial': disc['serial'], 'region': disc['region'],
+            'bytes': disc['bytes'], 'md5': disc['md5']}
+
+
+def tricky_inputs_path(work):
+    return Path(work) / 'tricky_inputs.json'
+
+
+def tricky_current(work, iso):
+    """Whether <work>/tricky/ is current for this Tricky disc.
+
+    The 2.9 GB image is not re-hashed: the recorded SHA must be a pinned
+    key, the image size must match it, and every recorded output must be
+    present with a matching double-read SHA. A size mismatch refuses like
+    prepare's different-disc refusal.
+    """
+    record_file = tricky_inputs_path(work)
+    try:
+        record = json.loads(record_file.read_text())
+    except (OSError, ValueError):
+        return False
+    disc = TRICKY_DISCS.get(record.get('tricky_iso_sha256'))
+    if disc is None:
+        return False
+    if not record.get('outputs'):
+        return False
+    if Path(iso).stat().st_size != record.get('tricky_iso_bytes'):
+        raise ValueError('work dir built from a different Tricky disc; use a fresh --work directory')
+    tricky = Path(work) / 'tricky'
+    for relative, entry in record.get('outputs', {}).items():
+        candidate = tricky / relative
+        if not candidate.is_file():
+            return False
+        try:
+            match = sha2(candidate) == entry['sha256']
+        except (TypeError, KeyError, AttributeError):
+            return False
+        if not match:
+            return False
+    return True
+
+
+def record_tricky_inputs(work, iso, identity, argv):
+    """Write tricky_inputs.json beside inputs.json (double-read output SHAs)."""
+    tricky = Path(work) / 'tricky'
+    outputs = {}
+    for candidate in sorted(tricky.rglob('*')):
+        if candidate.is_file():
+            relative = candidate.relative_to(tricky).as_posix()
+            outputs[relative] = {'sha256': sha2(candidate),
+                                 'bytes': candidate.stat().st_size}
+    try:
+        repo_commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
+                                              text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        repo_commit = 'unknown'
+    record = {'tricky_iso': str(iso), 'tricky_iso_sha256': identity['sha256'],
+              'tricky_iso_bytes': identity['bytes'], 'tricky_serial': identity['serial'],
+              'driver': {'path': str(TRICKY_DRIVER.relative_to(ROOT))
+                         if TRICKY_DRIVER.is_relative_to(ROOT) else str(TRICKY_DRIVER),
+                         'argv': list(map(str, argv)), 'repo_commit': repo_commit},
+              'outputs': outputs,
+              'created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+    tricky_inputs_path(work).write_text(json.dumps(record, indent=2) + '\n')
+    return record
+
+
+def build_tricky(a, iso):
+    """New step (not a prepare flag): generate the Tricky layer from a second disc.
+
+    Requires a prepared --work (inputs.json): the Tricky layer is optional
+    and keeps stock-only prepare -> stage -> install untouched. With no
+    --iso there is no <work>/tricky/ and stage writes no Tricky layer.
+    """
+    if not (Path(a.work) / 'inputs.json').is_file():
+        raise ValueError('tricky requires a prepared work directory (run prepare first)')
+    iso = validate_tricky_iso(Path(iso).resolve())
+    identity = tricky_disc_identity(iso)
+    print('Tricky disc: %s %s (%d bytes, SHA-256 %s...).' % (
+        identity['serial'], identity['region'], identity['bytes'], identity['sha256'][:16]))
+    if tricky_current(a.work, iso):
+        print('tricky: outputs current for this disc, skipping')
+        return tricky_inputs_path(a.work)
+    tricky = Path(a.work) / 'tricky'
+    if tricky.exists():
+        raise ValueError('refusing existing tricky dir; remove ' + str(tricky) +
+                         ' or choose a fresh --work directory')
+    inputs = json.loads((Path(a.work) / 'inputs.json').read_text())
+    # Port-owned orchestration driver (tk-port-1/tk-port-2): it reads the
+    # user's own discs and writes the <work>/tricky/ device layout (plus any
+    # intermediates); this step only validates, invokes and records.
+    # Proposed contract: build_tricky.py --tricky-iso <iso> --ssx3-iso <iso>
+    # --work <work>/tricky [--jobs N].
+    argv = [sys.executable, str(TRICKY_DRIVER), '--tricky-iso', str(iso),
+            '--ssx3-iso', str(inputs['iso']), '--work', str(tricky),
+            '--jobs', str(a.jobs)]
+    run(*argv)
+    record = record_tricky_inputs(a.work, iso, identity, argv)
+    print('Tricky layer ready: %d files in %s.' % (len(record['outputs']), tricky))
+    return tricky_inputs_path(a.work)
+
+
+def tricky_dry_run(a):
+    """Validate the Tricky disc and list the payload the tricky step would build."""
+    iso = check_tricky_iso_file(Path(a.iso).resolve())
+    identity = tricky_disc_identity(iso)
+    print('Tricky disc: %s %s (%d bytes, SHA-256 %s).' % (
+        identity['serial'], identity['region'], identity['bytes'], identity['sha256']))
+    if tricky_supported():
+        print('Converter driver present: ' + str(TRICKY_DRIVER))
+    else:
+        print('Converter driver missing: the tricky step stops after validation; '
+              'see docs/tricky-inputs.md')
+    print('Planned device files (beside ps2x.env):')
+    for name in TRICKY_DEVICE_FILES:
+        print('  ' + name)
+    print('Planned device trees:')
+    for name in TRICKY_DEVICE_TREES:
+        print('  ' + name + '/')
+    print('Nothing was built or staged.')
+
+
+def tricky_record(work):
+    """The tricky_inputs.json record, or None when no Tricky layer was built."""
+    record_file = tricky_inputs_path(work)
+    if not record_file.is_file():
+        return None
+    return json.loads(record_file.read_text())
+
+
+def verify_tricky_outputs(work, record):
+    """Re-verify staged Tricky outputs against the build record (fail closed)."""
+    tricky = Path(work) / 'tricky'
+    for relative, entry in record['outputs'].items():
+        candidate = tricky / relative
+        if not candidate.is_file() or sha2(candidate) != entry['sha256']:
+            raise ValueError('Tricky output changed since build_tricky: ' + relative +
+                             '; re-run the tricky step')
+    return True
+
+
+def tricky_device_sources(files, record):
+    """(source, device-relative) pairs for the staged Tricky layer.
+
+    Pure helper so stage/install/dry-run share the layout: allowlisted top
+    files push beside ps2x.env; allowlisted trees push as whole trees.
+    Returns ([files], [trees]); both empty when no layer was staged.
+    """
+    if record is None:
+        return [], []
+    staged = [(files / name, name) for name in TRICKY_DEVICE_FILES
+              if (files / name).is_file()]
+    trees = [name for name in TRICKY_DEVICE_TREES if (files / name).is_dir()]
+    return staged, trees
+
+
+def stage_tricky(a, files):
+    """Copy the built Tricky layer into the staged device layout (APK path).
+
+    Copies only the allowlisted device payload, rewrites the baked
+    PUBLIC_APP_ID/PLAY_APP_ID device paths to the built --app-id in the two
+    text payloads, then re-verifies every staged byte against
+    tricky_inputs.json. Without <work>/tricky/ this is a no-op and the app
+    boots stock SSX 3 only. Returns (staged_files, staged_trees).
+    """
+    record = tricky_record(a.work)
+    if record is None:
+        return [], []
+    verify_tricky_outputs(a.work, record)
+    staged, trees = [], []
+    for name in TRICKY_DEVICE_FILES:
+        source, target = Path(a.work) / 'tricky' / name, files / name
+        if not source.is_file():
+            continue
+        if name in TRICKY_ID_REWRITES:
+            text = source.read_text()
+            for old in (PUBLIC_APP_ID, PLAY_APP_ID):
+                text = text.replace(old, a.app_id)
+            target.write_text(text)
+        else:
+            shutil.copy2(source, target)
+        staged.append((target, name))
+    for name in TRICKY_DEVICE_TREES:
+        source, target = Path(a.work) / 'tricky' / name, files / name
+        if not source.is_dir():
+            continue
+        if target.is_dir():
+            shutil.rmtree(target)
+        shutil.copytree(source, target)
+        trees.append(name)
+    # Re-verify the staged copies (text payloads legitimately differ by id).
+    for target, name in staged:
+        if name in TRICKY_ID_REWRITES:
+            continue
+        expected = record['outputs'].get(name)
+        if expected is None or sha2(target) != expected['sha256']:
+            raise ValueError('staged Tricky file mismatch: ' + name)
+    for name in trees:
+        for candidate in sorted((files / name).rglob('*')):
+            if not candidate.is_file():
+                continue
+            relative = (name + '/' + candidate.relative_to(files / name).as_posix())
+            expected = record['outputs'].get(relative)
+            if expected is None or sha2(candidate) != expected['sha256']:
+                raise ValueError('staged Tricky file mismatch: ' + relative)
+    return staged, trees
 
 
 def ensure_android_toolchain(a):
@@ -2851,6 +3163,8 @@ def android_onecmd(a):
         print('prepare: outputs current for this disc, skipping')
     else:
         prepare(a)
+    if a.tricky_iso:
+        build_tricky(a, a.tricky_iso)
     if android_libs_current(a.work):
         print('android-libs: staged libraries current, skipping')
     else:
@@ -2867,15 +3181,15 @@ def android_onecmd(a):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'vu0'])
+    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'tricky', 'vu0'])
     p.add_argument('--work', type=Path, help='external private output directory')
     p.add_argument('--target', choices=['prepare', 'android', 'mac', 'ios'], default='android', help='doctor prerequisite set')
     p.add_argument('--tools-only', action='store_true', help='prepare the native generator without reading a disc')
-    p.add_argument('--iso', type=Path, help='own supported USA disc image (prepare only)')
+    p.add_argument('--iso', type=Path, help='own supported disc image (prepare: SSX 3 USA; tricky: Tricky)')
     p.add_argument('--ssx3-iso', '--ssx3-disc', dest='ssx3_iso', type=Path,
                    help='own supported USA disc image: android becomes the one-command build (doctor, prepare, android-libs, android)')
     p.add_argument('--tricky-iso', '--tricky-disc', dest='tricky_iso', type=Path,
-                   help='own Tricky disc image: validated now; the Tricky port arrives in a later version')
+                   help='own Tricky disc image: validated always; the tricky step runs it when the converter driver is present')
     p.add_argument('--install', action='store_true',
                    help='with android --ssx3-iso: install to a connected device after the build')
     p.add_argument('--accept-android-licenses', action='store_true',
@@ -2890,7 +3204,7 @@ def main():
     p.add_argument('--bundle-id', help='iOS bundle id (default: com.ssx3recomp.<team>)')
     p.add_argument('--om1-stage', type=Path, help='offline VU1 stage directory override (default: generated from your disc into work/om1-stage; ios app only)')
     p.add_argument('--vu0-stage', type=Path, help='VU0 image directory override (default: work/vu0-stage rebuilt from your disc by the vu0 step; android/ios/mac builds)')
-    p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
+    p.add_argument('--dry-run', action='store_true', help='install: check and list disc payload without touching a device; tricky: validate the disc and list the planned payload without building')
     p.add_argument('--jnilibs', type=Path, help='own source-built Android JNI libraries')
     p.add_argument('--prebuilt', action='store_true', help='opt in to verified prebuilt Android support libraries (default: build them from source)')
     p.add_argument('--prebuilt-cache', type=Path, help='verified offline support cache (default: WORK/prebuilt-cache)')
@@ -2946,9 +3260,19 @@ def main():
         p.error('--install is only valid with android/ios --ssx3-iso')
     if a.step == 'prepare' and not a.iso and not a.tools_only:
         p.error('prepare requires --iso')
-    if a.step != 'prepare' and not (a.work / 'inputs.json').is_file():
+    if a.step == 'tricky' and not a.iso:
+        p.error('tricky requires --iso (the Tricky disc)')
+    if a.step == 'tricky' and a.tricky_iso:
+        p.error('--tricky-iso is only valid with the android step; the tricky step takes --iso')
+    if a.step == 'tricky' and a.dry_run:
+        tricky_dry_run(a)
+        return
+    if a.step != 'prepare' and a.step != 'tricky' and not (a.work / 'inputs.json').is_file():
         p.error('run prepare in this work directory first')
     a.work.mkdir(parents=True, exist_ok=True)
+    if a.step == 'tricky':
+        build_tricky(a, a.iso)
+        return
     {'prepare': prepare, 'mac': mac, 'android': android, 'mac-libs': libs, 'run': play,
      'android-libs': android_libs, 'stage': stage, 'install': install,
      'ios-libs': ios_libs, 'ios': ios, 'vu0': vu0}[a.step](a)

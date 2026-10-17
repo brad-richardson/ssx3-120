@@ -37,8 +37,10 @@ system install, no sudo). Google's SDK licence must be accepted:
 answer the prompt instead). Add `--install` to push to a connected device
 afterwards, `--prebuilt` to reuse a verified prebuilt support release when
 one matches, and `--tricky-iso <Tricky.iso>` to validate your Tricky disc
-(the Tricky port arrives in a later version, so the build stops with that
-message for now). `make android ISO=~/SSX3.iso` wraps the same command.
+and build the Tricky layer from it (needs the converter driver; without it
+the build stops after validation with that message). `make android
+ISO=~/SSX3.iso` wraps the same command. Supported Tricky discs:
+[docs/tricky-inputs.md](docs/tricky-inputs.md).
 
 Prefer your own toolchain? `--no-auto-download` never fetches: the builder
 uses only what it finds and fails with a precise

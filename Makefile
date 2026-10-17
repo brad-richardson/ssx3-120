@@ -7,8 +7,9 @@
 # WORK defaults to ~/ssx3-work. INSTALL=1 installs to a connected device
 # after the build (needs adb + exactly one device, or --serial via ./build).
 # PREBUILT=1 opts in to a verified prebuilt support release when one matches
-# this checkout. TRICKY is accepted and validated but the Tricky port arrives
-# in a later version, so the build stops with that message for now.
+# this checkout. TRICKY is validated always and runs the tricky step when
+# the converter driver is present; without it the build stops after
+# validation with that message.
 
 WORK ?= $(HOME)/ssx3-work
 JOBS ?= 4
