@@ -132,10 +132,10 @@ tools/ssx3/tests/test_public_install_stage.py	fork@f7a96f23	tools/ssx3/tests/tes
 tools/ssx3/tests/test_remaster_font.py	fork@f7a96f23	tools/ssx3/tests/test_remaster_font.py	618c6f3e7df4c5cebb3909cc157f255295c9cda081cb6bc31dcac88d8996b43c	7875	verbatim
 tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a7525057ba5003705f95729d5d273d3ba8c8b43634672822525b8d3a5f3a2368	1242	verbatim
 tools/ssx3/tests/test_stage_fonts.py	fork@f7a96f23	tools/ssx3/tests/test_stage_fonts.py	7c033340c042818df6dea8567762c62567a9d25bad0dc3a7d81fdf8761f70d56	3839	verbatim
-tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	1153b4fde097e67bbd2c7831c68eceec9c3b1d6651dead6b8565293fbe2ad9b3	9134	new
+tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	b4100b5e2d870c798c82d03359a94c92ff1bebc697f579eca69f26aad4bef32e	9734	new
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
-tools/ssx3/toolchain.py	authored:builder-ux-1	-	93f6d3f24fde30bdb76271db4e2bc9d63f3620a3d5206f9370096ab1ce823375	19150	new
+tools/ssx3/toolchain.py	authored:builder-ux-1	-	2fb05315f60031f3e0f291d55a2305791832f12eab40741c39b88c5f1136f38e	19426	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim
 tools/ssx3/verify-turnip.sh	fork@5235b114	tools/ssx3/verify-turnip.sh	acc577e8f3a280d75bc279fd25f1e5b7dda87468b3bac47a29d9e7cb944aab7b	3252	verbatim
 tools/ssx3/write_prewarm.py	fork@f7a96f23	tools/ssx3/write_prewarm.py	7aef838b4211d832e312ff1b23ba5029e67feaec9daec2769bd25e4da5680703	844	verbatim

@@ -309,6 +309,11 @@ def unpack_cmdline(archive, sdk):
             else:
                 out.parent.mkdir(parents=True, exist_ok=True)
                 out.write_bytes(z.read(member))
+                # Zip extraction drops unix modes: restore the archived
+                # permissions (sdkmanager ships 755 and must stay executable).
+                perms = z.getinfo(member).external_attr >> 16
+                if perms:
+                    out.chmod(perms)
     if target.is_dir():
         shutil.rmtree(target)
     staging.replace(target)

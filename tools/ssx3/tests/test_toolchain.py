@@ -55,7 +55,7 @@ class PinAgreementTest(unittest.TestCase):
 
     def test_bootstrap_pins_match_deps_lock(self):
         import json
-        lock = json.loads((HERE.parents[2] / 'deps.lock.json').read_text())
+        lock = json.loads((HERE.parents[1] / 'deps.lock.json').read_text())
         boot = lock['toolchains']['bootstrap']
         self.assertEqual(toolchain.JDK_RELEASE, boot['jdk_release'])
         for key, (url, sha) in toolchain.JDK_URLS.items():
@@ -177,6 +177,18 @@ class FetchTrustTest(unittest.TestCase):
                 z.writestr('cmdline-tools/bin/sdkmanager', b'manager')
             target = toolchain.unpack_cmdline(archive, Path(tmp) / 'sdk')
             self.assertTrue((target / 'bin/sdkmanager').is_file())
+
+    def test_cmdline_unpack_restores_executable_bits(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / 'tools.zip'
+            with zipfile.ZipFile(archive, 'w') as z:
+                info = zipfile.ZipInfo('cmdline-tools/bin/sdkmanager')
+                info.external_attr = (0o755 & 0xFFFF) << 16
+                z.writestr(info, b'manager')
+            target = toolchain.unpack_cmdline(archive, Path(tmp) / 'sdk')
+            mode = (target / 'bin/sdkmanager').stat().st_mode
+            self.assertTrue(mode & 0o111, oct(mode))
 
 
 class LicenceGateTest(unittest.TestCase):
