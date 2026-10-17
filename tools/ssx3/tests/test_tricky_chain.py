@@ -175,6 +175,44 @@ class RecipeTableTest(unittest.TestCase):
                             f'{course} {key} missing file {rendered}')
 
 
+class RoutesRungTest(unittest.TestCase):
+    """The tk-routes-2 follow-up rung sits after s5 (post-golden commit).
+
+    Aloha covers3, merq wall2819 and mega tube94s2 apply route_step.py to
+    the s5-final play world (mega: recorded reference, input-SHA-gated,
+    until the mega-h/u2/c tail lands).
+    """
+    COURSES = {'aloha': 22, 'merq': 148, 'mega': 94}
+
+    def test_routes_wired_only_on_routes_courses(self):
+        wired = {c for c, r in run_chain.COURSES.items()
+                 if r.get('routes_args')}
+        self.assertEqual(wired, set(self.COURSES))
+
+    def test_routes_groups_and_tool(self):
+        tool = TRICKY / 'tkroutes' / 'route_step.py'
+        self.assertTrue(tool.exists())
+        for course, group in self.COURSES.items():
+            recipe = run_chain.COURSES[course]
+            self.assertEqual(recipe.get('routes_group'), group, course)
+            self.assertTrue(recipe.get('routes_args'), course)
+            oracle = recipe.get('oracle_routes')
+            self.assertRegex(oracle, r'^[0-9a-f]{64}$', course)
+
+    def test_routes_reference_only_on_mega(self):
+        for course, recipe in run_chain.COURSES.items():
+            if course == 'mega':
+                self.assertTrue(recipe.get('routes_ref'), course)
+                self.assertEqual(recipe.get('routes_ref_sha'),
+                                 run_chain.TKP5_FINALS['mega'], course)
+            else:
+                self.assertNotIn('routes_ref', recipe, course)
+
+    def test_routes_rung_after_s5(self):
+        order = run_chain.RUN_ORDER
+        self.assertLess(order.index('s5'), order.index('routes'))
+
+
 class ResetsRungTest(unittest.TestCase):
     """The ov-s rung sits between race and scenery (regression cover).
 

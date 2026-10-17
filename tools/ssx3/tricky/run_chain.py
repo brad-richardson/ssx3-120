@@ -73,7 +73,7 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
 # note (never silently): the oracles, not the rung list, are the gate.
 RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
              'terrain', 'sg', 'cand', 'finalw', 'bind', 'floor', 'composite',
-             'play', 'blend', 'fix', 's1', 's2', 's3', 's4', 's5']
+             'play', 'blend', 'fix', 's1', 's2', 's3', 's4', 's5', 'routes']
 # Tail (TKP5 chain.sh order): play = TK37b composite10 of the floor final;
 # blend = TK42c materialize + patch_blend + composite to the staged TK49;
 # fix = TK56 class-row rebind of staged; s1 = TK53 triggers (mesa);
@@ -400,6 +400,10 @@ COURSES = {
         oracle_s3='cb6b07e2d47a2707eec014fb0ed28b1a2cf33b74a71202cb10ee0c55d1784984',
         oracle_s4='89dd2561aea3904c33b16f2c962e8d5cc4478106e7c15aa83dc779cfaed02791',
         preview_loc='ERA5',
+        # tk-routes-2: Merqury sewer wall w2819 (cover --rids 2819).
+        routes_group=148,
+        routes_args=['cover', '--rids', '2819'],
+        oracle_routes='a23d529a044d574512b61e065d351d97553a01cba906bd0274d3d56090f0da99',
     ),
     'elys': dict(
         big='ELYSIUM.BIG', donor='elysium', ps2_tool='tk16/ps2_as_gc.py',
@@ -522,6 +526,16 @@ COURSES = {
         oracle_s3='c5cd4aa6add1dd24aa47835501d86cd022845bbfb48ac7589b1234aaa0038dcc',
         oracle_s4='344fc3a1faaeced330ad9eaeb0bae5de8b7296ae2eda0abd04ad1830a22453b3',
         preview_loc='ABC1',
+        # tk-routes-2: Aloha covers3 (A per-wedge --rids + B/C whole-cover
+        # --cover-rids, order A,B,C verbatim).
+        routes_group=22,
+        routes_args=['cover',
+                     '--rids', '85', '86', '87', '88', '89', '90', '91', '92',
+                     '--cover-rids', '952', '953', '954', '955', '956', '957',
+                     '958', '959',
+                     '--cover-rids', '1614', '1615', '1616', '1617', '1618',
+                     '1619', '1620', '1621'],
+        oracle_routes='971c2f3733d319c519465d7726e972bacd8657ea7b482cd0ab461f868777ca5e',
     ),
     'alaska': dict(
         big='ALASKA.BIG', donor='alaska', ps2_tool='tk16/ps2_as_gc.py',
@@ -624,6 +638,15 @@ COURSES = {
         fix_group=None,
         oracle_fix=None,
         preview_loc=None,
+        # tk-routes-2: Megaplex tube w94 slot-2 binding (boost --rid 94
+        # --program 34 --slot 2). Mega s5 is unwired (pending mega-h/u2/c
+        # tail), so the routes base is the recorded TKP5-final reference,
+        # input-SHA-gated before use.
+        routes_group=94,
+        routes_args=['boost', '--rid', '94', '--program', '34', '--slot', '2'],
+        routes_ref='MEGA.BIG',
+        routes_ref_sha='8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
+        oracle_routes='0d0677c46d04fc99c735db84543d2fb344fcc17faf653db9d5fa5c6318f524bc',
     ),
 }
 
@@ -1179,6 +1202,31 @@ class Chain:
             check(out, TKP5_FINALS[c], f'{c} s5-final')
         return out
 
+    # -- rung: tk-routes world-data patches (post-golden follow-up) ---------------
+    # route_step.py (tkroutes port of tk-routes-1 tooling) on the s5-final
+    # play world. Aloha covers3 (group 22: A per-wedge --rids + B/C whole
+    # --cover-rids), merq wall2819 (group 148: --rids 2819), mega tube94s2
+    # (group 94: boost --rid 94 --program 34 --slot 2). Mega's s5 is unwired
+    # (pending mega-h/u2/c tail), so its routes base is a recorded reference
+    # input, input-SHA-gated before use. Outputs are the post-routes golden.
+    def rung_routes(self, c, r, base):
+        if r.get('routes_ref'):
+            ref = Path(self.a.routes_ref_dir) / r['routes_ref']
+            if r.get('routes_ref_sha'):
+                check(ref, r['routes_ref_sha'], f'{c} routes-ref')
+            base = ref
+        w = self.W / f'w-{c}-routes'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / f'{c.upper()}.BIG'
+        run('routes', sys.executable, self.T / 'tkroutes' / 'route_step.py',
+            self.a.ssx3_iso, base, out, '--group', str(r['routes_group']),
+            '--receipt', w / 'routes.json', '--work', w / 'work',
+            *r['routes_args'],
+            cwd=self.W, log=self.log(c, 'routes'))
+        if r.get('oracle_routes'):
+            check(out, r['oracle_routes'], f'{c} routes-final')
+        return out
+
     # -- global: COURSPIT preview chain -------------------------------------------
     # Frozen COURSPIT from the stock ISO, then one preview_step per course
     # (members are disjoint, order fixed). Proven: 3332b0af (TKP5).
@@ -1337,9 +1385,19 @@ class Chain:
                 print(f'{c} s4 skipped (no hulls)', flush=True)
         if 's5' in order:
             if latest is not None and TKP5_FINALS.get(c):
-                self.rung_s5(c, r, latest, staged, fix_receipt)
+                # s5 output feeds the routes rung (tk-routes-2 follow-up).
+                latest = self.rung_s5(c, r, latest, staged, fix_receipt)
             else:
                 print(f'{c} s5 skipped (not wired)', flush=True)
+        if 'routes' in order:
+            if r.get('routes_args'):
+                if latest is not None or r.get('routes_ref'):
+                    base = latest if latest is not None else None
+                    self.rung_routes(c, r, base)
+                else:
+                    print(f'{c} routes skipped (no s5 base)', flush=True)
+            else:
+                print(f'{c} routes skipped (not a routes course)', flush=True)
         print(f'{c} done through {order[-1]}', flush=True)
 
 
@@ -1364,6 +1422,8 @@ def main():
     ap.add_argument('--pins', default='/Users/brad/dev/ssx3-work/pinned/tricky')
     ap.add_argument('--gc-dir',
                     default='/Users/brad/dev/ssx3/local/source/gamecube/tricky')
+    ap.add_argument('--routes-ref-dir',
+                    default='/Users/brad/dev/ssx3-work/tk-routes-1/inputs/tricky/ov-base/DATA/WORLDS')
     a = ap.parse_args()
     ch = Chain(a)
     ensure_world_report(ch)
