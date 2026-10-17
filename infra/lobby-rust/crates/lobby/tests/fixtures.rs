@@ -2,8 +2,8 @@
 //! IPs remapped, PASS scrubbed) must survive our codec round-trip, and
 //! the key shapes the server implements must be present.
 //!
-//! Fixtures live in tests/data/*.json, copied from
-//! local/research/PRO1/fixtures/.
+//! Fixtures live in tests/data/*.json, captured from our own test lobby
+//! (wire captures with IPs remapped and passwords scrubbed).
 
 use serde::Deserialize;
 use ssx3_proto::*;

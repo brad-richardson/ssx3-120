@@ -1,6 +1,6 @@
 [Unit]
 Description=SSX 3 quick-play lobby (matchmaker + optional UDP relay)
-Documentation=https://github.com/brad-richardson/ssx3
+Documentation=file:///etc/ssx3-lobby/lobby.toml
 After=network-online.target
 Wants=network-online.target
 

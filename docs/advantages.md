@@ -11,7 +11,7 @@ status without a receipt.
 | 3 | **Runs on iPhone/iPad.** Emulators that need JIT aren't practical on iOS; the recomp is native code. | shipped | tested on iPhone/iPad play builds |
 | 4 | **Remastered UI on device:** crisp HUD font and word art from the user's own disc, toggled at runtime | in progress | fonts det-identical on the Mac host |
 | 5 | **Upscaling** (native panel resolution on Adreno, 2× on iOS) with CAS sharpening | shipped | emulators also upscale; this is parity, not an edge. The edge is #4. |
-| 6 | **Easy online:** one tap from the main menu to Quick Matchup, our own lobby + relay (hides IPs, works behind strict NAT/CGNAT), no network-config setup | in progress | lobby server in its own repo; `infra/` here is the operator side |
+| 6 | **Easy online:** one tap from the main menu to Quick Matchup, our own lobby + relay (hides IPs, works behind strict NAT/CGNAT), no network-config setup | in progress | lobby server vendored in `infra/lobby-rust/`; `infra/` here is the operator side |
 | 7 | **Netplay at 120** (server-referee lockstep) | planned | post-v0 |
 | 8 | **Tricky courses inside SSX 3** (SSX 3 handling) | in progress, off for the v0 public build | course picker and overlay default off |
 | 9 | **Quick boot and no shader stutter:** intro movies skipped, unpaced boot to the first input screen, TFX prewarm, slim ~1.8 GB image | shipped | measure cold boot-to-menu seconds vs emulators |

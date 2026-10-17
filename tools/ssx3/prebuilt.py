@@ -57,8 +57,8 @@ def digest(path):
 CONTRACT_FILES = ['CMakeLists.txt', 'tools/ssx3/prebuilt.py',
                   'tools/ssx3/prebuilt-consumer.cmake', 'tools/ssx3/build.py',
                   'android/app/build.gradle']
-# In-repo inputs to the archived prebuilt bytes (prebuilt-contract-1:
-# local/research/prebuilt-contract-1/REPORT.md tables 1-2). Every in-repo
+# In-repo inputs to the archived prebuilt bytes (contract tables 1-2
+# in the prebuilt design notes). Every in-repo
 # TU linked into the seven static archives, libhardware.so, libge1_gs.so
 # and libmv2_microvu.so (exact link edges of a configured Android export
 # plus the android-libs build), the transitive in-repo #include closure of

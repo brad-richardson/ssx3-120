@@ -123,10 +123,10 @@ hashes don't prove graphics or cost: pair them with fixed captures
 
 Online is on: Quick Matchup connects to a lobby server you (or a friend)
 operate — match + UDP relay, no direct peer IPs. The default server is
-`ssx.bradr.dev`; the lobby source lives in its own repo, and this repo
-holds the operator side (`infra/`: one small cloud host, deploy, harden,
-backup, rollback). To play offline, just don't pick Online in the menu;
-the in-game settings panel also has an Online row that turns it off.
+`ssx.bradr.dev`; the lobby source is vendored in `infra/lobby-rust/`, and
+this repo holds the operator side (`infra/`: one small cloud host, deploy,
+harden, backup, rollback). To play offline, just don't pick Online in the
+menu; the in-game settings panel also has an Online row that turns it off.
 
 ## Provenance and licence
 

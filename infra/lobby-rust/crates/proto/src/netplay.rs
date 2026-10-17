@@ -7,10 +7,9 @@
 //! Wire-compatible with the P1a diagnostic subset (`SSXNP/2-P1a`) landed by
 //! `np-link-1`: framing, `JOIN`/`CONFIG`/`READY`/`START`/`INPUT`/`COMMIT`, the
 //! `SSXNP2-COMMIT` chain domain and the P1a-fixed field values all decode here
-//! to identical bytes. P1a source of truth:
-//! `local/research/np-link-1/relay/src/main.rs` (codec + `Committer`), fixtures:
-//! `local/research/np-link-1/wire-vectors.json` (locked by the `p1a_vectors`
-//! test below). P1a deltas upgraded by this package: conflicting duplicates are
+//! to identical bytes. P1a source of truth is the diagnostic relay
+//! implementation (codec + `Committer`); the wire vectors are locked by
+//! the `p1a_vectors` test below. P1a deltas upgraded by this package: conflicting duplicates are
 //! a violation (P1a kept first + loud log), zero credentials/compat become
 //! bound, and the P1a `[next, next+72]` window tightens to §3 `[C+1, C+N+8]`
 //! (session layer; this codec only carries the bytes).
@@ -144,7 +143,7 @@ impl std::error::Error for CodecError {}
 // ---------------------------------------------------------------- SHA-256
 //
 // Minimal std-only SHA-256, copied for wire-compatibility from the P1a relay
-// (`local/research/np-link-1/relay/src/main.rs`, `fn sha256`). The COMMIT
+// (`fn sha256` in the diagnostic relay). The COMMIT
 // chain and RESULT id must hash identically to P1a; a crate dependency would
 // also do, but this keeps `ssx3-proto` dependency-free exactly like P1a.
 
@@ -1411,10 +1410,10 @@ mod tests {
         );
     }
 
-    /// P1a wire-compatibility lock: every `SSXNP/2-P1a` vector from
-    /// `local/research/np-link-1/wire-vectors.json` decodes here with
-    /// identical fields, and re-encodes to the identical bytes. Any drift
-    /// breaks this test before it can break a P1a peer.
+    /// P1a wire-compatibility lock: every `SSXNP/2-P1a` vector embedded
+    /// below decodes here with identical fields, and re-encodes to the
+    /// identical bytes. Any drift breaks this test before it can break
+    /// a P1a peer.
     #[test]
     fn p1a_vectors_decode_and_round_trip() {
         let zeros16 = [0u8; 16];

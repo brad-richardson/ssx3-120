@@ -1,5 +1,5 @@
 # HAL1: app-local libhardware shim, built from source by the app's own CMake.
-# Source: ssx3 local/research/N8C2/hwcompat.c (N8C2 diagnostic probe, MIT).
+# Source: app-local diagnostic probe shim (MIT; see hwcompat.c header).
 # It answers hw_get_module with -ENOENT (capped logging) so the app-local
 # Turnip loads through GE1's HMI path (VKLoader.cpp Ge1LoadTurnipHAL).
 # Wired in from the root CMakeLists.txt under ANDROID; packaged because

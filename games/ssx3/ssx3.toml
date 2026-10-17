@@ -212,8 +212,8 @@ stubs = [
 # logs that land inside an existing CSV function's range. Each is registered
 # as a resume entry of its containing function (same path as direct-call
 # interior targets). Without entries, dispatchGuestBranch silently skips the
-# call. Full census + bisect in ssx3 local/research/E46/REPORT.md.
-# Boot-proven set (Part 2): all census targets, plus 0x32F8B0 (fires only
+# call. Full census + bisect done during bring-up; only the boot-proven
+# set ships here. Boot-proven set: all census targets, plus 0x32F8B0 (fires only
 # once 0x396B40 executes). Combined boot: SC rider renders, race HUD live.
 # 0x3B1140 (MPEG picture-node release) joined in E49 together with the MPEG
 # HLE's sceMpegIsEnd word: without that word the release keeps the one-node

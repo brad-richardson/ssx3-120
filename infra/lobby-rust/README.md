@@ -23,7 +23,7 @@ the decision (`LICENSE-TBD`).
 ```sh
 # cross-build static musl binaries (needs cargo-zigbuild + zig)
 cargo zigbuild --release --target aarch64-unknown-linux-musl   # Oracle
-cargo zigbuild --release --target x86_64-unknown-linux-musl    # bradflix tests
+cargo zigbuild --release --target x86_64-unknown-linux-musl    # self-hosted x86_64 tests
 ```
 
 Deploy (the Oracle step runs with the orchestrator):
