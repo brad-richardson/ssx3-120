@@ -22,6 +22,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tarfile
 import time
 import urllib.request
 import zipfile
@@ -932,8 +933,8 @@ GE1_VENDOR_SHORT = 'e8ed655ec6'
 IOS_DEPS = [
     ('libpng', 'https://github.com/pnggroup/libpng', 'v1.6.51',
      '49363adcfaf098748d7a4c8c624ad8c45a8c3a86'),
-    ('libjpeg-turbo', 'https://github.com/libjpeg-turbo/libjpeg-turbo', '3.1.4.1',
-     '9217719d3a58633923b096af4c1d50d304768a64'),
+    ('libjpeg-turbo', 'https://github.com/libjpeg-turbo/libjpeg-turbo', '3.1.90',
+     'e1dbfa7be7b7e54922020051dc77781e92739700'),
     ('zstd', 'https://github.com/facebook/zstd', 'v1.5.7',
      'f8745da6ff1ad1e7bab384bd1f9d742439278e99'),
     ('lz4', 'https://github.com/lz4/lz4', 'v1.10.0',
@@ -1037,16 +1038,77 @@ def pin_ios_deps(deps_root):
         actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
                                          text=True).strip()
         if actual != commit:
+            if name == 'libjpeg-turbo':
+                # A re-pin must not trip over our own vendored-build edits:
+                # reset the patched file when the only dirt is that file
+                # carrying our marker (either edit generation reapplies both).
+                dirty = subprocess.check_output(['git', '-C', str(d), 'status', '--porcelain'],
+                                                text=True).strip()
+                patched = (d / 'CMakeLists.txt').read_text()
+                if dirty == 'M CMakeLists.txt' and JPEG_GUARD_MARKER in patched:
+                    run('git', '-C', str(d), 'checkout', '--', 'CMakeLists.txt')
+                elif dirty:
+                    raise ValueError('dependency tree dirty (not our patch): ' + str(d))
             run('git', '-C', str(d), 'fetch', 'origin', commit)
             run('git', '-C', str(d), 'checkout', '--detach', commit)
             actual = subprocess.check_output(['git', '-C', str(d), 'rev-parse', 'HEAD'],
                                              text=True).strip()
         if actual != commit:
             raise ValueError('dependency pin mismatch: ' + str(d))
+        if name == 'libjpeg-turbo':
+            unguard_libjpeg_turbo(d)
+        if name == 'zstd':
+            # The engine consumes the dep root via add_subdirectory, but
+            # upstream keeps the cmake project under build/cmake: stage the
+            # lab's thin superbuild wrapper (tools/ssx3/ios/) at the root.
+            shutil.copy2(ROOT / 'tools/ssx3/ios/zstd-superbuild-CMakeLists.txt',
+                         d / 'CMakeLists.txt')
         resolved[name] = actual
     (deps_root / 'ios-dependency-pins.json').write_text(
         json.dumps(resolved, indent=2, sort_keys=True) + '\n')
     return resolved
+
+
+# The lab's vendored libjpeg-turbo carries exactly one downstream
+# modification: the upstream add_subdirectory() FATAL is removed (their
+# marker: "add_subdirectory guard removed for vendored build"). The engine
+# consumes every iOS dep via add_subdirectory, so the public builder
+# applies the same removal after seating the pin; any upstream drift in
+# the guarded text fails loud instead of silently building something else.
+JPEG_GUARD = ('if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)\n'
+              '  message(FATAL_ERROR "The ${CMAKE_PROJECT_NAME} build system cannot be '
+              'integrated into another build system using add_subdirectory().  '
+              'Use ExternalProject_Add() instead.")\n'
+              'endif()')
+JPEG_GUARD_MARKER = '# add_subdirectory guard removed for vendored build'
+JPEG_UNINSTALL = ('add_custom_target(uninstall '
+                  'COMMAND ${CMAKE_COMMAND} -P cmake_uninstall.cmake)')
+JPEG_UNINSTALL_SUBDIR = ('if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)\n'
+                         '  add_custom_target(uninstall '
+                         'COMMAND ${CMAKE_COMMAND} -P cmake_uninstall.cmake)\n'
+                         'endif()')
+
+
+def unguard_libjpeg_turbo(dep_dir):
+    """Apply the lab's two vendored-build edits: remove upstream's
+    add_subdirectory() FATAL and keep the uninstall target top-level-only
+    (both verified by diff against upstream 3.1.90)."""
+    cmake_lists = Path(dep_dir) / 'CMakeLists.txt'
+    text = cmake_lists.read_text()
+    changed = False
+    if JPEG_GUARD_MARKER not in text:
+        if JPEG_GUARD not in text:
+            raise ValueError('libjpeg-turbo guard text changed; review the vendored-build patch')
+        text = text.replace(JPEG_GUARD, JPEG_GUARD_MARKER)
+        changed = True
+    if JPEG_UNINSTALL_SUBDIR not in text:
+        if JPEG_UNINSTALL not in text:
+            raise ValueError('libjpeg-turbo uninstall text changed; review the vendored-build patch')
+        text = text.replace(JPEG_UNINSTALL, JPEG_UNINSTALL_SUBDIR)
+        changed = True
+    if changed:
+        cmake_lists.write_text(text)
+    return changed
 
 
 def fetch_tarball(url, want_sha, dest, want_bytes=None):
@@ -1068,6 +1130,26 @@ def fetch_tarball(url, want_sha, dest, want_bytes=None):
         return dest
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def extract_once(archive, mode, dest, marker):
+    """Extract a tarball once: skip when the marker exists, otherwise wipe
+    the destination and extract fresh (a crashed run must never resume a
+    half-extracted tree)."""
+    dest = Path(dest)
+    if (dest / marker).exists():
+        return dest
+    if dest.is_dir() or dest.is_symlink():
+        shutil.rmtree(dest, ignore_errors=True)
+    dest.mkdir(parents=True)
+    with tarfile.open(archive, 'r:' + mode) as t:
+        members = t.getnames()
+        if any(n.startswith('/') or '..' in Path(n).parts for n in members):
+            raise ValueError('unsafe archive path in ' + str(archive))
+        t.extractall(dest)
+    if not (dest / marker).exists():
+        raise ValueError('archive layout changed in ' + str(archive))
+    return dest
 
 
 def validate_om1_stage(path):
@@ -1134,13 +1216,7 @@ def ios_libs(a):
     # SDL2 for iOS (the app links SDL2main + libSDL2.a via raylib's SDL platform).
     sdl_src = a.work / 'ios-sdl2-src'
     fetch_tarball(SDL2_TARBALL, SDL2_TARBALL_SHA, a.work / 'ios-sdl2.tar.gz')
-    if not sdl_src.is_dir():
-        sdl_src.mkdir(parents=True)
-        with tarfile.open(a.work / 'ios-sdl2.tar.gz', 'r:gz') as t:
-            members = t.getnames()
-            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
-                raise ValueError('unsafe SDL2 archive path')
-            t.extractall(sdl_src)
+    extract_once(a.work / 'ios-sdl2.tar.gz', 'gz', sdl_src, 'SDL2-2.32.10/CMakeLists.txt')
     roots = [p for p in sdl_src.iterdir() if p.is_dir()]
     if len(roots) != 1:
         raise ValueError('SDL2 layout changed in ' + SDL2_TARBALL)
@@ -1156,13 +1232,7 @@ def ios_libs(a):
     # (ps2xRuntime/cmake/iOS-FFmpeg-7.1.1.md): MPEG-1/2 decode for movies.
     ff_src = a.work / 'ios-ffmpeg-src'
     fetch_tarball(FFMPEG_TARBALL, FFMPEG_TARBALL_SHA, a.work / 'ios-ffmpeg.tar.xz')
-    if not ff_src.is_dir():
-        ff_src.mkdir(parents=True)
-        with tarfile.open(a.work / 'ios-ffmpeg.tar.xz', 'r:xz') as t:
-            members = t.getnames()
-            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
-                raise ValueError('unsafe FFmpeg archive path')
-            t.extractall(ff_src)
+    extract_once(a.work / 'ios-ffmpeg.tar.xz', 'xz', ff_src, 'ffmpeg-7.1.1/configure')
     ff_roots = [p for p in ff_src.iterdir() if p.is_dir()]
     if len(ff_roots) != 1:
         raise ValueError('FFmpeg layout changed in ' + FFMPEG_TARBALL)
@@ -1187,6 +1257,8 @@ def ios_libs(a):
     # (ps2xRuntime/third_party/armsx2/build.sh ios).
     for old in list(a.work.glob('ios-asm-*')) + list(a.work.glob('ios-build-*')) + \
             list(a.work.glob('ios-deps-*')):
+        if old.name in ('ios-deps-src', 'ios-deps-bundle'):
+            continue
         if old.is_dir() and not old.is_symlink():
             shutil.rmtree(old)
     env = os.environ.copy()
@@ -1212,13 +1284,7 @@ def ios_libs(a):
     fetch_tarball(mvk['url'], mvk['archive_sha256'], a.work / 'ios-moltenvk.tar',
                   mvk['archive_size'])
     mvk_src = a.work / 'ios-moltenvk-src'
-    if not mvk_src.is_dir():
-        mvk_src.mkdir(parents=True)
-        with tarfile.open(a.work / 'ios-moltenvk.tar', 'r:') as t:
-            members = t.getnames()
-            if any(n.startswith('/') or '..' in Path(n).parts for n in members):
-                raise ValueError('unsafe MoltenVK archive path')
-            t.extractall(mvk_src)
+    extract_once(a.work / 'ios-moltenvk.tar', '', mvk_src, mvk['device_framework'] + '/MoltenVK')
     mvk_fw = mvk_src / mvk['device_framework']
     if not (mvk_fw / 'MoltenVK').is_file():
         raise ValueError('MoltenVK layout changed in ' + mvk['url'])

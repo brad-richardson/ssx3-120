@@ -139,6 +139,60 @@ class DryRunTest(unittest.TestCase):
             self.assertFalse((work / 'ios-stage').exists())
 
 
+class ExtractOnceTest(unittest.TestCase):
+    def make_tar(self, root, name='top'):
+        src = Path(root) / 'src' / name
+        (src / 'sub').mkdir(parents=True)
+        (src / 'marker.txt').write_text('x')
+        archive = Path(root) / 'a.tar.gz'
+        import tarfile
+        with tarfile.open(archive, 'w:gz') as t:
+            t.add(src, arcname=name)
+        return archive
+
+    def test_fresh_extract(self):
+        with tempfile.TemporaryDirectory() as temp:
+            dest = build.extract_once(self.make_tar(temp), 'gz', Path(temp) / 'out', 'top/marker.txt')
+            self.assertTrue((dest / 'top/marker.txt').is_file())
+
+    def test_empty_dir_from_crashed_run_extracts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            dest = Path(temp) / 'out'
+            dest.mkdir()
+            dest = build.extract_once(self.make_tar(temp), 'gz', dest, 'top/marker.txt')
+            self.assertTrue((dest / 'top/marker.txt').is_file())
+
+    def test_complete_tree_skips(self):
+        with tempfile.TemporaryDirectory() as temp:
+            archive = self.make_tar(temp)
+            dest = Path(temp) / 'out'
+            build.extract_once(archive, 'gz', dest, 'top/marker.txt')
+            sentinel = dest / 'top/sentinel.txt'
+            sentinel.write_text('keep')
+            build.extract_once(archive, 'gz', dest, 'top/marker.txt')
+            self.assertTrue(sentinel.is_file())
+
+
+class UnguardTest(unittest.TestCase):
+    def test_applies_once_then_skips(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cmake = Path(temp) / 'CMakeLists.txt'
+            cmake.write_text('before\n' + build.JPEG_GUARD + '\n'
+                             + build.JPEG_UNINSTALL + '\nafter\n')
+            self.assertTrue(build.unguard_libjpeg_turbo(temp))
+            text = cmake.read_text()
+            self.assertIn(build.JPEG_GUARD_MARKER, text)
+            self.assertIn(build.JPEG_UNINSTALL_SUBDIR, text)
+            self.assertNotIn('FATAL_ERROR', text)
+            self.assertFalse(build.unguard_libjpeg_turbo(temp))
+
+    def test_drift_fails_loud(self):
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / 'CMakeLists.txt').write_text('unrelated content\n')
+            with self.assertRaises(ValueError):
+                build.unguard_libjpeg_turbo(temp)
+
+
 class DoctorIosTest(unittest.TestCase):
     def test_reports_failures_through_check(self):
         seen = []
