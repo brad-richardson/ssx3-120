@@ -75,6 +75,8 @@ android {
     if (ps2xPackDir) {
         sourceSets.main.assets.srcDirs += [ps2xPackDir]
     }
+    // Source namespace stays with the Java helpers (com.ps2x.runner);
+    // the installed package is applicationId above (public com.ssx3.recomp).
     namespace 'com.ps2x.runner'
     compileSdk 34
     ndkVersion '28.2.13676358'

@@ -1,6 +1,6 @@
 # THIRD_PARTY_NOTICES.md
 
-This product composes the pinned engine (`deps/PS2Recomp @ 35cfdcdd`) with
+This product composes the pinned engine (`deps/PS2Recomp @ 5235b114`) with
 its declared dependencies. Full license texts and per-file notices ship
 with every support bundle (`notices/` assembled by `tools/ssx3/prebuilt.py`
 from the paths below) and with source checkouts of the linked projects.
@@ -15,6 +15,7 @@ Nothing here replaces those texts.
 | xxHash header (generic hashing) | `ps2xRuntime/include/runtime/third_party/xxhash.h` | per header |
 | PCSX2 Gaussian interpolation table (travels with the SND/SPU module) | `ps2xRuntime/include/ps2_snd_spu_gauss.h:1–5` | attributed in header; third-party code |
 | Studio font notice (upstream tool asset) | engine tool assets | per notice file |
+| Neuropol fallback font (CC0 public-domain dedication) | engine `ps2xRuntime/resources/fonts/` (`LICENSE-Neuropol.txt`, `Neuropol-CC0.otf`) | CC0 1.0 Universal; see notice file |
 | Gradle wrapper scripts/JAR (product app build dependency) | `apps/android/gradle/` | per wrapper licence; JAR is binary build tooling |
 | plutovg `v1.1.0` / plutosvg `v0.0.7` (Mac library recipe sources) | fetched by `tools/ssx3/build.py` `mac-libs` into the private work dir | per upstream licences; notices assembled into bundles |
 | Turnip `turnip-ssx3-ad094bb9` (optional Vulkan driver binary + notices) | `tools/ssx3/turnip.json` (hashes in `deps.lock.json`) | per `turnip-notices.zip` |

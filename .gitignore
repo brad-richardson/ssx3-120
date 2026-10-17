@@ -6,5 +6,7 @@ __pycache__/
 # Gradle / Xcode build outputs (the builder writes these inside apps/).
 .gradle/
 build/
+# Android packages never enter the repo (they land under ignored build/ dirs).
+*.apk
 *.xcworkspace/xcuserdata/
 DerivedData/

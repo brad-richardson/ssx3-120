@@ -32,7 +32,8 @@ Deploy (the Oracle step runs with the orchestrator):
 ./deploy-lobby.sh user@host   # scp binary+unit, enable+restart, health-check
 ```
 
-The unit (`systemd/ssx3-lobby.service`) runs as `DynamicUser=yes` with
+The unit (`ssx3-lobby.service`, the single canonical unit) runs as a dedicated
+`ssx3-lobby` user (created by `deploy-lobby-rust.sh`) with
 `ProtectSystem=strict`, `NoNewPrivileges=yes`, an empty
 `CapabilityBoundingSet`, `RestrictAddressFamilies=AF_INET AF_INET6`,
 `MemoryMax=512M`, `TasksMax=256`, and journald logging. Phase 1 keeps

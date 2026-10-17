@@ -5,13 +5,13 @@
 #
 # Usage: deploy-lobby.sh user@host [binary] [unit] [config]
 #   binary defaults to target/aarch64-unknown-linux-musl/release/lobby
-#   unit   defaults to systemd/ssx3-lobby.service
+#   unit   defaults to ssx3-lobby.service (the single canonical unit)
 #   config defaults to lobby.example.toml (installed only if the host has
 #          no /etc/ssx3-lobby/lobby.toml yet; edit advertise_ip there)
 set -euo pipefail
 DEST=${1:?usage: deploy-lobby.sh user@host [binary] [unit] [config]}
 BIN=${2:-target/aarch64-unknown-linux-musl/release/lobby}
-UNIT=${3:-systemd/ssx3-lobby.service}
+UNIT=${3:-ssx3-lobby.service}
 CFG=${4:-lobby.example.toml}
 for f in "$BIN" "$UNIT" "$CFG"; do
   [ -f "$f" ] || { echo "missing: $f"; exit 2; }
@@ -23,9 +23,9 @@ scp "$UNIT" "$DEST:/tmp/ssx3-lobby.service.new"
 scp "$CFG" "$DEST:/tmp/lobby.toml.example"
 ssh "$DEST" "LOBBY_EXPECTED_HASH=$HASH sh -s" <<'REMOTE'
   set -e
-  if [ -x /usr/local/bin/lobby ]; then sudo cp -p /usr/local/bin/lobby /usr/local/bin/lobby.previous; fi
-  sudo install -m 0755 /tmp/lobby.new "/usr/local/bin/lobby.$LOBBY_EXPECTED_HASH"
-  sudo ln -sfn "/usr/local/bin/lobby.$LOBBY_EXPECTED_HASH" /usr/local/bin/lobby
+  if [ -x /usr/local/bin/ssx3-lobby ]; then sudo cp -p /usr/local/bin/ssx3-lobby /usr/local/bin/ssx3-lobby.previous; fi
+  sudo install -m 0755 /tmp/lobby.new "/usr/local/bin/ssx3-lobby.$LOBBY_EXPECTED_HASH"
+  sudo ln -sfn "/usr/local/bin/ssx3-lobby.$LOBBY_EXPECTED_HASH" /usr/local/bin/ssx3-lobby
   sudo install -m 0644 /tmp/ssx3-lobby.service.new /etc/systemd/system/ssx3-lobby.service
   sudo mkdir -p /etc/ssx3-lobby
   if [ ! -f /etc/ssx3-lobby/lobby.toml ]; then
