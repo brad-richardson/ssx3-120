@@ -925,14 +925,18 @@ def android_libs(a):
 GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
 GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
 GE1_VENDOR_SHORT = 'e8ed655ec6'
-# OM1 archive vendor: the parent of the 09-25 growth commit 2d8486965, which
-# gave MTGS its GS/disc-CRC path (verified by nm: the pre-growth MTGS needs
-# only the lean void GSGameChanged; the post-growth tree drags the whole GS
-# stack and libwebp into the island). An ancestor of the GE1 tip so it
-# fetches the same way. GE1 stays on the new pin (upscale defaults on).
+# OM1 archive vendor: the commit that embedded the microVU/GIF test hooks
+# (10-02). The stage references the full hook set, so the island must define
+# it; older trees (including the pre-growth parent 35213339f) miss three
+# hook globals and fail the final link undefined. This tree carries the
+# 09-25 MTGS/GS growth too, which pulls GS members into the island -- but
+# under the pinned -fno-common they demote behind the exports list exactly
+# like the lab island's own pulled-but-hidden members, so Check C still
+# passes (validated by the close, not by inspection). An ancestor of the GE1
+# tip so it fetches the same way. GE1 stays on the new pin.
 OM1_VENDOR_REPO = GE1_VENDOR_REPO
-OM1_VENDOR_PIN = '35213339f93b16c700f0aa26ed195ff691ae47b2'
-OM1_VENDOR_SHORT = '35213339f'
+OM1_VENDOR_PIN = '70a478c1797ac8da62d3c12e6c12cd2bc3c43f28'
+OM1_VENDOR_SHORT = '70a478c17'
 
 # Vendored iOS dependency sources missing from the vendor tree (the rest of
 # the GE1_IOS_DEPS set ships inside it). Same-generation pins as the
