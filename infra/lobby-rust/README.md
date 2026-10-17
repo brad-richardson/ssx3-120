@@ -1,4 +1,4 @@
-# ssx3-lobby (LICENSE-TBD)
+# ssx3-lobby
 
 Quick-play matchmaker for SSX 3 plus an optional UDP relay ("proxy
 only" scope). Clean-room phase-1 server: login, the buddy subset and
@@ -6,8 +6,8 @@ quick-play pairing, per `docs/research/ssx3-online-protocol.md` in the
 ssx3 repo and PRO1's fixtures. **No upstream contact. Never point this
 at EA's, ssxor's or any public server.**
 
-Publishing and the licence are Brad's call later; this file reserves
-the decision (`LICENSE-TBD`).
+Licence: GPL-3.0-or-later, the same as the rest of this repository
+(see the top-level `LICENSE`).
 
 ## Layout
 

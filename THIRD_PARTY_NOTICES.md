@@ -16,6 +16,7 @@ this file (source tree) and each bundle's `notices/` directory.
 
 | Component | Source / pin | Licence |
 | --- | --- | --- |
+| SSX 3 lobby server (`infra/lobby-rust`, original code for this project) | `infra/lobby-rust/` | GPL-3.0-or-later (top-level `LICENSE`) |
 | PS2Recomp upstream (`ran-j/PS2Recomp`) and the `ssx3` product fork | `deps/PS2Recomp @ 5235b114`, `LICENSE` | GPL-3.0 |
 | ARMSX2 adapter/build carry (GS + microVU platform recipes; renderer/VU core stays in the vendor repo); PCSX2-derived GE1 code travels under the same carry | `ps2xRuntime/third_party/armsx2` (+ `README.md:5–12,33–44`); vendor `brad-richardson/armsx2 @ afad5a04` | GPL-3.0-or-later adapters; GE1/PCSX2-derived parts GPL-3.0+; see vendor tree |
 | SoundTouch (generic host-audio support), linked statically into the support libraries | `ps2xRuntime/third_party/soundtouch` (`README.at1.md:6–25`), `COPYING.TXT` | LGPL-2.1. Relink path: the full source build lives in this repo — the builder compiles `libps2x_soundtouch.a` from the vendored source by default (`tools/ssx3/prebuilt.py` archives it; `tools/ssx3/README.md` source-by-default), so anyone can rebuild and replace that archive and relink |
