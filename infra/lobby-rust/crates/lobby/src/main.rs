@@ -188,49 +188,96 @@ struct AuthCfg {
     mode: String,
 }
 
-/// Loopback test-only state-sync relay (netsync-spike-1 Part 3).
+/// Quick Play state-sync endpoint (online-v0-1): 120<->120 matchmaking,
+/// START barrier, STATE relay and canonical results on one UDP port.
 /// Default off: the TCP lobby + O5 relay behave exactly as before.
 #[derive(Debug, Deserialize, Clone)]
 struct StateSyncCfg {
-    /// Master switch for the STATE endpoint.
+    /// Master switch for the endpoint.
     #[serde(default)]
     pub enable: bool,
-    /// UDP port for SNP2 STATE traffic (loopback).
+    /// Bind address (loopback default; 0.0.0.0 in production).
+    #[serde(default = "d_ss_bind")]
+    pub bind: String,
+    /// UDP port (production: 3757, the top of the relay UDP range that the
+    /// security list already opens; the O5 relay range then ends at 3756).
     #[serde(default = "d_ss_port")]
     pub port: u16,
-    /// Fixed per-role tokens (test credentials, loopback only).
-    #[serde(default)]
-    pub token_a: String,
-    #[serde(default)]
-    pub token_b: String,
-    /// Injected one-way delay + uniform jitter, milliseconds.
+    /// Test-only injected one-way delay + uniform jitter, milliseconds.
     #[serde(default)]
     pub delay_ms: f64,
     #[serde(default)]
     pub jitter_ms: f64,
-    /// No-STATE timeout per peer, milliseconds.
+    /// No-STATE timeout per racing seat, milliseconds.
     #[serde(default = "d_ss_timeout")]
     pub timeout_ms: u64,
+    /// Lead from pairing to the shared GO instant, milliseconds.
+    #[serde(default = "d_ss_start_delay")]
+    pub start_delay_ms: u64,
+    #[serde(default = "d_ss_max_rooms")]
+    pub max_rooms: usize,
+    #[serde(default = "d_ss_max_waiters")]
+    pub max_waiters: usize,
+    #[serde(default = "d_ss_max_waiters_per_ip")]
+    pub max_waiters_per_ip: usize,
+    /// Per source IP packet bucket (a racing client sends ~22/s).
+    #[serde(default = "d_ss_pps")]
+    pub packets_per_sec: f64,
+    #[serde(default = "d_ss_burst")]
+    pub burst_packets: f64,
+}
+
+fn d_ss_bind() -> String {
+    "127.0.0.1".to_string()
 }
 
 const fn d_ss_port() -> u16 {
-    36595
+    3757
 }
 
 const fn d_ss_timeout() -> u64 {
     2000
 }
 
+const fn d_ss_start_delay() -> u64 {
+    2000
+}
+
+const fn d_ss_max_rooms() -> usize {
+    256
+}
+
+const fn d_ss_max_waiters() -> usize {
+    128
+}
+
+const fn d_ss_max_waiters_per_ip() -> usize {
+    4
+}
+
+const fn d_ss_pps() -> f64 {
+    100.0
+}
+
+const fn d_ss_burst() -> f64 {
+    200.0
+}
+
 impl Default for StateSyncCfg {
     fn default() -> Self {
         Self {
             enable: false,
+            bind: d_ss_bind(),
             port: d_ss_port(),
-            token_a: String::new(),
-            token_b: String::new(),
             delay_ms: 0.0,
             jitter_ms: 0.0,
             timeout_ms: d_ss_timeout(),
+            start_delay_ms: d_ss_start_delay(),
+            max_rooms: d_ss_max_rooms(),
+            max_waiters: d_ss_max_waiters(),
+            max_waiters_per_ip: d_ss_max_waiters_per_ip(),
+            packets_per_sec: d_ss_pps(),
+            burst_packets: d_ss_burst(),
         }
     }
 }
@@ -1789,13 +1836,22 @@ async fn main() {
         "ssx3-lobby up"
     );
     if state.cfg.state_sync.enable {
+        let c = &state.cfg.state_sync;
         let ssc = state_sync::Sscfg {
-            port: state.cfg.state_sync.port,
-            token_a: state.cfg.state_sync.token_a.clone().into_bytes(),
-            token_b: state.cfg.state_sync.token_b.clone().into_bytes(),
-            delay_ms: state.cfg.state_sync.delay_ms,
-            jitter_ms: state.cfg.state_sync.jitter_ms,
-            timeout_ms: state.cfg.state_sync.timeout_ms,
+            bind: c.bind.clone(),
+            port: c.port,
+            delay_ms: c.delay_ms,
+            jitter_ms: c.jitter_ms,
+            timeout_ms: c.timeout_ms,
+            start_delay_ms: c.start_delay_ms,
+            max_rooms: c.max_rooms,
+            max_waiters: c.max_waiters,
+            max_waiters_per_ip: c.max_waiters_per_ip,
+            packets_per_sec: c.packets_per_sec,
+            burst_packets: c.burst_packets,
+            global_bytes_per_sec: state.cfg.relay.global_bytes_per_sec,
+            global_burst_bytes: state.cfg.relay.global_burst_bytes,
+            ..state_sync::Sscfg::default()
         };
         let (_stop_tx, stop_rx) = tokio::sync::watch::channel(false);
         let _ = tokio::join!(

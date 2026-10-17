@@ -698,7 +698,8 @@ impl DropToAi {
             return Err(CodecError::BadLength);
         }
         let reason = le_u16(&b[2..4])?;
-        if reason > MAX_REASON {
+        // State sync's drop reason (below) sits past the lockstep set.
+        if reason > MAX_REASON && reason != REASON_STATE_TIMEOUT {
             return Err(CodecError::InvalidEnum);
         }
         Ok(Self { slot: le_u16(&b[0..2])?, reason, evidence_boundary: le_u64(&b[4..12])? })
@@ -1755,6 +1756,174 @@ fn fnv64(b: &[u8]) -> u64 {
     h
 }
 
+// ---------------------------------------------------------- quick play v0
+// (online-v0-1: 120<->120 Quick Play matchmaking + START barrier on the
+// state-sync endpoint. A client sends `QP_JOIN` once it waits at the race
+// card; the server pairs two compatible waiters into a room and answers both
+// with `QP_START` naming the room (frame session), the client's slot and the
+// remaining lead to the shared GO instant. JOIN is resent until START
+// arrives, and every resend is answered with the same room and the time left,
+// so a lost datagram never splits the start. `QP_GO` reports when the client
+// actually started, for the server's start-skew log.)
+
+/// `0x50 QP_JOIN`, client->server: one waiter at the race card.
+pub const KIND_QP_JOIN: u8 = 0x50;
+/// `0x51 QP_WAIT`, server->client: queued (or refused) while unpaired.
+pub const KIND_QP_WAIT: u8 = 0x51;
+/// `0x54 QP_START`, server->client: paired; GO after `go_in_ms`.
+pub const KIND_QP_START: u8 = 0x54;
+/// `0x55 QP_GO`, client->server: start report (skew evidence only).
+pub const KIND_QP_GO: u8 = 0x55;
+/// Quick Play protocol revision carried in `QP_JOIN`.
+pub const QP_PROTO: u16 = 1;
+/// The only simulation rate this build pairs (Brad 10-16: 120<->120 only).
+pub const QP_RATE_120: u8 = 120;
+/// `QP_WAIT` statuses.
+pub const QP_WAIT_QUEUED: u8 = 0;
+pub const QP_WAIT_FULL: u8 = 1;
+pub const QP_WAIT_INCOMPATIBLE: u8 = 2;
+
+/// `QP_JOIN = proto:u16, client:[16], rate:u8, course:u8` (20 bytes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpJoin {
+    pub proto: u16,
+    pub client: [u8; 16],
+    pub rate: u8,
+    pub course: u8,
+}
+
+impl QpJoin {
+    pub const ENCODED: usize = 20;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut p = Vec::with_capacity(Self::ENCODED);
+        p.extend_from_slice(&self.proto.to_le_bytes());
+        p.extend_from_slice(&self.client);
+        p.push(self.rate);
+        p.push(self.course);
+        p
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        let mut client = [0u8; 16];
+        client.copy_from_slice(&payload[2..18]);
+        Ok(Self { proto: le_u16(&payload[0..2])?, client, rate: payload[18], course: payload[19] })
+    }
+}
+
+/// `QP_WAIT = status:u8, waiting:u16` (3 bytes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpWait {
+    pub status: u8,
+    pub waiting: u16,
+}
+
+impl QpWait {
+    pub const ENCODED: usize = 3;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut p = vec![self.status];
+        p.extend_from_slice(&self.waiting.to_le_bytes());
+        p
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        if payload[0] > QP_WAIT_INCOMPATIBLE {
+            return Err(CodecError::InvalidEnum);
+        }
+        Ok(Self { status: payload[0], waiting: le_u16(&payload[1..3])? })
+    }
+}
+
+/// `QP_START = start_id:u32, slot:u8, players:u8, course:u8, seq:u8,
+/// go_in_ms:u16` (10 bytes). The room id rides in the frame session; `seq`
+/// counts this seat's START sends (0 = first) so the skew log can match the
+/// client's report to the send time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpStart {
+    pub start_id: u32,
+    pub slot: u8,
+    pub players: u8,
+    pub course: u8,
+    pub seq: u8,
+    pub go_in_ms: u16,
+}
+
+impl QpStart {
+    pub const ENCODED: usize = 10;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut p = Vec::with_capacity(Self::ENCODED);
+        p.extend_from_slice(&self.start_id.to_le_bytes());
+        p.push(self.slot);
+        p.push(self.players);
+        p.push(self.course);
+        p.push(self.seq);
+        p.extend_from_slice(&self.go_in_ms.to_le_bytes());
+        p
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        Ok(Self {
+            start_id: le_u32(&payload[0..4])?,
+            slot: payload[4],
+            players: payload[5],
+            course: payload[6],
+            seq: payload[7],
+            go_in_ms: le_u16(&payload[8..10])?,
+        })
+    }
+}
+
+/// `QP_GO = start_id:u32, seq:u8, rtt_us:u32, recv_to_go_us:u32,
+/// go_tick:u64` (21 bytes): the START the client used, its RTT estimate,
+/// the wall time from that START's arrival to the race clock's first tick,
+/// and that tick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QpGo {
+    pub start_id: u32,
+    pub seq: u8,
+    pub rtt_us: u32,
+    pub recv_to_go_us: u32,
+    pub go_tick: u64,
+}
+
+impl QpGo {
+    pub const ENCODED: usize = 21;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut p = Vec::with_capacity(Self::ENCODED);
+        p.extend_from_slice(&self.start_id.to_le_bytes());
+        p.push(self.seq);
+        p.extend_from_slice(&self.rtt_us.to_le_bytes());
+        p.extend_from_slice(&self.recv_to_go_us.to_le_bytes());
+        p.extend_from_slice(&self.go_tick.to_le_bytes());
+        p
+    }
+
+    pub fn decode(payload: &[u8]) -> Result<Self, CodecError> {
+        if payload.len() != Self::ENCODED {
+            return Err(CodecError::BadLength);
+        }
+        Ok(Self {
+            start_id: le_u32(&payload[0..4])?,
+            seq: payload[4],
+            rtt_us: le_u32(&payload[5..9])?,
+            recv_to_go_us: le_u32(&payload[9..13])?,
+            go_tick: le_u64(&payload[13..21])?,
+        })
+    }
+}
+
 #[cfg(test)]
 mod state_tests {
     use super::*;
@@ -1783,6 +1952,24 @@ mod state_tests {
         assert_eq!((back.boost, back.uber, back.ctl, back.chk, back.dist), (s.boost, s.uber, s.ctl, s.chk, s.dist));
         assert_eq!((back.fin, back.ftime, back.peer_tick, back.peer_time_ms), (s.fin, s.ftime, s.peer_tick, s.peer_time_ms));
         assert_eq!((back.in_tick, back.in_de4, back.in_w0, back.in_w1), (s.in_tick, s.in_de4, s.in_w0, s.in_w1));
+    }
+    #[test]
+    fn quickplay_round_trips() {
+        let j = QpJoin { proto: QP_PROTO, client: [7u8; 16], rate: QP_RATE_120, course: 0 };
+        assert_eq!(j.encode().len(), QpJoin::ENCODED);
+        assert_eq!(QpJoin::decode(&j.encode()).unwrap(), j);
+        let w = QpWait { status: QP_WAIT_FULL, waiting: 3 };
+        assert_eq!(QpWait::decode(&w.encode()).unwrap(), w);
+        let s = QpStart { start_id: 0xdeadbeef, slot: 1, players: 2, course: 0, seq: 2, go_in_ms: 1500 };
+        assert_eq!(s.encode().len(), QpStart::ENCODED);
+        assert_eq!(QpStart::decode(&s.encode()).unwrap(), s);
+        let g = QpGo { start_id: 9, seq: 0, rtt_us: 42_000, recv_to_go_us: 1_480_000, go_tick: 123_456 };
+        assert_eq!(g.encode().len(), QpGo::ENCODED);
+        assert_eq!(QpGo::decode(&g.encode()).unwrap(), g);
+        assert_eq!(QpJoin::decode(&j.encode()[..19]).unwrap_err(), CodecError::BadLength);
+        assert_eq!(QpWait::decode(&[9, 0, 0]).unwrap_err(), CodecError::InvalidEnum);
+        assert_eq!(QpStart::decode(&[0u8; 11]).unwrap_err(), CodecError::BadLength);
+        assert_eq!(QpGo::decode(&[0u8; 20]).unwrap_err(), CodecError::BadLength);
     }
     #[test]
     fn state_strict_rejections() {
