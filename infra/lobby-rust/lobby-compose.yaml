@@ -20,4 +20,5 @@ services:
       - "13505:13505/tcp"
       - "3658-3757:3658-3757/udp"
     volumes:
-      - ./lobby.toml:/lobby.toml:ro
+      # Tests only: the example template. Prod config lives outside the repo.
+      - ./lobby.example.toml:/lobby.toml:ro

@@ -1,8 +1,11 @@
-# ssx3-lobby example config. Copy to lobby.toml and set advertise_ip.
+# ssx3-lobby example config. Template only: copy to a path OUTSIDE this
+# repo (e.g. /etc/ssx3-lobby/lobby.toml) and set advertise_ip there.
+# Never commit a real config: production values live operator-side.
 [lobby]
 bind = "0.0.0.0"
 # The IP clients dial AND the IP named in +ses/news (never 0.0.0.0).
-advertise_ip = "127.0.0.1"
+# Documentation address (TEST-NET-1); replace with the host's public IPv4.
+advertise_ip = "192.0.2.1"
 motd = "WIP Server"
 
 [ports]

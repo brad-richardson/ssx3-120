@@ -40,11 +40,11 @@ everything in memory, so no `StateDirectory` is declared. Config lives at
 `/etc/ssx3-lobby/lobby.toml` (read-only to the service); set
 `advertise_ip` there (or via `LOBBY_ADVERTISE_IP`).
 
-Dev loop on the Mac:
+Dev loop on the Mac (outside the repo so no real config is committed):
 
 ```sh
-cp lobby.example.toml lobby.toml   # set advertise_ip
-cargo run -p ssx3-lobby -- lobby.toml
+cp lobby.example.toml /tmp/lobby.local.toml   # set advertise_ip
+cargo run -p ssx3-lobby -- /tmp/lobby.local.toml
 ```
 
 Ports 11000/10901/13505 (TCP); relay UDP range 3658-3756 when
@@ -61,7 +61,7 @@ names, addresses, passwords, device IDs and tokens stay in memory.
 
 ```sh
 docker build -t ssx3-lobby:phase1 .
-LOBBY_ADVERTISE_IP=127.0.0.1 docker compose -f lobby-compose.yaml up -d
+LOBBY_ADVERTISE_IP=192.0.2.1 docker compose -f lobby-compose.yaml up -d
 ```
 
 `lobby-compose.yaml` is a drop-in for ssx3 `infra/lobby-compose.yaml`

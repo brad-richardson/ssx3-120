@@ -7,6 +7,9 @@
 # MComm data (/srv/ssx3-lobby/data) is untouched.
 # Usage: infra/deploy-lobby-rust.sh [--dry-run] [--host=IP] [--user=ssx3]
 #        [--binary=PATH] [--unit=PATH] [--config=PATH]
+# Real prod config lives OUTSIDE this repo (operator path, e.g.
+# /etc/ssx3-lobby/lobby.toml): pass --config=PATH or LOBBY_CONFIG=PATH.
+# The repo template lobby-rust/lobby.example.toml is the dry-run default.
 set -eu
 
 HOST=""
@@ -14,7 +17,7 @@ USER="ssx3"
 # Build the lobby from source (see README); pass the static binary explicitly.
 BINARY="${BINARY:-}"
 UNIT=""
-CONFIG=""
+CONFIG="${LOBBY_CONFIG:-}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/oci_ssx3}"
 SSH_OPTS="-i $SSH_KEY -o IdentitiesOnly=yes -o ConnectTimeout=10"
 DRY_RUN=0
@@ -34,7 +37,7 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -z "$UNIT" ] && UNIT="$SCRIPT_DIR/lobby-rust/ssx3-lobby.service"
-[ -z "$CONFIG" ] && CONFIG="$SCRIPT_DIR/lobby-rust/lobby.toml"
+[ -z "$CONFIG" ] && CONFIG="$SCRIPT_DIR/lobby-rust/lobby.example.toml"
 
 if [ -z "$HOST" ]; then
   HOST="$(tofu -chdir="$SCRIPT_DIR/oci" output -raw lobby_address)"
