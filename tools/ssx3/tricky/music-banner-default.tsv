@@ -18,7 +18,7 @@
 #   (MUSICMAP TRICK-song, no jukebox row); [Menu] -> "ssxmenu.mus".
 # - Slot assignment: music-pool-default.tsv (TKP4b shared pool).
 # Artists the disc table leaves empty, filled from Brad's soundtrack list (10-17):
-#   Superwoman = Rasmus; Adam's Revenge / Gin & Sin = John Morgan. Top Bomb and SlayBreak stay empty (unconfirmed).
+#   Superwoman = Rasmus; Adam's Revenge / Gin & Sin = John Morgan. Top Bomb = John Morgan; SlayBreak = Mixmaster Mike (Brad's full soundtrack list).
 # Empty ARTIST mirrors the stock file's own convention for untitled slots
 # (menu/hub sections carry ARTIST = "").
 B1/bep	moveit	Move It With Your Mind	Plump DJ's
@@ -28,9 +28,9 @@ B1/irobot	peaktime	Peaktime	Rasmus
 B1/janes	songfordot	Song For Dot	Space Raiders
 B1/kinky	peaktime	Peaktime	Rasmus
 B1/kos	systemover	System Overload	Huda Hudia
-B1/leave	topbomb	Top Bomb
+B1/leave	topbomb	Top Bomb	John Morgan
 B1/likethis	shakemomma	Shake What Yo' Mama Gave Ya	Skank
-B1/nerd	topbomb	Top Bomb
+B1/nerd	topbomb	Top Bomb	John Morgan
 B1/poorleno	shakemomma	Shake What Yo' Mama Gave Ya	Skank
 B1/qoftsa	bburner	Board Burner	Mixmaster Mike
 B1/ride	adamsrev	Adam's Revenge	John Morgan
@@ -44,7 +44,7 @@ B1/mxpx	smartbomb	Smartbomb (Plump DJ's Remix)	BT
 B2/abullys	hiphop	Hip Hop Phenomenon	BT / Tsunami One
 B2/allnight	reality	Reality Detached	The Forth
 B2/apo	smartbomb	Smartbomb (Plump DJ's Remix)	BT
-B2/auto	slaybreak	SlayBreak
+B2/auto	slaybreak	SlayBreak	Mixmaster Mike
 B2/avalnch	smartbomb	Smartbomb (Plump DJ's Remix)	BT
 B2/bjaxx	finsym	Finished Symphony	Hybrid
 B2/buffet	reality	Reality Detached	The Forth
@@ -55,4 +55,4 @@ B2/felix	slayboarder	Slayboarder	Mixmaster Mike / Rahzel
 B2/finger	superwoman	Superwoman	Rasmus
 B2/fspoon	superwoman	Superwoman	Rasmus
 B2/gdanse	bburner	Board Burner	Mixmaster Mike
-B2/placebo	slaybreak	SlayBreak
+B2/placebo	slaybreak	SlayBreak	Mixmaster Mike
