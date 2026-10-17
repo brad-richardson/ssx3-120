@@ -591,12 +591,6 @@ struct GameSession {
     last_active: Instant,
     writer: GameWriter,
     owner: u64,
-    /// online-stock-2: the stock client alternates `quik KIND=DeathRace`
-    /// (search) and `quik KIND=*` (stop searching; MComm de-queues it). A
-    /// stopped client rejects a +ses (answers `chal PERS=*` and searches on
-    /// alone), so its +ses waits here until its next search echo.
-    searching: bool,
-    pending_ses: Option<Vec<u8>>,
 }
 
 #[allow(dead_code)] // presence record kept for ops
@@ -1191,8 +1185,6 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                             last_active: Instant::now(),
                             writer: wr.clone(),
                             owner,
-                            searching: false,
-                            pending_ses: None,
                         },
                     );
                 }
@@ -1281,16 +1273,6 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                 // echo still precedes any +ses try_pair may push.
                 let mut full = false;
                 let mut pair_after_echo = false;
-                let deferred_ses = {
-                    let mut games = state.games.lock().unwrap();
-                    match games.get_mut(&me) {
-                        Some(g) => {
-                            g.searching = kind != "*";
-                            if g.searching { g.pending_ses.take() } else { None }
-                        }
-                        None => None,
-                    }
-                };
                 if !paired {
                     // Expire stale waiters (f2 back-out leaves no cancel).
                     {
@@ -1330,17 +1312,22 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                                     g.waiter_since = Some(Instant::now());
                                 }
                             }
-                        } else if !q.contains(&me) {
-                            // KIND=* poll without a waiter entry: re-enter
-                            // so a lone poller can still pair.
-                            if kind == "*" && q.len() < state.cfg.limits.max_queue && !ip_capped {
-                                q.push_back(me.clone());
-                                if let Some(g) = games.get_mut(&me) {
-                                    g.waiter_since = Some(Instant::now());
-                                }
+                        } else if kind == "*" {
+                            // online-stock-2: KIND=* is the client giving up
+                            // ("Sorry, no users were found for a quickmatch",
+                            // ~1200 ticks after its search; MComm de-queues
+                            // it), not a poll. Pairing a client that gave up
+                            // pushed a +ses it rejects (chal PERS=*) while
+                            // the peer waited on a link that never came
+                            // (q3, q4, Odin o4/o5).
+                            q.retain(|n| n != &me);
+                            if let Some(g) = games.get_mut(&me) {
+                                g.waiter_since = None;
                             }
                         }
-                        if !q.contains(&me) {
+                        if kind == "*" {
+                            // gave up: echo only, never FULL, never paired
+                        } else if !q.contains(&me) {
                             full = true; // queue cap refused this quik
                         } else {
                             let pairs = state.pairs.lock().unwrap();
@@ -1353,7 +1340,7 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                             }
                         }
                     }
-                    pair_after_echo = true;
+                    pair_after_echo = kind != "*";
                 }
                 let mut echo: Vec<(String, String)> = msg
                     .pairs
@@ -1368,12 +1355,6 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                 let wire = ssx3_proto::encode(types::QUIK, types::SUB_ZERO, &refs, &[]);
                 if gsend_wire(&wr, &wire).await.is_err() {
                     break;
-                }
-                if let Some(ses) = deferred_ses {
-                    info!("deferred +ses delivered on the next search");
-                    if gsend_wire(&wr, &ses).await.is_err() {
-                        break;
-                    }
                 }
                 if pair_after_echo {
                     try_pair(&state).await;
@@ -1743,19 +1724,12 @@ async fn try_pair(state: &Arc<State>) {
         let refs: Vec<(&str, &str)> =
             body.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
         let wire = ssx3_proto::encode(types::SES, types::SUB_ZERO, &refs, &[]);
-        let writer = {
-            let mut games = state.games.lock().unwrap();
-            match games.get_mut(&who) {
-                Some(g) if g.searching => Some(g.writer.clone()),
-                Some(g) => {
-                    // Stopped searcher: deliver after its next search echo.
-                    g.pending_ses = Some(wire.clone());
-                    info!("+ses deferred until the stopped searcher searches again");
-                    None
-                }
-                None => None,
-            }
-        };
+        let writer = state
+            .games
+            .lock()
+            .unwrap()
+            .get(&who)
+            .map(|g| g.writer.clone());
         if let Some(wr) = writer {
             if gsend_wire(&wr, &wire).await.is_err() {
                 warn!("session push failed");
@@ -2210,9 +2184,9 @@ mod tests {
         let (mut ga, _ba) = login(&state, lp, gp, bp, "lob1a").await;
         let (mut gb, _bb) = login(&state, lp, gp, bp, "lob1b").await;
 
-        // A searches, then stops (KIND=*); B searches -> the pair forms on
-        // B's search, B gets +ses at once, A's +ses waits for A's next
-        // search (a stopped stock client rejects a +ses).
+        // A searches, then gives up (KIND=* leaves the queue); B's search
+        // does not pair with A; A searches again while B still searches ->
+        // the pair forms on A's search.
         ga.send(types::QUIK, &[("KIND", "DeathRace"), ("QMFP", "1,1,1,1,1")])
             .await;
         let r = ga.recv().await;
@@ -2225,11 +2199,9 @@ mod tests {
             .await;
         let r = gb.recv().await;
         gb.expect(&r, "quik");
-        let sb = gb.recv().await;
-        gb.expect(&sb, "+ses");
         assert!(
             tokio::time::timeout(Duration::from_millis(300), ga.recv()).await.is_err(),
-            "no +ses to a stopped searcher"
+            "a client that gave up is never paired"
         );
         ga.send(types::QUIK, &[("KIND", "DeathRace"), ("QMFP", "1,1,1,1,1")])
             .await;
@@ -2237,6 +2209,8 @@ mod tests {
         ga.expect(&r, "quik");
         let sa = ga.recv().await;
         ga.expect(&sa, "+ses");
+        let sb = gb.recv().await;
+        gb.expect(&sb, "+ses");
         assert_eq!(sa.get("NAME"), sb.get("NAME"));
         assert_eq!(sa.get("SEED"), sb.get("SEED"));
         assert_eq!(sa.get("SELF"), Some("lob1a"));
