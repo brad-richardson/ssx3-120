@@ -58,6 +58,22 @@ python3 build.py android-libs --work ~/ssx3-work
 python3 build.py android --work ~/ssx3-work
 ```
 
+iOS (macOS Apple silicon host with Xcode; iPhone/iPad target) needs
+your Apple Development team id and the offline-VU1 stage directory:
+
+```sh
+./build ios --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --team <TEAM10> --om1-stage <OM1STAGE>
+```
+
+Add `--install` to push to the connected device (plain install; saves
+are kept — never uninstall the app). The app id is
+`com.ssx3recomp.<team-lower>`, signed with the Apple Development
+certificate from Xcode's automatic signing for that team.
+
+Handing this repo to a coding agent? Paste it this line:
+
+> Read `docs/agent-setup.md` and build + install SSX 3 from my disc.
+
 Keep the work directory outside this checkout and private: it holds your
 disc image, generated game code, cards and signing keys. The support
 libraries build from source by default: first-time cold build on a Mac
