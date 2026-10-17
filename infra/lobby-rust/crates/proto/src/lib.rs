@@ -305,6 +305,7 @@ pub mod types {
     pub const SES: [u8; 4] = *b"+ses";
     pub const RANK: [u8; 4] = *b"rank";
     pub const PNG: [u8; 4] = *b"~png";
+    pub const CHAL: [u8; 4] = *b"chal";
     // Buddy (13505).
     pub const DISC: [u8; 4] = *b"DISC";
     pub const BAUTH: [u8; 4] = *b"AUTH";

@@ -1361,6 +1361,16 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
             "~png" => {
                 let _ = gsend(&wr, types::PNG, types::SUB_ZERO, &[], &[]).await;
             }
+            // online-stock-2: a client still waiting in quick match when
+            // its +ses arrives (its last quik was a poll) answers with
+            // `chal PERS=*` and opens the P2P link only after the server
+            // echoes it (MComm ChalMessageIn: PERS=* -> Broadcast(this)).
+            // Unanswered, the waiting side never linked (o4/o5/q3).
+            "chal" => {
+                let pairs: Vec<(&str, &str)> =
+                    msg.pairs.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+                let _ = gsend(&wr, types::CHAL, types::SUB_ZERO, &pairs, &[]).await;
+            }
             _ => {
                 warn!("game unknown type; ignoring");
             }
@@ -2201,6 +2211,13 @@ mod tests {
         // Matchmaker mode: each side dials the peer's observed IP.
         assert_eq!(sa.get("ADDR"), Some("127.0.0.1"));
         assert_eq!(sb.get("ADDR"), Some("127.0.0.1"));
+
+        // The side that waited (last quik a poll) answers +ses with
+        // `chal PERS=*` and links only after the echo.
+        ga.send(types::CHAL, &[("PERS", "*")]).await;
+        let r = ga.recv().await;
+        ga.expect(&r, "chal");
+        assert_eq!(r.get("PERS"), Some("*"));
 
         // Post-race upload gets the empty ack.
         ga.send(
