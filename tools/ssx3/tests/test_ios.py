@@ -247,6 +247,12 @@ class ArchiveEnvTest(unittest.TestCase):
         self.assertIn('-O2', env['CFLAGS'].split())
         self.assertIn('-fno-common', env['CFLAGS'].split())
 
+    def test_extra_cflags_opt_in(self):
+        env = build.archive_build_env('/tmp/bundle', extra_cflags='-DPCSX2_RECOMPILER_TESTS')
+        self.assertIn('-DPCSX2_RECOMPILER_TESTS', env['CFLAGS'].split())
+        plain = build.archive_build_env('/tmp/bundle')
+        self.assertNotIn('-DPCSX2_RECOMPILER_TESTS', plain['CFLAGS'].split())
+
     def test_vendor_pins_are_full_shas(self):
         for pin in (build.GE1_VENDOR_PIN, build.OM1_VENDOR_PIN):
             self.assertRegex(pin, r'^[0-9a-f]{40}$')

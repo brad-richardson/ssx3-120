@@ -1198,7 +1198,7 @@ def assemble_bundle(bundle_dir, vendor, deps_src):
     return bundle_dir
 
 
-def archive_build_env(bundle):
+def archive_build_env(bundle, extra_cflags=''):
     """Environment for the iOS archive builds. -fno-common is load-bearing:
     tentative definitions must come out as defined BSS (the shape every
     shipped pin has), never COMMONs: the OM1 island close demotes defined
@@ -1208,14 +1208,14 @@ def archive_build_env(bundle):
     env = os.environ.copy()
     env['SSX3_IOS_DEPS'] = str(bundle)
     for key in ('CFLAGS', 'CXXFLAGS'):
-        env[key] = (env.get(key, '') + ' -fno-common').strip()
+        env[key] = (env.get(key, '') + ' -fno-common ' + extra_cflags).strip()
     return env
 
 
-def run_vendor_build(vendor, bundle, work, jobs, label):
+def run_vendor_build(vendor, bundle, work, jobs, label, extra_cflags=''):
     """GE1 + PCSX2 static archives via the pinned engine recipe
     (ps2xRuntime/third_party/armsx2/build.sh ios). Returns the build dir."""
-    env = archive_build_env(bundle)
+    env = archive_build_env(bundle, extra_cflags)
     build_sh = ENGINE / 'ps2xRuntime/third_party/armsx2/build.sh'
     proc = subprocess.run(['bash', str(build_sh), 'ios', '--armsx2', str(vendor),
                            '--build-root', str(work), '--jobs', str(jobs)],
@@ -1248,10 +1248,14 @@ def run_om1_build(vendor, bundle, work, jobs):
     so on that expected failure finish everything else with ninja -k 0 and
     harvest the OM1_LIB inputs. The harvest only accepts a stamp dir
     modified by this run, never a stale one (which may be the GE1 set
-    that cannot close)."""
+    that cannot close). PCSX2_RECOMPILER_TESTS is on for this run only:
+    the stage is compiled with it and references the hook globals, so the
+    island must define them; the GE1 side must not (Check C forbids the
+    intersection)."""
     start = time.time()
     try:
-        return run_vendor_build(vendor, bundle, work, jobs, 'OM1')
+        return run_vendor_build(vendor, bundle, work, jobs, 'OM1',
+                                extra_cflags='-DPCSX2_RECOMPILER_TESTS')
     except ValueError as err:
         build_dir = newest_build_dir(work)
         if build_dir.stat().st_mtime < start:
@@ -1415,6 +1419,7 @@ def ios_libs(a):
     om1_candidate = Path(prior_om1.get('om1_build') or '')
     if (prior_om1.get('om1_vendor') == OM1_VENDOR_PIN
             and prior_om1.get('archive_cflags') == '-fno-common'
+            and prior_om1.get('om1_cflags') == '-DPCSX2_RECOMPILER_TESTS'
             and om1_candidate.name
             and (om1_candidate / 'pcsx2/libPCSX2.a').is_file()
             and (om1_candidate / 'common/libcommon.a').is_file()):
@@ -1457,6 +1462,7 @@ def ios_libs(a):
         'ge1_vendor': GE1_VENDOR_PIN, 'ge1_dir': str(ge1_build),
         'om1_vendor': OM1_VENDOR_PIN, 'om1_dir': str(om1_dir),
         'om1_build': str(om1_build), 'om1_ge1_gs': om1_ge1_gs,
+        'om1_cflags': '-DPCSX2_RECOMPILER_TESTS',
         'ios_dep_pins': resolved, 'sdl2_tarball_sha256': SDL2_TARBALL_SHA,
         'ffmpeg_tarball_sha256': FFMPEG_TARBALL_SHA,
         'moltenvk': mvk['url'] + ' @ ' + mvk['archive_sha256'],
