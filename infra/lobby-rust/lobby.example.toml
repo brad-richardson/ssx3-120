@@ -100,7 +100,11 @@ monthly_egress_cap_bytes = 8796093022208
 # Prepared-but-optional +ses session token (our HLE ignores unknown
 # +ses keys, so stock-60 compat holds either way).
 token = false
+# Each pairing races a random course from quick_tracks (SSX 3 event ids,
+# default every race course: 0,1,2,3,4,14,15,16); quick_tracks = [] uses
+# the fixed quick_track instead.
 quick_track = 2
+# quick_tracks = [0, 1, 2, 3, 4, 14, 15, 16]
 quick_mode = 0
 # Fixed server SKEY hex; empty = minted once at startup.
 server_key = ""

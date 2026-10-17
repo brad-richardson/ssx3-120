@@ -345,6 +345,12 @@ struct SessionCfg {
     /// P1 course map is spec §8 Q2 — configurable, default 2).
     #[serde(default = "d_track")]
     quick_track: u32,
+    /// online-stock-2 (Brad 10-17): each pairing races a random course
+    /// from this list (both players get the same +ses P1). P1 is the SSX 3
+    /// event id (the guest stores it at 0x535c08; 14-16 are backcountry).
+    /// Default: every SSX 3 race course; `[]` falls back to quick_track.
+    #[serde(default = "d_tracks")]
+    quick_tracks: Vec<u32>,
     #[serde(default)]
     quick_mode: u32,
     /// Fixed server SKEY hex (default: minted once at startup).
@@ -463,6 +469,21 @@ const fn d_track() -> u32 {
     2
 }
 
+/// SSX 3 race events: Snow Jam, Metro-City, Ruthless Ridge, Intimidator,
+/// Gravitude, Happiness, Ruthless, The Throne.
+fn d_tracks() -> Vec<u32> {
+    vec![0, 1, 2, 3, 4, 14, 15, 16]
+}
+
+/// One pairing's +ses P1: a uniform pick from `tracks`, else `fixed`.
+fn pick_track(tracks: &[u32], fixed: u32, roll: u32) -> u32 {
+    if tracks.is_empty() {
+        fixed
+    } else {
+        tracks[roll as usize % tracks.len()]
+    }
+}
+
 impl Default for LobbyCfg {
     fn default() -> Self {
         Self {
@@ -532,6 +553,7 @@ impl Default for SessionCfg {
         Self {
             token: false,
             quick_track: d_track(),
+            quick_tracks: d_tracks(),
             quick_mode: 0,
             server_key: String::new(),
         }
@@ -1677,7 +1699,13 @@ async fn try_pair(state: &Arc<State>) {
             Some([a_name.clone(), b_name.clone()]),
         );
     }
-    let track = state.cfg.session.quick_track.to_string();
+    let track = pick_track(
+        &state.cfg.session.quick_tracks,
+        state.cfg.session.quick_track,
+        rand::random(),
+    );
+    info!(session = %name, track, "pairing course");
+    let track = track.to_string();
     let mode = state.cfg.session.quick_mode.to_string();
     for (who, addr, from) in [(a_name, a_addr, a_from), (b_name, b_addr, b_from)] {
         let writer = state
@@ -1941,6 +1969,21 @@ fn build_state(cfg: Config, ports: Vec<u16>, server_key: String) -> Arc<State> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn pairing_course_is_a_race_event_from_the_list() {
+        let all = super::d_tracks();
+        assert_eq!(all, vec![0, 1, 2, 3, 4, 14, 15, 16]);
+        let mut seen = std::collections::BTreeSet::new();
+        for roll in 0..64u32 {
+            let t = super::pick_track(&all, 2, roll);
+            assert!(all.contains(&t));
+            seen.insert(t);
+        }
+        assert_eq!(seen.len(), all.len(), "every course reachable");
+        assert_eq!(super::pick_track(&[], 2, 7), 2, "empty list keeps quick_track");
+        assert_eq!(super::pick_track(&[14], 2, 99), 14);
+    }
+
     use super::*;
     use tokio::net::TcpStream;
 
