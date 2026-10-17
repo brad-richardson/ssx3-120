@@ -1678,6 +1678,8 @@ def ios_om1_current(work, core_dir=None):
     have_core = om1_core_hashes(core_dir)
     if have_core is None or have_core != want_core:
         return False
+    if not om1_vendor_current(work):
+        return False
     stage = work / 'om1-stage'
     try:
         validate_om1_stage(stage)
@@ -1688,6 +1690,42 @@ def ios_om1_current(work, core_dir=None):
             if not (stage / (area + suffix)).is_file():
                 return False
     return True
+
+
+def om1_vendor_head(vendor):
+    """Detached-HEAD SHA of the vendor checkout, or None when unresolvable."""
+    try:
+        return subprocess.check_output(
+            ['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def om1_vendor_current(work):
+    """R2: stage/armsx2 must be a symlink resolving to this work's vendor
+    checkout, and that checkout must sit exactly on the replay pin. A copied
+    work dir keeps an absolute link into the old tree; a re-seated vendor
+    with a different HEAD is not the pinned one. Either case regenerates."""
+    vendor = Path(work) / 'ios-vendor-om1replay'
+    link = Path(work) / 'om1-stage' / 'armsx2'
+    if not link.is_symlink():
+        return False
+    try:
+        if os.path.realpath(link) != os.path.realpath(vendor):
+            return False
+    except OSError:
+        return False
+    return om1_vendor_head(vendor) == OM1_REPLAY_PIN
+
+
+def check_vendor_clean(vendor):
+    """Fail loud on a dirty vendor tree: builds must come from the pinned
+    commit's bytes, never from uncommitted local edits."""
+    out = subprocess.check_output(
+        ['git', '-C', str(vendor), 'status', '--porcelain'], text=True)
+    if out.strip():
+        raise ValueError('ios-om1 vendor checkout is dirty (uncommitted changes under '
+                         + str(vendor) + '); delete it and re-run')
 
 
 def link_om1_vendor(stage, vendor):
@@ -1743,6 +1781,7 @@ def ios_om1(a):
     actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != OM1_REPLAY_PIN:
         raise ValueError('ios-om1 vendor checkout is ' + actual[:12] + ', want ' + OM1_REPLAY_SHORT)
+    check_vendor_clean(vendor)
     deps = a.work / 'ios-om1-deps'
     for name in ('plutovg', 'plutosvg'):
         src = vendor / '3rdparty' / name

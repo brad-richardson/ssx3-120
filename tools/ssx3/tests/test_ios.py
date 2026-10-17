@@ -9,6 +9,8 @@ import io
 import json
 import os
 import plistlib
+import shutil
+import subprocess
 import tempfile
 import types
 import unittest
@@ -122,6 +124,22 @@ class Om1StageTest(unittest.TestCase):
 
 
 class Om1GenerateTest(unittest.TestCase):
+    def make_vendor(self, root):
+        vendor = Path(root) / 'ios-vendor-om1replay'
+        (vendor / 'pcsx2').mkdir(parents=True)
+        (vendor / 'pcsx2' / 'Config.h').write_text('// vendor')
+        stub = vendor / 'tests' / 'ctest' / 'core'
+        stub.mkdir(parents=True)
+        (stub / 'StubHost.cpp').write_text('// stub host')
+        env = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@t',
+                   GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@t')
+        subprocess.run(['git', 'init', '-q', str(vendor)], check=True)
+        subprocess.run(['git', '-C', str(vendor), 'add', '.'], check=True, env=env)
+        subprocess.run(['git', '-C', str(vendor), 'commit', '-qm', 'v'], check=True, env=env)
+        head = subprocess.check_output(
+            ['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
+        return vendor, head
+
     def make_work(self, root, pin=None, elf=b'elf-bytes'):
         work = Path(root) / 'work'
         work.mkdir(parents=True, exist_ok=True)
@@ -130,6 +148,7 @@ class Om1GenerateTest(unittest.TestCase):
         core_dir.mkdir(parents=True, exist_ok=True)
         for name in build.OM1_OFFLINE_CORE:
             (core_dir / name).write_text('// stub ' + name)
+        vendor, head = self.make_vendor(work)
         stage = work / 'om1-stage'
         for name in build.OM1_STAGE_REQUIRED:
             target = stage / name
@@ -138,28 +157,80 @@ class Om1GenerateTest(unittest.TestCase):
         for area in build.OM1_AREAS:
             for suffix in ('.s', '_tables.c', '_tables.h'):
                 (stage / (area + suffix)).write_text('// ' + area)
+        link = stage / 'armsx2'
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link)
+        link.symlink_to(vendor, target_is_directory=True)
         (work / 'om1-stage.json').write_text(json.dumps({
-            'replay_pin': pin or build.OM1_REPLAY_PIN,
+            'replay_pin': pin or head,
             'manifest_sha256': build.sha(build.OM1_MANIFEST),
             'elf_sha256': build.sha(work / 'SLUS_207.72'),
             'core_sha256': build.om1_core_hashes(core_dir)}))
-        return work, core_dir
+        return work, core_dir, head
 
     def test_current_true(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp)
-            self.assertTrue(build.ios_om1_current(work, core_dir=core_dir))
+            work, core_dir, head = self.make_work(temp)
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertTrue(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_on_pin_change(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp, pin='0' * 40)
+            work, core_dir, head = self.make_work(temp, pin='0' * 40)
             self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_missing_area_file(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp)
+            work, core_dir, head = self.make_work(temp)
             (work / 'om1-stage' / 'menus.s').unlink()
-            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_link_outside_work(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            other = Path(temp) / 'other-vendor'
+            other.mkdir()
+            (work / 'om1-stage' / 'armsx2').unlink()
+            (work / 'om1-stage' / 'armsx2').symlink_to(other, target_is_directory=True)
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_real_dir_link(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            (work / 'om1-stage' / 'armsx2').unlink()
+            (work / 'om1-stage' / 'armsx2').mkdir()
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_vendor_head_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            vendor = work / 'ios-vendor-om1replay'
+            (vendor / 'pcsx2' / 'Config.h').write_text('// moved on')
+            env = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@t',
+                       GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@t')
+            subprocess.run(['git', '-C', str(vendor), 'commit', '-qam', 'v2'],
+                           check=True, env=env)
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_no_vendor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            shutil.rmtree(work / 'ios-vendor-om1replay')
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_vendor_clean_check(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor, _ = self.make_vendor(temp)
+            self.assertIsNone(build.check_vendor_clean(vendor))
+            (vendor / 'pcsx2' / 'Config.h').write_text('// dirty')
+            with self.assertRaises(ValueError) as ctx:
+                build.check_vendor_clean(vendor)
+            self.assertIn('dirty', str(ctx.exception))
 
     def test_current_false_no_receipt(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -169,15 +240,17 @@ class Om1GenerateTest(unittest.TestCase):
 
     def test_current_false_on_core_change(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp)
+            work, core_dir, head = self.make_work(temp)
             (core_dir / build.OM1_OFFLINE_CORE[0]).write_text('// changed')
-            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_current_false_on_core_missing(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp)
+            work, core_dir, head = self.make_work(temp)
             (core_dir / build.OM1_OFFLINE_CORE[0]).unlink()
-            self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
     def test_core_hashes_none_when_missing(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -185,9 +258,10 @@ class Om1GenerateTest(unittest.TestCase):
 
     def test_ensure_uses_current_stage(self):
         with tempfile.TemporaryDirectory() as temp:
-            work, core_dir = self.make_work(temp)
+            work, core_dir, head = self.make_work(temp)
             with patch.object(build, 'ios_om1', side_effect=AssertionError('must skip')), \
-                 patch.object(build, 'OM1_OFFLINE_CORE_DIR', core_dir):
+                 patch.object(build, 'OM1_OFFLINE_CORE_DIR', core_dir), \
+                 patch.object(build, 'OM1_REPLAY_PIN', head):
                 self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
 
     def test_ensure_generates_when_stale(self):
