@@ -413,9 +413,12 @@ class PresetHygieneTest(unittest.TestCase):
                          'PS2X_GS_GIF_BATCH', 'PS2X_GS_GIF_ARENA',
                          'GE1_ONDEVICE_UPSCALE', 'PS2X_NET', 'PS2X_NET_SERVER'):
             self.assertIn(required, keys)
+        # preset-parity-1: PS2X_ACHIEVEMENTS ships (inert with no
+        # achievements-set file: "[ach] no set ... idle") and the Tricky
+        # bundle rows ship (each fails closed without its files), so neither
+        # is forbidden any more. SKIP_MOVIE/PAD_SCRIPT stay out (dev-only).
         for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_SKIP_MOVIE=',
-                          'PS2X_PAD_SCRIPT', 'PS2X_ACHIEVEMENTS', 'tricky/',
-                          'APP_PACK', 'mobileprovision'):
+                          'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision'):
             self.assertNotIn(forbidden, joined)
 
     def test_play_values_are_explicit(self):
