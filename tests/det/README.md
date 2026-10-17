@@ -49,6 +49,8 @@ the gate. All three are recorded per profile in the gate dir.
 - `knob_registry.py --check` — every runtime `PS2X_/GE1_` literal registered
   with class and owner (`knob_registry.tsv`).
 - `hashdiff.py` — `[det-hash:v1]` stream comparator (verbatim lab logic).
+- `gs_compare.py` — perceptual gate: SSIM/PSNR/block-MAE/tile-max per
+  completed frame, baseline vs candidate dirs (exit 0 iff every frame passes).
 
 ## Key management
 

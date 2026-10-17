@@ -57,3 +57,23 @@ Provenance: generalized from the lab's `odin_bench.sh`/`odin_run.py`
 (repo-split-2); sampler set, analysis and summary format unchanged.
 Present-window 120 Hz analysis and knob-variant recipes stay lab-side until
 their own generalization.
+
+## Mac fixed-workload bench (`eebench.py`) and perf windows (`winseries.py`)
+
+`eebench.py mint/run/ab` replays a fixed pad script on a Mac runner and
+reports GameThread ms, retired instructions and cycles per update, with an
+end det-hash per leg (AB interleaves A/B pairs with median/MAD/CV and a
+bootstrap 95% CI):
+
+```sh
+python3 tools/bench/eebench.py mint --runner RUNNER --iso ~/SSX3.iso \
+  --elf SLUS_207.72 --ge1-lib libge1_gs.dylib --microvu-lib libmv2_microvu.dylib \
+  --pad mypad.txt --out legs/mint --save-at 3000
+```
+
+`--pinned DIR` fills the input flags from the standard pinned layout;
+`--card` seeds a memory-card copy per run. The lab p-lane lease is used when
+importable, otherwise the bench runs unleased. `ebn1_sample.c` (built
+automatically under `--work`) is the Mac thread/instruction sampler.
+`winseries.py <perf.log> [--slow|--full]` prints per-window role-summed CPU
+and present series from runner `[perf]` logs.

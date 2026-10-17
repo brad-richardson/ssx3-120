@@ -74,11 +74,12 @@ presets/full120-ios.env	fork@f7a96f23	tools/ssx3/presets/full120-ios.env	78405b4
 presets/full120.env	fork@f7a96f23	tools/ssx3/presets/full120.env	49a78599d7c35c5e1485dd0291566b2126befe74cc39ef04d1c503ac8524704a	541	verbatim
 presets/ios.env	fork@f7a96f23	tools/ssx3/presets/ios.env	d2df87c8dff351ca6626154411c593cb2be3ba2ad9d0f24eb12cdb1f89ebcd41	1049	composition:reconciled-signed-off-play-keys
 presets/ps2x.env	fork@5235b114	tools/ssx3/presets/ps2x.env	cbed1e8f27757bf8c97946329c4b094e64d5994801de4ed2e52acfa3596a9f3c	1565	composition:reconciled-signed-off-play-keys
-tests/det/README.md	authored:gate-docs	-	969575962403b75f84fb1797231697694d862a9b4e59f868b2889107ce38e114	2778	new
+tests/det/README.md	authored:gate-docs	-	fbd2689ec58cd135e88daed346063e09bdc15ac77580cf17ae92621db33add75	2929	new
 tests/det/boot/baseline.py	lab@ed718e09	local/tooling/boot/baseline.py	d1b7fb9849051592771701513f68cc967691442f96235695af484d41f3743a42	39073	composition:generalized-key-store
 tests/det/boot/pm1_macthreads.c	lab@ed718e09	local/tooling/boot/pm1_macthreads.c	cce19a7656211f23269bfac1616e368be0a08c4e296ad28bd65142639c149ac4	2512	verbatim
 tests/det/boot/ssx3_boot.py	lab@ed718e09	local/tooling/boot/ssx3_boot.py	963fc4321f88859cb2e807701d929d36b9e970cc0c7835d9f04c3f1f8560eb95	25405	composition:generalized-inputs-and-optional-lease
 tests/det/compare.py	authored:canonical-port	-	ca9e995e6d9bb211b13af745d2cc48f5af07b7bbd0f636290b2149da8ce0c793	7012	new
+tests/det/gs_compare.py	lab@0ac8b01f	local/tooling/gs_compare.py	80f87d33abdfcaeff6ff84d0d15ae86b43331ecbdf834f7e1f344c6c0e18c752	10584	verbatim
 tests/det/hashdiff.py	authored:verbatim-lab-logic	-	79534198aff823509502b5b58365441d17b6f45a1b84ed480dd7550661f456fd	2970	new
 tests/det/keys/299a648-reference-native-arm64-fr1r1-t2400-snd1-1x-dfd20025/coverage.txt	authored:key-extraction	-	1c7c8a5abd23ac8e243cb97c5f2a33c4c074b9f5e88a80fe8e96f19b031cca85	368	new
 tests/det/keys/299a648-reference-native-arm64-fr1r1-t2400-snd1-1x-dfd20025/hashes.bin	authored:key-extraction	-	7e5ca652f1087c18eb1895d138337bea60f5617e60a7ff63093eb9587cb032f8	455818	new
@@ -102,11 +103,14 @@ tests/det/knob_registry.tsv	lab@ed718e09	local/tooling/knob_registry.tsv	0e89c84
 tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	7fa7cf436d92246c16dbe6fe08e47a8e1bbb5242496efe696fb83a9ed3a7222c	10811	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
 tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
-tools/bench/README.md	authored:bench-docs	-	ef41c4517f77577788b6906b409efa8778581bf060a95ca10c1f189ed70cedc0	2410	new
+tools/bench/README.md	authored:bench-docs	-	1ee6975a0f741d3d1d3519cb79f724a99fa001057fab9550a5593fddc915f97b	3350	new
 tools/bench/bench-android.py	lab@ed718e09	local/tooling/odin_run.py	7a0f1ed94229fe8f8d8cb3e1dd74aa7dee97c8eb506d55083cc2f9e45895a403	80879	composition:generic-device-layer
 tools/bench/bench-android.sh	lab@ed718e09	local/tooling/odin_bench.sh	43434ce837b6674940e3d2f7a56adffd4aa7237226ccdbe02d2d19e55be05aa8	10765	composition:rewritten-generic-driver
 tools/bench/collate.py	authored:bench-collator	-	b10cffdc695cdcbde22cd363fa62970dd09bf8d01781ab2fe5cbe5c915a18770	1863	new
+tools/bench/eebench.py	lab@0ac8b01f	local/tooling/perf/eebench/eebench.py	7d7129284b8b6c5a2dab03a6c2846d5e81188846f66a53e31b6f2f35bb569a6e	29181	composition:parameterised-inputs-and-optional-lease
+tools/bench/ebn1_sample.c	lab@0ac8b01f	local/tooling/perf/eebench/ebn1_sample.c	a779e5306d54653c622e35bd8263245e3c6855486fb5b04343ce248cbc4df248	2881	verbatim
 tools/bench/legs.example.json	authored:bench-template	-	0c9553b492a3032ac0c44a38c6b071d2a2c084b0a6e959dc257e5cb6f338f6da	840	new
+tools/bench/winseries.py	lab@0ac8b01f	local/tooling/perf/winseries.py	69917d801fa0044492f04cfa4e29a9988cf90677b408ca081d8ba6386f3e1330	9309	composition:product-docstring
 tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17dc54ab2a6d511238945fcd4999767e5d90d74168a76722f72c3cbce121a8c1	6842	verbatim
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
 tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	f90dbecb06dd58d26acdcd68ef000ecded9226fa5fa1beba1c27c8a2cceb95e2	22824	composition:product-paths-and-host-support
@@ -121,7 +125,7 @@ tools/ssx3/offline-core/OfflineBridge.cpp	fork@5235b114	tools/ssx3/offline-core/
 tools/ssx3/offline-core/OfflineCore.cpp	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.cpp	d99f8c018acb377846874b3cbbbd14360b78eed7b2d632d7360aff23e2a4f0f6	52436	verbatim
 tools/ssx3/offline-core/OfflineCore.h	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.h	f89dcda56fc137b4c39587887c3050674fe3ca2ca99f1e6d301a84342042c62c	3567	verbatim
 tools/ssx3/offline-core/README.md	fork@f7a96f23	tools/ssx3/offline-core/README.md	78d9d647c54cd405b20c2907e92b09fd096e683c571568d9fa930589be77e533	1061	verbatim
-tools/ssx3/pgo/pgo_flush.c	fork@f7a96f23	tools/ssx3/pgo/pgo_flush.c	8727f02037e15b547d0fd49ce938ccb6a701a81824e2cc134938751d4c4d51fa	632	verbatim
+tools/ssx3/pgo/pgo_flush.c	fork@f7a96f23	tools/ssx3/pgo/pgo_flush.c	70b6dc0f4ab240fa6d7ccb82f22b42a9ca9f4ae17d76119d648e752644ba3c78	1140	composition:folded-lab-pgo-flush-rationale
 tools/ssx3/prebuilt-consumer.cmake	fork@f7a96f23	tools/ssx3/prebuilt-consumer.cmake	64d7ded79f7f64fa484f7a5d157a3cf37eac764c9693afc9f14011e0bae0dfae	3687	removed:duplicate-of-engine-copy
 tools/ssx3/prebuilt.py	fork@5235b114	tools/ssx3/prebuilt.py	98eb922c8c79c32b03dad73c9836c62778aedfefb0280f559ade3e5b8295922d	45670	composition:engine-pinned-contract
 tools/ssx3/remaster_font.py	fork@f7a96f23	tools/ssx3/remaster_font.py	c8ad4cf729002ff19a2671eb93f1a77d243d22964c039e68be6baecb2f199366	14254	verbatim
@@ -137,6 +141,7 @@ tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turni
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim
+tools/ssx3/upscale_textures.py	lab@0ac8b01f	tools/upscale_textures.py	08f3230ffc14d038e1028f0eab0831fdfe51fd891c23215889bb504940a74975	13703	composition:generalised-host-wording-and-data-contract
 tools/ssx3/verify-turnip.sh	fork@5235b114	tools/ssx3/verify-turnip.sh	acc577e8f3a280d75bc279fd25f1e5b7dda87468b3bac47a29d9e7cb944aab7b	3252	verbatim
 tools/ssx3/write_prewarm.py	fork@f7a96f23	tools/ssx3/write_prewarm.py	7aef838b4211d832e312ff1b23ba5029e67feaec9daec2769bd25e4da5680703	844	verbatim
 tools/ssx3_codegen_scan.py	fork@f7a96f23	tools/ssx3_codegen_scan.py	de2ca1d0978856720ea1a06d0b7b66b5a97f52561a7af95889063ab644ffe8ce	7250	verbatim

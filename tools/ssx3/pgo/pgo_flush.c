@@ -1,5 +1,16 @@
-/* Optional Android local PGO training: flush every 30 s before process kill.
- * Compile only with -fprofile-generate; outputs remain private. */
+/* Optional Android local PGO training: periodic flush before process kill.
+ *
+ * Staged via -Pps2xPgoHelperDir=<this dir>; compile only with
+ * -fprofile-generate. Profiles stay private (regenerate after guest-code
+ * changes).
+ *
+ * Why a helper thread (PG2 GEN lineage): device runs end with force-stop
+ * (SIGKILL, no atexit flush), and continuous-mode (%c) profiles came back
+ * unmergeable (0-byte / "truncated profile data"). So GEN uses a PLAIN
+ * LLVM_PROFILE_FILE (no %c) and flushes the standard buffered profile every
+ * 30 s from a helper thread; the last flush before force-stop wins (loses
+ * <= 30 s of counts). No guest interaction.
+ */
 #include <pthread.h>
 #include <unistd.h>
 
