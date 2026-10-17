@@ -190,7 +190,7 @@ def main():
     new_map = {(e['kind'], e['rid']): p for e, p in back.records(G)}
     changed = sorted(k for k in old_map if new_map[k] != old_map[k])
     assert changed == [(16, se['rid'])], changed
-    proc = subprocess.run([sys.executable, str(REPO / 'local/research/TK10/make_composite.py'), a.iso,
+    proc = subprocess.run([sys.executable, str(REPO / 'tk10/make_composite.py'), a.iso,
                            str(patched_full), str(out)], capture_output=True, text=True)
     Path(a.receipt).with_suffix('.builder.log').write_text(proc.stdout + proc.stderr)
     if proc.returncode:

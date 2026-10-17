@@ -78,7 +78,7 @@ def main():
  oldrecs={(e['kind'],e['rid']):p for e,p in world.records(G)};newrecs={(e['kind'],e['rid']):p for e,p in back.records(G)};changed=[key for key in oldrecs if oldrecs[key]!=newrecs[key]];assert changed==[(16,next(e['rid'] for e,p in recs if e['kind']==16))]
  # Existing definition/spline payload stays byte-exact, apart from the table header.
  assert original_script[:68]==script[:68] and original_script[92:]==script[92:len(original_script)]
- with out.with_suffix('.composite.json').open('w') as f:subprocess.run([sys.executable,str(R/'local/research/TK10/make_composite.py'),str(ISO),str(patchedfile),str(out)],stdout=f,check=True)
+ with out.with_suffix('.composite.json').open('w') as f:subprocess.run([sys.executable,str(R/'tk10/make_composite.py'),str(ISO),str(patchedfile),str(out)],stdout=f,check=True)
  outputs=[sha(out.read_bytes()) for _ in range(2)];assert outputs[0]==outputs[1];assert W(patchedfile).raw(G)==patched
  receipt=dict(input=str(src),input_sha_reads=inputs,output=str(out),output_sha_reads=outputs,donor_sha=sha(DONOR.read_bytes()),donor_id=a.donor_id,world_rid=rid,geometry=geometry,collision_rid=colrid,collision_oid=hex(coloid),old_definition=olddef,new_definition=struct.unpack_from('<4I',newdef),changed_existing_records=changed,added_records=[[12,colrid]],existing_script_payload_preserved=True,all_groups_readback=True,group_bytes_before=len(world.raw(G)),group_bytes_after=len(patched),group_count=len(world.sdb['groups']))
  out.with_suffix('.patch.json').write_text(json.dumps(receipt,indent=2)+'\n');tmp.unlink();print(json.dumps(receipt,indent=2))

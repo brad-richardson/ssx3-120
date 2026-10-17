@@ -182,7 +182,7 @@ def main():
     # instance records (kind 3) and every other record of the group are byte-identical
     brecs = back.records(a.group)
     assert [(e, p) for n, (e, p) in enumerate(brecs) if n != ki] == [(e, p) for n, (e, p) in enumerate(recs) if n != ki]
-    proc = subprocess.run([sys.executable, str(REPO / 'local/research/TK10/make_composite.py'), a.iso,
+    proc = subprocess.run([sys.executable, str(REPO / 'tk10/make_composite.py'), a.iso,
                            str(patched_full), str(out)], capture_output=True, text=True)
     Path(a.receipt).with_suffix('.builder.log').write_text(proc.stdout + proc.stderr)
     if proc.returncode:

@@ -37,10 +37,11 @@ DONOR = Path('/Users/brad/dev/ssx3-work/pinned/tricky/donor')
 def main():
     ap = argparse.ArgumentParser(description=__doc__); ap.add_argument('input'); ap.add_argument('output')
     ap.add_argument('--course', required=True, choices=sorted(CONFIG)); ap.add_argument('--receipt')
+    ap.add_argument('--donor-dir', default=str(DONOR))
     a = ap.parse_args(); src = Path(a.input); out = Path(a.output); assert not out.exists(); out.parent.mkdir(parents=True, exist_ok=True)
     inputs = [sha(src.read_bytes()) for _ in range(2)]; assert inputs[0] == inputs[1]
     G, scen, stem = CONFIG[a.course]
-    D = DONOR / stem; pbd = PBD((D / (stem + '.pbd')).read_bytes()); colls = read_tricky_collision(ssf_to_gsf((D / (stem + '.ssf')).read_bytes()))
+    D = Path(a.donor_dir) / stem; pbd = PBD((D / (stem + '.pbd')).read_bytes()); colls = read_tricky_collision(ssf_to_gsf((D / (stem + '.ssf')).read_bytes()))
     raw = materialize(src.read_bytes()); bam = gdir.rename_world_members(raw, 'bam'); tmp = out.with_suffix('.bam.tmp'); tmp.write_bytes(bam); world = W(tmp)
     recs = world.records(G); fixed = []; skipped = []; cands = []
     for j, (e, p) in enumerate(recs):
@@ -98,7 +99,7 @@ def main():
         unchanged_groups = [g['index'] for g in world.sdb['groups'] if g['index'] != G and world.raw(g['index']) == back.raw(g['index'])]
         assert len(unchanged_groups) == len(world.sdb['groups']) - 1
         with out.with_suffix('.composite.json').open('w') as f:
-            subprocess.run([sys.executable, str(R / 'local/research/TK10/make_composite.py'), str(ISO), str(full), str(out)], stdout=f, check=True)
+            subprocess.run([sys.executable, str(R / 'tk10/make_composite.py'), str(ISO), str(full), str(out)], stdout=f, check=True)
         outputs = [sha(out.read_bytes()) for _ in range(2)]; assert outputs[0] == outputs[1]; tmp.unlink(); full.unlink()
         receipt = dict(course=a.course, group=G, input=str(src), input_sha_reads=inputs, output=str(out), output_sha_reads=outputs, fixed=fixed, skipped=skipped,
                        changed_records=[list(k) for k in changed], other_groups_byte_identical=True, all_groups_readback=True)

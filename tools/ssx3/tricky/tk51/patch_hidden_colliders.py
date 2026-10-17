@@ -56,9 +56,9 @@ def model_bytes(oid,model):
  out+=bytes(-len(out)%16);struct.pack_into('<I',out,36,len(out));return bytes(out)
 
 def main():
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');ap.add_argument('--census',default=str(R/'data'/'tk51-hidden-census.json'));ap.add_argument('--scenery-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery');ap.add_argument('--donor-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/donor');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
  inputs=[sha(src.read_bytes()) for _ in range(2)];assert inputs[0]==inputs[1]
- census=json.loads((R/'local/research/TK51/receipts/p3-hidden-census.json').read_text());donor_stem={'merq':'merquer','elys':'elysium'}.get(a.course,a.course);census=next(r for r in census if r['course']==donor_stem);eligible={x['source'] for x in census['hidden'] if x['solid_proxy_candidate']}
+ census=json.loads(Path(a.census).read_text());donor_stem={'merq':'merquer','elys':'elysium'}.get(a.course,a.course);census=next(r for r in census if r['course']==donor_stem);eligible={x['source'] for x in census['hidden'] if x['solid_proxy_candidate']}
  if a.only_source is not None:
   assert a.course=='mesa' and a.only_source in eligible,'diagnostic subset must name an admitted Mesa proxy'
   eligible={a.only_source}
@@ -67,8 +67,8 @@ def main():
  config={'gari':(33,'gari-f',0,0),'mesa':(80,'mesa-final',1443,1400),'snow':(56,'snow-f',0,0),'aloha':(22,'aloha-b',3,0),'merq':(148,'merq-d',0,0),'untrack':(158,None,1,0)};G,scenery,anchor,anchor_rid=config[a.course]
  raw=materialize(src.read_bytes());stem=a.course;bam=gdir.rename_world_members(raw,'bam');tmp=out.with_suffix('.bam.tmp');tmp.write_bytes(bam);world=W(tmp);recs=world.records(G);T=next(e['track']for e,p in recs if e['kind']==3)
  if scenery:
-  rc=json.loads((Path('/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery')/(scenery+'-scenery.json')).read_text());assert rc['instance_source'][anchor_rid]==anchor
- D=Path('/Users/brad/dev/ssx3-work/pinned/tricky/donor')/donor_stem;D=D if D.exists()else WROOT/'p3-donor/untrack';pbd=PBD((D/(donor_stem+'.pbd')).read_bytes());ssf=(D/(donor_stem+'.ssf')).read_bytes();gs=ssf_to_gsf(ssf);gp=instance_gameplay(gs,len(pbd.instances));colls=read_tricky_collision(gs)
+  rc=json.loads((Path(a.scenery_dir)/(scenery+'-scenery.json')).read_text());assert rc['instance_source'][anchor_rid]==anchor
+ D=Path(a.donor_dir)/donor_stem;D=D if D.exists()else WROOT/'p3-donor/untrack';pbd=PBD((D/(donor_stem+'.pbd')).read_bytes());ssf=(D/(donor_stem+'.ssf')).read_bytes();gs=ssf_to_gsf(ssf);gp=instance_gameplay(gs,len(pbd.instances));colls=read_tricky_collision(gs)
  # Derive the already-installed placement from a visible instance, never a new fit.
  oldip=next(p for e,p in recs if e['kind']==3 and e['rid']==anchor_rid);vals=struct.unpack_from('<16f',oldip,16);scale=struct.unpack_from('<f',oldip,132)[0];oldm=[list(vals[k*4:k*4+4]) for k in range(4)]
  for k in range(3):oldm[k][:3]=[v*scale for v in oldm[k][:3]]
@@ -115,6 +115,6 @@ def main():
  result,_,_=assemble_archive(bam,report,raws,bytes(sdb),jobs=2,reuse_original_blocks=True);full=out.with_suffix('.materialized.BIG');full.write_bytes(gdir.rename_world_members(result,stem));back=W(full);assert all(back.raw(g['index'])==raws[g['index']] for g in world.sdb['groups']);new={(e['kind'],e['rid']):p for e,p in back.records(G)};changed=[(e['kind'],e['rid'])for e,p in world.records(G)if new[(e['kind'],e['rid'])]!=p];assert changed==[(16,next(e['rid']for e,p in recs if e['kind']==16))];assert original[:68]==script[:68];expected=bytearray(original)
  for start,stop in original_allowed_ranges:expected[start:stop]=script[start:stop]
  assert expected[92:]==script[92:len(original)],'only class row and unused Object program may change in old payload'
- with out.with_suffix('.composite.json').open('w')as f:subprocess.run([sys.executable,str(R/'local/research/TK10/make_composite.py'),str(ISO),str(full),str(out)],stdout=f,check=True)
+ with out.with_suffix('.composite.json').open('w')as f:subprocess.run([sys.executable,str(R/'tk10/make_composite.py'),str(ISO),str(full),str(out)],stdout=f,check=True)
  outputs=[sha(out.read_bytes()) for _ in range(2)];assert outputs[0]==outputs[1];receipt=dict(course=a.course,diagnostic_only_source=a.only_source,input_sha_reads=inputs,output_sha_reads=outputs,donor_ssf_sha=sha(ssf),hidden_instances=receipts,changed_existing_records=changed,existing_records_preserved_except_script=True,all_groups_readback=True,visibility_flags='0x00200000; no static draw bit0',source_parts_preserved=True,trigger_reset_helpers_not_imported=True,class_binding=class_receipt,existing_payload_allowed_changes=original_allowed_ranges,eligibility='initially hidden, player-collidable, mode1, immovable, no effect, SSF static flag128; reset/hazard surfaces0,13,18 excluded');out.with_suffix('.patch.json').write_text(json.dumps(receipt,indent=2)+'\n');tmp.unlink();print(json.dumps(receipt,indent=2))
 if __name__=='__main__':main()

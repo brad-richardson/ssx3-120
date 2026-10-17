@@ -232,7 +232,7 @@ def main():
     back = W(patched_full)
     readback = all(back.raw(g['index']) == raws[g['index']] for g in groups)
     assert readback, 'group readback'
-    proc = subprocess.run([sys.executable, str(REPO / 'local/research/TK10/make_composite.py'), a.iso,
+    proc = subprocess.run([sys.executable, str(REPO / 'tk10/make_composite.py'), a.iso,
                            str(patched_full), str(out)], capture_output=True, text=True)
     Path(a.receipt).with_suffix('.builder.log').write_text(proc.stdout + proc.stderr)
     if proc.returncode:
