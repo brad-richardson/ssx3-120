@@ -146,6 +146,9 @@ COURSES = {
         oracle_staged='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
         oracle_s3='e6ea3205e05b901ad5c8c79dec5842c4173cd73bfc951ed087d8b51eba1f11cb',
         fix_group=None, preview_loc='ESS3',
+        # Relocate group verbatim (TKP5 tooling/relocate.sh group()); the
+        # TK56 fix is unwired for untrack but s5 still relocates p151->179.
+        s5_group=158,
     ),
     'snow': dict(
         big='SNOW.BIG', donor='snow', ps2_tool='tk16/ps2_as_gc.py',
@@ -1146,6 +1149,8 @@ class Chain:
     # -- rung: TKP5 relocate ----------------------------------------------------------
     # Programs = TK56 fix receipt plan (moved) + s3 patch.json (created).
     # Pipe/Mega pass through (nothing to relocate). Proven: gari -> 991929fe.
+    # The relocate group is the TKP5 relocate.sh group() map, NOT the TK56
+    # fix group: they coincide except untrack (reloc 158, no TK56 fix).
     def rung_s5(self, c, r, base, staged, fix_receipt):
         w = self.W / f'w-{c}-s5'
         w.mkdir(parents=True, exist_ok=True)
@@ -1165,7 +1170,8 @@ class Chain:
             print(f'{c} s5 copy (nothing to relocate)', flush=True)
         else:
             run('s5', sys.executable, self.T / 'tkp5' / 'relocate_step.py',
-                self.a.ssx3_iso, base, out, '--group', str(r['fix_group']),
+                self.a.ssx3_iso, base, out, '--group',
+                str(r.get('s5_group', r['fix_group'])),
                 '--programs', *progs, '--reference', staged,
                 '--receipt', w / 's5.json', '--work', w / 'work',
                 cwd=self.W, log=self.log(c, 's5'))
