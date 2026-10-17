@@ -75,7 +75,13 @@ of the lobby source: `ssx3-lobby.service` (production unit, identical to
 the live unit, SHA-256 `54e28e95…e44e`) and `lobby.toml` (production
 template, refreshed repo-to-repo from the lab infra tree at `20794f7a` —
 the limits-load-1 deploy source — checksum-identical to the live config
-`5d74f9f2…`, key names verified equal). The separate
+`5d74f9f2…`, key names verified equal). online-v0-1 (2026-10-17)
+added the Quick Play endpoint (`[state_sync]` on UDP 3757; relay range
+3658-3756, `max_pairs` 98) and deployed it: running binary SHA-256
+`ca0f26ef…` (musl rebuild from this tree reproduces it), live config
+`277b3d94…` = this template, unit unchanged; the prior binary
+`af6a37df…` is kept as `ssx3-lobby.previous` and the prior config as
+`/etc/ssx3-lobby/lobby.toml.pre-online-v0-1`. The separate
 `ssx3-lobby` repository stays for history until its `online-120-2` branch
 merges. MComm is never published.
 
