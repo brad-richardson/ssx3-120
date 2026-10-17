@@ -32,9 +32,10 @@ max_sessions = 256
 max_queue = 128
 # Admission (lane A): active-pair ceiling, per-IP pair ceiling (NAT
 # households share one IP), per-IP queue ceiling (storm fairness).
-# max_pairs is N-1 (100 relay ports); refused waiters stay queued and
-# retry, and the quik echo carries FULL=1 for the client message.
-max_pairs = 99
+# max_pairs is N-1 (99 relay ports; 3757 is Quick Play); refused
+# waiters stay queued and retry, and the quik echo carries FULL=1 for the
+# client message.
+max_pairs = 98
 max_pairs_per_ip = 4
 max_queue_per_ip = 8
 # Sessions (reserved names) per IP (M2): a few dozen IPs cannot hold
@@ -64,7 +65,7 @@ mode = "always"
 # reads the assigned RLYPORT from each +ses, so concurrent pairs route
 # to their own relay socket.
 port_start = 3658
-port_end = 3757
+port_end = 3756
 idle_timeout_secs = 120
 # Per-pair packet token buckets (rate/s sustained + burst). A stock-60
 # race needs ~40 pps per pair; these allow headroom plus the opening
@@ -102,3 +103,11 @@ quick_track = 2
 quick_mode = 0
 # Fixed server SKEY hex; empty = minted once at startup.
 server_key = ""
+
+[state_sync]
+# Quick Play netplay (online-v0-1): 120<->120 matchmaking, START barrier,
+# STATE relay and canonical results on one UDP port, the top of the relay
+# UDP range the security list already opens (the O5 relay ends at 3756).
+enable = true
+bind = "0.0.0.0"
+port = 3757

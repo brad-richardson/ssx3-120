@@ -27,15 +27,16 @@ name = "Intermediate"
 peak = 4
 
 # Connection/admission caps, pinned explicitly (= the lobby code
-# defaults; see limits-load-1 REPORT). max_pairs is N-1 (100 relay
-# ports); refused waiters stay queued and the quik echo carries FULL=1.
+# defaults; see limits-load-1 REPORT). max_pairs is N-1 (99 relay
+# ports; 3757 is Quick Play); refused waiters stay queued and the quik
+# echo carries FULL=1.
 [limits]
 max_connections = 512
 max_per_ip = 16
 msg_per_sec_per_ip = 60
 max_sessions = 256
 max_queue = 128
-max_pairs = 99
+max_pairs = 98
 max_pairs_per_ip = 4
 max_queue_per_ip = 8
 max_sessions_per_ip = 6
@@ -53,7 +54,7 @@ mode = "always"
 # Range includes the game's well-known P2P port 3658: the first pair
 # gets 3658, so relay=always works with no client change.
 port_start = 3658
-port_end = 3757
+port_end = 3756
 idle_timeout_secs = 120
 # Per-pair / per-role packet token buckets (a stock-60 race needs
 # ~40 pps per pair); per-role handshake bucket (one enrollment costs
@@ -86,3 +87,11 @@ quick_track = 2
 quick_mode = 0
 # Fixed server SKEY hex; empty = minted once at startup.
 server_key = ""
+
+[state_sync]
+# Quick Play netplay (online-v0-1): 120<->120 matchmaking, START barrier,
+# STATE relay and canonical results on one UDP port, the top of the relay
+# UDP range the security list already opens (the O5 relay ends at 3756).
+enable = true
+bind = "0.0.0.0"
+port = 3757

@@ -48,7 +48,7 @@ docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe
 docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
 games/ssx3/ssx3.toml	fork@f7a96f23	games/ssx3/ssx3.toml	c0c02d5809713fa7a2cd03a473dc02d6c3e0a579f79b942ea04587ed0b91f8d5	57898	verbatim
-infra/README.md	infra-staged	public-infra/README.md	415c8cf5d368745bcbd6e09c3a8c11e979cc318a653746af139d15b42c5feb85	4472	verbatim
+infra/README.md	infra-staged	public-infra/README.md	835ad093c02144b455d2fcbaa3cfa0598f8837e888bce0c033c324c846049aa5	4546	verbatim
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	5cf8c8b5aa4603ff9e4374e3f1ce6792944f690c0e7a39b5bc3ec49c1da9bd15	1339	verbatim
 infra/backup-state.sh	infra-staged	public-infra/backup-state.sh	f6022aa0d3e4cbae0aa3e78d555425be4d3ddf8843fa799e051f217677f7dff3	545	verbatim
 infra/check-cloud-init.sh	infra-staged	public-infra/check-cloud-init.sh	d153bd54b8d6029fa72d4b44adb97e8f1d128e9a70dc023c7ba2046178de2224	3076	verbatim
@@ -56,7 +56,7 @@ infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	42f4a8
 infra/deploy-lobby.sh	infra-staged	public-infra/deploy-lobby.sh	00acd5ccaff67fb6c974986b4a0d303615d0db0b9767e05ae4537e594a28b19c	3951	verbatim
 infra/harden-host.sh	infra-staged	public-infra/harden-host.sh	d013cfdfb16c7607881d79962250d4da9e68dfd2565bc2f565b67192c3c521d2	1761	verbatim
 infra/lobby-compose.yaml	infra-staged	public-infra/lobby-compose.yaml	896d59b5f0c86765fec3462602ccade52c91da9f55906e4d0bcaffbf5f29f622	811	verbatim
-infra/lobby-rust/lobby.toml	infra-staged	public-infra/lobby-rust/lobby.toml	5d74f9f2cdd0aeb0a9cc37d78097ed80d3218011c1c621f5a03b174cc52b8e22	2517	verbatim
+infra/lobby-rust/lobby.toml	infra-staged	public-infra/lobby-rust/lobby.toml	277b3d94210f93fd2235350e84b6b4ad32e891788ccd8885bc80287052267ade	2816	verbatim
 infra/lobby-rust/ssx3-lobby.service	infra-staged	public-infra/lobby-rust/ssx3-lobby.service	54e28e95fcae068b415c8b9664673e0e67bba3dc6dd95494e4c0a60eef44e2cd	964	verbatim
 infra/oci/.terraform.lock.hcl	infra-staged	public-infra/oci/.terraform.lock.hcl	5a98238fecc5fae00a98afb3a2a1c221ec3181f2af66b293a522911f79d12adf	2113	verbatim
 infra/oci/budget.tf	infra-staged	public-infra/oci/budget.tf	74be240ff605a257edb75f5520581d77d7c2be9c7301677660c3d91f44b09344	1356	verbatim
