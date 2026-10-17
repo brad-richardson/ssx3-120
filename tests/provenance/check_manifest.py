@@ -4,8 +4,11 @@
 - Every file listed in SOURCE_MANIFEST.tsv must match its recorded SHA256.
 - Every fork-origin row must additionally match the pinned engine object
   (`git show <engine-pin>:<old-path>` inside deps/PS2Recomp).
-- Lab/infra rows carry provenance in SOURCE_PROVENANCE.md; their bytes are
-  covered by the manifest hash (auditable against the cited sources).
+- Lab/infra rows carry provenance in SOURCE_PROVENANCE.md; their split-time
+  bytes are recorded by the manifest hash (auditable against the cited sources).
+- Authored (new) and composition rows may change after the split; a changed
+  hash is reported as EDITED-SINCE-SPLIT, not a failure. Verbatim rows stay
+  strict.
 Usage: python3 tests/provenance/check_manifest.py  (run from the repo root)
 """
 import hashlib
@@ -27,7 +30,7 @@ def sha256_file(path):
 def main():
     engine = ROOT / 'deps' / 'PS2Recomp'
     pin = subprocess.check_output(['git', '-C', str(engine), 'rev-parse', 'HEAD'], text=True).strip()
-    bad, expected, checked, engine_checked = [], [], 0, 0
+    bad, expected, edited, checked, engine_checked = [], [], [], 0, 0
     with (ROOT / 'SOURCE_MANIFEST.tsv').open() as f:
         header = f.readline()
         assert header.startswith('new_path\torigin'), header
@@ -45,7 +48,15 @@ def main():
                 bad.append((new, 'missing file'))
                 continue
             if sha256_file(p) != want:
-                bad.append((new, 'manifest sha mismatch'))
+                # Verbatim rows must stay byte-identical to the engine copy.
+                # Authored (new) and composition rows are this repo's own files:
+                # edits after the split are expected and reported, not fatal.
+                if status == 'verbatim':
+                    bad.append((new, 'manifest sha mismatch (verbatim row edited; '
+                                     'reclassify it as composition:<reason>)'))
+                else:
+                    edited.append(new)
+                    checked += 1
                 continue
             if origin.startswith('fork@'):
                 if status == 'verbatim':
@@ -65,6 +76,8 @@ def main():
         checked, engine_checked, len(expected), len(bad), pin[:8]))
     for name, why in expected:
         print('EXPECTED-DIFF %s: %s' % (name, why))
+    for name in edited:
+        print('EDITED-SINCE-SPLIT %s' % name)
     for name, why in bad:
         print('BAD %s: %s' % (name, why))
     return 1 if bad else 0

@@ -52,7 +52,7 @@ infra/README.md	infra-staged	public-infra/README.md	4c6576cd748e47fc6781dc60aa6b
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	5cf8c8b5aa4603ff9e4374e3f1ce6792944f690c0e7a39b5bc3ec49c1da9bd15	1339	verbatim
 infra/backup-state.sh	infra-staged	public-infra/backup-state.sh	f6022aa0d3e4cbae0aa3e78d555425be4d3ddf8843fa799e051f217677f7dff3	545	verbatim
 infra/check-cloud-init.sh	infra-staged	public-infra/check-cloud-init.sh	d153bd54b8d6029fa72d4b44adb97e8f1d128e9a70dc023c7ba2046178de2224	3076	verbatim
-infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	42f4a8be10d2afc8e80ba2d1c63c3075e1aad7ceb17fa2a5f4bb86f86fe1da2b	5947	verbatim
+infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	3f366ad8ace8ff60c84bf3fc2a847945e9b733117ad7f927e8f4da42bbae7051	7669	composition:when-idle-statusz-deploy-gate
 infra/deploy-lobby.sh	infra-staged	public-infra/deploy-lobby.sh	00acd5ccaff67fb6c974986b4a0d303615d0db0b9767e05ae4537e594a28b19c	3951	verbatim
 infra/harden-host.sh	infra-staged	public-infra/harden-host.sh	d013cfdfb16c7607881d79962250d4da9e68dfd2565bc2f565b67192c3c521d2	1761	verbatim
 infra/lobby-compose.yaml	infra-staged	public-infra/lobby-compose.yaml	896d59b5f0c86765fec3462602ccade52c91da9f55906e4d0bcaffbf5f29f622	811	verbatim
@@ -125,7 +125,7 @@ tools/ssx3/offline-core/OM1StubHost.cpp	fork@f7a96f23	tools/ssx3/offline-core/OM
 tools/ssx3/offline-core/OfflineBridge.cpp	fork@5235b114	tools/ssx3/offline-core/OfflineBridge.cpp	7f9af23c0316c499e2aac1cfaee64b08d61675727c085a31607acc88b2144186	13616	verbatim
 tools/ssx3/offline-core/OfflineCore.cpp	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.cpp	d99f8c018acb377846874b3cbbbd14360b78eed7b2d632d7360aff23e2a4f0f6	52436	verbatim
 tools/ssx3/offline-core/OfflineCore.h	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.h	f89dcda56fc137b4c39587887c3050674fe3ca2ca99f1e6d301a84342042c62c	3567	verbatim
-tools/ssx3/offline-core/README.md	fork@f7a96f23	tools/ssx3/offline-core/README.md	78d9d647c54cd405b20c2907e92b09fd096e683c571568d9fa930589be77e533	1061	verbatim
+tools/ssx3/offline-core/README.md	fork@f7a96f23	tools/ssx3/offline-core/README.md	4757b5a0a9bc64f40a05361709f8c0166a40ff13bbdf88eb10193113f16f9824	986	composition:om1-stage-generated-from-disc
 tools/ssx3/pgo/pgo_flush.c	fork@f7a96f23	tools/ssx3/pgo/pgo_flush.c	70b6dc0f4ab240fa6d7ccb82f22b42a9ca9f4ae17d76119d648e752644ba3c78	1140	composition:folded-lab-pgo-flush-rationale
 tools/ssx3/prebuilt-consumer.cmake	fork@f7a96f23	tools/ssx3/prebuilt-consumer.cmake	64d7ded79f7f64fa484f7a5d157a3cf37eac764c9693afc9f14011e0bae0dfae	3687	removed:duplicate-of-engine-copy
 tools/ssx3/prebuilt.py	fork@5235b114	tools/ssx3/prebuilt.py	6609f5b6994f39f36427cddf9cb1852c1b513e8e9bce19884c320c6181081958	45642	composition:engine-pinned-contract

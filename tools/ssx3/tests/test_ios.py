@@ -309,6 +309,8 @@ class Om1GenerateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             work, core_dir, head = self.make_work(temp)
             with patch.object(build, 'ios_om1', side_effect=AssertionError('must skip')), \
+                 patch.object(build.platform, 'system', return_value='Darwin'), \
+                 patch.object(build.platform, 'machine', return_value='arm64'), \
                  patch.object(build, 'OM1_OFFLINE_CORE_DIR', core_dir), \
                  patch.object(build, 'OM1_REPLAY_PIN', head):
                 self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
@@ -317,7 +319,9 @@ class Om1GenerateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             work = Path(temp) / 'work'
             work.mkdir()
-            with patch.object(build, 'ios_om1', return_value=work / 'om1-stage') as gen:
+            with patch.object(build, 'ios_om1', return_value=work / 'om1-stage') as gen, \
+                 patch.object(build.platform, 'system', return_value='Darwin'), \
+                 patch.object(build.platform, 'machine', return_value='arm64'):
                 self.assertEqual(build.ensure_ios_om1_stage(args(work=work)), work / 'om1-stage')
             gen.assert_called_once()
 
