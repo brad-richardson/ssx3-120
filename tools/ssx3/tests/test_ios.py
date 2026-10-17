@@ -7,6 +7,7 @@ mocked; the preset and manifest are read from the checkout.
 import importlib.util
 import io
 import json
+import os
 import plistlib
 import tempfile
 import types
@@ -191,6 +192,95 @@ class UnguardTest(unittest.TestCase):
             (Path(temp) / 'CMakeLists.txt').write_text('unrelated content\n')
             with self.assertRaises(ValueError):
                 build.unguard_libjpeg_turbo(temp)
+
+
+class BundleAssembleTest(unittest.TestCase):
+    def make_vendor(self, root, with_tree=True):
+        vendor = Path(root) / 'vendor'
+        (vendor / '3rdparty').mkdir(parents=True)
+        if with_tree:
+            for name in build.IOS_DEPS_TREE:
+                (vendor / '3rdparty' / name).mkdir()
+        return vendor
+
+    def make_deps_src(self, root):
+        src = Path(root) / 'deps-src'
+        for name, _, _, _ in build.IOS_DEPS:
+            (src / name).mkdir(parents=True)
+        return src
+
+    def test_assembles_both_link_kinds(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = self.make_vendor(temp)
+            bundle = build.assemble_bundle(Path(temp) / 'bundle', vendor,
+                                           self.make_deps_src(temp))
+            for name, _, _, _ in build.IOS_DEPS:
+                self.assertTrue((bundle / name).is_symlink())
+            for name in build.IOS_DEPS_TREE:
+                self.assertEqual(os.readlink(bundle / name), str(vendor / '3rdparty' / name))
+
+    def test_missing_tree_dep_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = self.make_vendor(temp, with_tree=False)
+            with self.assertRaises(ValueError):
+                build.assemble_bundle(Path(temp) / 'bundle', vendor,
+                                      self.make_deps_src(temp))
+
+    def test_idempotent_reassemble(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = self.make_vendor(temp)
+            src = self.make_deps_src(temp)
+            build.assemble_bundle(Path(temp) / 'bundle', vendor, src)
+            build.assemble_bundle(Path(temp) / 'bundle', vendor, src)
+
+
+class PruneOm1Test(unittest.TestCase):
+    def make_build(self, root):
+        bld = Path(root) / 'bld'
+        (bld / 'common').mkdir(parents=True)
+        (bld / 'common' / 'libcommon.a').write_text('common')
+        (bld / 'pcsx2').mkdir()
+        (bld / 'pcsx2' / 'libPCSX2.a').write_text('pcsx2')
+        (bld / 'ge1-adapter').mkdir()
+        (bld / 'ge1-adapter' / 'libge1_gs.a').write_text('ge1')
+        deep = bld / '3rdparty' / 'libwebp'
+        deep.mkdir(parents=True)
+        (deep / 'libwebp.a').write_text('webp')
+        sdl = bld / '3rdparty' / 'sdl3'
+        sdl.mkdir(parents=True)
+        (sdl / 'libSDL3.a').write_text('sdl')
+        return bld
+
+    def test_prunes_adapter_and_sdl(self):
+        with tempfile.TemporaryDirectory() as temp:
+            dest = build.prune_om1_copy(self.make_build(temp), Path(temp) / 'om1')
+            self.assertTrue((dest / 'pcsx2/libPCSX2.a').is_file())
+            self.assertTrue((dest / 'common/libcommon.a').is_file())
+            self.assertTrue((dest / '3rdparty/libwebp/libwebp.a').is_file())
+            self.assertFalse((dest / 'ge1-adapter').exists())
+            self.assertFalse((dest / '3rdparty/sdl3').exists())
+
+    def test_missing_core_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bld = Path(temp) / 'bld'
+            bld.mkdir()
+            with self.assertRaises(ValueError):
+                build.prune_om1_copy(bld, Path(temp) / 'om1')
+
+
+class NewestBuildDirTest(unittest.TestCase):
+    def test_picks_newest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+            (work / 'ios-build-aaa').mkdir()
+            (work / 'ios-build-zzz').mkdir()
+            (work / 'ios-asm-zzz').mkdir()
+            self.assertEqual(build.newest_build_dir(work), work / 'ios-build-zzz')
+
+    def test_empty_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError):
+                build.newest_build_dir(Path(temp))
 
 
 class DoctorIosTest(unittest.TestCase):

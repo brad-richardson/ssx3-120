@@ -925,6 +925,14 @@ def android_libs(a):
 GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
 GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
 GE1_VENDOR_SHORT = 'e8ed655ec6'
+# OM1 archive vendor: the newest pre-growth tree (MTGS gained its GS/disc-CRC
+# path 09-25, GS.cpp its upscale/TFX/probe hub 10-14; either drags libwebp
+# into the OM1 island and fails the engine's Check C). This is the exact pin
+# the OM1 lane itself validated, an ancestor of the GE1 tip so it fetches
+# the same way. GE1 stays on the new pin (upscale defaults on).
+OM1_VENDOR_REPO = GE1_VENDOR_REPO
+OM1_VENDOR_PIN = '247fa6f09499f69192c52c0542305ed16119518b'
+OM1_VENDOR_SHORT = '247fa6f09'
 
 # Vendored iOS dependency sources missing from the vendor tree (the rest of
 # the GE1_IOS_DEPS set ships inside it). Same-generation pins as the
@@ -1169,11 +1177,115 @@ def validate_om1_stage(path):
     return stage
 
 
+def assemble_bundle(bundle_dir, vendor, deps_src):
+    """Assemble a GE1_IOS_DEPS bundle: fetched sources plus the three that
+    ship inside the given vendor tree (fail loud when a tree dep moves)."""
+    bundle_dir = Path(bundle_dir)
+    for name, _, _, _ in IOS_DEPS:
+        link = bundle_dir / name
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link)
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(Path(deps_src) / name, target_is_directory=True)
+    for name in IOS_DEPS_TREE:
+        target = Path(vendor) / '3rdparty' / name
+        if not target.is_dir():
+            raise ValueError('vendor tree moved: 3rdparty/' + name + ' missing under ' + str(vendor))
+        link = bundle_dir / name
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link)
+        link.symlink_to(target, target_is_directory=True)
+    return bundle_dir
+
+
+def run_vendor_build(vendor, bundle, work, jobs, label):
+    """GE1 + PCSX2 static archives via the pinned engine recipe
+    (ps2xRuntime/third_party/armsx2/build.sh ios). Returns the build dir."""
+    env = os.environ.copy()
+    env['SSX3_IOS_DEPS'] = str(bundle)
+    build_sh = ENGINE / 'ps2xRuntime/third_party/armsx2/build.sh'
+    proc = subprocess.run(['bash', str(build_sh), 'ios', '--armsx2', str(vendor),
+                           '--build-root', str(work), '--jobs', str(jobs)],
+                          env=env, cwd=str(work), text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    print(proc.stdout)
+    if proc.returncode:
+        raise ValueError(label + ' iOS archive build failed (see output above)')
+    match = re.search(r'^BUILD_DIR=(.+)$', proc.stdout, re.M)
+    if not match:
+        raise ValueError(label + ' iOS archive build printed no BUILD_DIR')
+    build_dir = Path(match[1].strip())
+    for name in ('ge1-adapter/libge1_gs.a', 'pcsx2/libPCSX2.a', 'common/libcommon.a'):
+        if not (build_dir / name).is_file():
+            raise ValueError(label + ' iOS archive build is missing ' + name)
+    return build_dir
+
+
+def newest_build_dir(work):
+    """Newest ios-build-* stamp dir (harvest fallback, not a resume key)."""
+    candidates = sorted(Path(work).glob('ios-build-*'))
+    if not candidates:
+        raise ValueError('no ios-build-* directory under ' + str(work))
+    return candidates[-1]
+
+
+def run_om1_build(vendor, bundle, work, jobs):
+    """OM1 archives from the pre-growth vendor. The run's ge1_gs link is
+    expected to fail (the current adapter needs new-core symbols), but the
+    OM1_LIB inputs (libPCSX2.a, libcommon.a, 3rdparty) complete first as
+    independent targets; harvest them when the link fails and say so. The
+    harvest only accepts a stamp dir modified by this run, never a stale
+    one (which may be the GE1 set that cannot close)."""
+    start = time.time()
+    try:
+        return run_vendor_build(vendor, bundle, work, jobs, 'OM1')
+    except ValueError as err:
+        build_dir = newest_build_dir(work)
+        if build_dir.stat().st_mtime < start:
+            raise err
+        missing = [name for name in ('pcsx2/libPCSX2.a', 'common/libcommon.a')
+                   if not (build_dir / name).is_file()]
+        if missing:
+            raise err
+        print('OM1: ge1_gs link failed as predicted (adapter needs new-core '
+              'symbols); harvested PCSX2 archives from ' + str(build_dir))
+        return build_dir
+
+
+def prune_om1_copy(build_dir, dest):
+    """Copy an OM1 archive set into the lab-pin layout: common/, pcsx2/ and
+    3rdparty/ without the SDL set (the engine excludes it) and without the
+    GE1 adapter (the island must never contain GE1 members)."""
+    build_dir, dest = Path(build_dir), Path(dest)
+    if dest.is_dir():
+        shutil.rmtree(dest)
+    for name in ('common', 'pcsx2'):
+        src = build_dir / name
+        if not src.is_dir():
+            raise ValueError('OM1 archive build is missing ' + name)
+        (dest / name).mkdir(parents=True)
+        for archive in sorted(src.glob('*.a')):
+            shutil.copy2(archive, dest / name / archive.name)
+        if (src / 'include').is_dir():
+            shutil.copytree(src / 'include', dest / name / 'include')
+    for archive in sorted((build_dir / '3rdparty').rglob('*.a')):
+        rel = archive.relative_to(build_dir)
+        if 'sdl3' in rel.parts or '._' in archive.name:
+            continue
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(archive, target)
+    if not (dest / 'pcsx2/libPCSX2.a').is_file():
+        raise ValueError('OM1 archive copy is missing pcsx2/libPCSX2.a')
+    return dest
+
+
 def ios_libs_current(work):
     """Whether ios-libs' staged archives are present (resume skip)."""
     libs = work / 'ios-libs'
     return ((libs / 'libge1_gs.a').is_file() and (libs / 'libPCSX2.a').is_file()
             and (libs / 'libcommon.a').is_file()
+            and (libs / 'om1/pcsx2/libPCSX2.a').is_file()
             and (libs / 'libSDL2.a').is_file()
             and (libs / 'MoltenVK.framework').is_dir()
             and (work / 'ios-ffmpeg/lib/libavcodec.a').is_file())
@@ -1198,21 +1310,16 @@ def ios_libs(a):
              if p.suffix in ('.ttf', '.otf') and p.is_file()]
     if len(fonts) != 5:
         raise ValueError('GE1 vendor changed: expected 5 PCSX2 fonts, found ' + str(len(fonts)))
+    om1_vendor = a.work / 'ios-vendor-om1'
+    source(OM1_VENDOR_REPO, OM1_VENDOR_PIN, om1_vendor)
+    om1_actual = subprocess.check_output(['git', '-C', str(om1_vendor), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+    if om1_actual != OM1_VENDOR_PIN:
+        raise ValueError('OM1 vendor pin mismatch: ' + om1_actual)
     resolved = pin_ios_deps(a.work / 'ios-deps-src')
-    # Assemble the GE1_IOS_DEPS bundle: fetched sources plus the three that
-    # ship inside the vendor tree.
-    bundle = a.work / 'ios-deps-bundle'
-    for name, _, _, _ in IOS_DEPS:
-        link = bundle / name
-        if link.is_symlink() or link.exists():
-            link.unlink() if link.is_symlink() else shutil.rmtree(link)
-        bundle.mkdir(parents=True, exist_ok=True)
-        link.symlink_to(a.work / 'ios-deps-src' / name, target_is_directory=True)
-    for name in IOS_DEPS_TREE:
-        link = bundle / name
-        if link.is_symlink() or link.exists():
-            link.unlink() if link.is_symlink() else shutil.rmtree(link)
-        link.symlink_to(vendor / '3rdparty' / name, target_is_directory=True)
+    # One GE1_IOS_DEPS bundle per vendor tree (the tree links differ).
+    bundle_ge1 = assemble_bundle(a.work / 'ios-deps-bundle-ge1', vendor, a.work / 'ios-deps-src')
+    bundle_om1 = assemble_bundle(a.work / 'ios-deps-bundle-om1', om1_vendor, a.work / 'ios-deps-src')
     # SDL2 for iOS (the app links SDL2main + libSDL2.a via raylib's SDL platform).
     sdl_src = a.work / 'ios-sdl2-src'
     fetch_tarball(SDL2_TARBALL, SDL2_TARBALL_SHA, a.work / 'ios-sdl2.tar.gz')
@@ -1253,32 +1360,43 @@ def ios_libs(a):
     subprocess.run(configure_cmd, cwd=ff_roots[0], check=True)
     subprocess.run(['make', '-j2'], cwd=ff_roots[0], check=True)
     subprocess.run(['make', 'install'], cwd=ff_roots[0], check=True)
-    # GE1 + PCSX2 static archives via the pinned engine recipe
-    # (ps2xRuntime/third_party/armsx2/build.sh ios).
-    for old in list(a.work.glob('ios-asm-*')) + list(a.work.glob('ios-build-*')) + \
-            list(a.work.glob('ios-deps-*')):
-        if old.name in ('ios-deps-src', 'ios-deps-bundle'):
-            continue
-        if old.is_dir() and not old.is_symlink():
-            shutil.rmtree(old)
-    env = os.environ.copy()
-    env['SSX3_IOS_DEPS'] = str(bundle)
-    build_sh = ENGINE / 'ps2xRuntime/third_party/armsx2/build.sh'
-    proc = subprocess.run(['bash', str(build_sh), 'ios', '--armsx2', str(vendor),
-                           '--build-root', str(a.work), '--jobs', str(a.jobs)],
-                          env=env, cwd=str(a.work), text=True,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-    print(proc.stdout)
-    if proc.returncode:
-        raise ValueError('GE1 iOS build failed (see output above)')
-    match = re.search(r'^BUILD_DIR=(.+)$', proc.stdout, re.M)
-    if not match:
-        raise ValueError('GE1 iOS build printed no BUILD_DIR')
-    ge1_build = Path(match[1].strip())
+    # Static archives via the pinned engine recipe
+    # (ps2xRuntime/third_party/armsx2/build.sh ios), one build per vendor:
+    # the GE1 set from the new pin (upscale defaults on), the OM1 set from
+    # the pre-growth pin (a new-vendor island cannot close; see OM1_VENDOR).
+    # No stamp cleanup here: each run mints fresh stamp dirs, and wiping
+    # would destroy the other vendor's build (superseded stamps are removed
+    # explicitly once both builds succeed).
+    def reuse_or_build(key, want_vendor, vendor_dir, bundle, label):
+        """Reuse the receipt-pinned build dir when it is still valid."""
+        try:
+            prior = json.loads((a.work / 'ios-libs.json').read_text())
+        except (OSError, ValueError):
+            prior = {}
+        if prior.get(key + '_vendor') == want_vendor:
+            candidate = Path(prior.get(key + '_dir') or prior.get(key + '_build') or '')
+            if candidate.name and all((candidate / name).is_file() for name in
+                                      ('ge1-adapter/libge1_gs.a', 'pcsx2/libPCSX2.a',
+                                       'common/libcommon.a')):
+                print(key + ': reusing ' + str(candidate))
+                return candidate
+        return run_vendor_build(vendor_dir, bundle, a.work, a.jobs, label)
+
+    ge1_build = reuse_or_build('ge1', GE1_VENDOR_PIN, vendor, bundle_ge1, 'GE1')
+    try:
+        prior_om1 = json.loads((a.work / 'ios-libs.json').read_text())
+    except (OSError, ValueError):
+        prior_om1 = {}
+    om1_candidate = Path(prior_om1.get('om1_build') or '')
+    if (prior_om1.get('om1_vendor') == OM1_VENDOR_PIN and om1_candidate.name
+            and (om1_candidate / 'pcsx2/libPCSX2.a').is_file()
+            and (om1_candidate / 'common/libcommon.a').is_file()):
+        print('om1: reusing ' + str(om1_candidate))
+        om1_build = om1_candidate
+    else:
+        om1_build = run_om1_build(om1_vendor, bundle_om1, a.work, a.jobs)
     ge1_lib = ge1_build / 'ge1-adapter/libge1_gs.a'
     pcsx2_lib = ge1_build / 'pcsx2/libPCSX2.a'
-    if not ge1_lib.is_file() or not pcsx2_lib.is_file():
-        raise ValueError('GE1 iOS build is missing libge1_gs.a or libPCSX2.a')
     # MoltenVK device framework from the pinned upstream release tarball.
     mvk = json.loads((ROOT / 'tools/ssx3/moltenvk.json').read_text())
     fetch_tarball(mvk['url'], mvk['archive_sha256'], a.work / 'ios-moltenvk.tar',
@@ -1294,23 +1412,27 @@ def ios_libs(a):
     libs.mkdir(parents=True)
     shutil.copy2(ge1_lib, libs / 'libge1_gs.a')
     shutil.copy2(pcsx2_lib, libs / 'libPCSX2.a')
-    for name in ('common/libcommon.a',):
-        src = ge1_build / name
-        if not src.is_file():
-            raise ValueError('GE1 iOS build is missing ' + name)
-        shutil.copy2(src, libs / 'libcommon.a')
+    common_lib = ge1_build / 'common/libcommon.a'
+    if not common_lib.is_file():
+        raise ValueError('GE1 iOS build is missing common/libcommon.a')
+    shutil.copy2(common_lib, libs / 'libcommon.a')
+    om1_dir = prune_om1_copy(om1_build, libs / 'om1')
     sdl_lib = sdl_prefix / 'lib/libSDL2.a'
     if not sdl_lib.is_file():
         raise ValueError('SDL2 install is missing lib/libSDL2.a')
     shutil.copy2(sdl_lib, libs / 'libSDL2.a')
     shutil.copytree(mvk_fw, libs / 'MoltenVK.framework')
     (a.work / 'ios-libs.json').write_text(json.dumps({
-        'ge1_vendor': GE1_VENDOR_PIN, 'ge1_build': str(ge1_build),
+        'ge1_vendor': GE1_VENDOR_PIN, 'ge1_dir': str(ge1_build),
+        'om1_vendor': OM1_VENDOR_PIN, 'om1_dir': str(om1_dir),
+        'om1_build': str(om1_build),
         'ios_dep_pins': resolved, 'sdl2_tarball_sha256': SDL2_TARBALL_SHA,
         'ffmpeg_tarball_sha256': FFMPEG_TARBALL_SHA,
         'moltenvk': mvk['url'] + ' @ ' + mvk['archive_sha256'],
         'libge1_gs_sha256': sha(libs / 'libge1_gs.a'),
-        'libPCSX2_sha256': sha(libs / 'libPCSX2.a')}, indent=2, sort_keys=True) + '\n')
+        'libPCSX2_sha256': sha(libs / 'libPCSX2.a'),
+        'om1_libPCSX2_sha256': sha(om1_dir / 'pcsx2/libPCSX2.a')},
+        indent=2, sort_keys=True) + '\n')
     print('iOS libraries staged in ' + str(libs))
 
 
@@ -1430,6 +1552,7 @@ def ios(a):
         print('  team ' + team + ', bundle id ' + bundle_id)
         print('  engine ' + str(ENGINE))
         print('  GE1 vendor ' + GE1_VENDOR_REPO + ' @ ' + GE1_VENDOR_SHORT)
+        print('  OM1 vendor ' + OM1_VENDOR_REPO + ' @ ' + OM1_VENDOR_SHORT)
         print('  offline VU1 stage ' + str(getattr(a, 'om1_stage', None) or '(missing --om1-stage)'))
         print('  prepare outputs ' + ('current' if prepare_current(a.work) else 'MISSING (run prepare)') + ': '
               + str(a.work / 'codegen'))
@@ -1445,8 +1568,13 @@ def ios(a):
         raise ValueError('ios-libs outputs are missing or stale; run ios-libs in this work directory first')
     om1_stage = validate_om1_stage(getattr(a, 'om1_stage', None))
     receipt = json.loads((a.work / 'ios-libs.json').read_text())
-    ge1_build, vendor = Path(receipt['ge1_build']), a.work / 'ios-vendor'
-    if not ge1_build.is_dir() or not vendor.is_dir():
+    ge1_build = Path(receipt.get('ge1_dir') or receipt.get('ge1_build') or '')
+    vendor = a.work / 'ios-vendor'
+    try:
+        om1_lib = Path(receipt['om1_dir'])
+    except KeyError:
+        raise ValueError('ios-libs predates the OM1 archive set; re-run ios-libs')
+    if not ge1_build.is_dir() or not vendor.is_dir() or not om1_lib.is_dir():
         raise ValueError('ios-libs build directory is gone; re-run ios-libs')
     build_dir = a.work / 'ios-app-build'
     run('cmake', '-S', ENGINE, '-B', build_dir, '-G', 'Xcode',
@@ -1461,7 +1589,7 @@ def ios(a):
         '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
         '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
         '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
-        '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(ge1_build),
+        '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(om1_lib),
         '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
         '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
         '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
@@ -1513,7 +1641,8 @@ def ios(a):
         'team': team, 'bundle_id': bundle_id, 'identity': identity,
         'engine': subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
                                           text=True).strip(),
-        'ge1_vendor': GE1_VENDOR_PIN, 'om1_stage': str(om1_stage),
+        'ge1_vendor': GE1_VENDOR_PIN, 'om1_vendor': receipt.get('om1_vendor'),
+        'om1_stage': str(om1_stage), 'om1_lib': str(om1_lib),
         'slim_sha256': inputs['slim_sha256'], 'elf_sha256': inputs['elf_sha256'],
         'signed_binary_sha256': sha(app / 'ps2EntryRunner'),
         'preset_sha256': sha(app / 'ps2x.env')}, indent=2, sort_keys=True) + '\n')
