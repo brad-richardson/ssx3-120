@@ -1685,11 +1685,37 @@ def ios_om1_current(work, core_dir=None):
         validate_om1_stage(stage)
     except ValueError:
         return False
-    for area in OM1_AREAS:
-        for suffix in ('.s', '_tables.c', '_tables.h'):
-            if not (stage / (area + suffix)).is_file():
-                return False
+    want_out = receipt.get('outputs_sha256')
+    if not isinstance(want_out, dict):
+        return False
+    have_out = om1_stage_file_hashes(stage)
+    if have_out is None or have_out != want_out:
+        return False
     return True
+
+
+def om1_stage_file_hashes(stage):
+    """SHA-256 of every regular file under the stage (R5: the builder
+    certifies staged bytes by hash, not by existence). Symlinks are excluded
+    except that exactly one — the armsx2 vendor link, whose identity
+    om1_vendor_current covers — may exist. None on any read failure."""
+    base = Path(stage)
+    try:
+        entries = sorted(base.rglob('*'))
+    except OSError:
+        return None
+    links = sorted(str(p.relative_to(base)) for p in entries if p.is_symlink())
+    if links != ['armsx2']:
+        return None
+    hashes = {}
+    for p in entries:
+        if p.is_symlink() or not p.is_file():
+            continue
+        try:
+            hashes[str(p.relative_to(base))] = sha(p)
+        except OSError:
+            return None
+    return hashes
 
 
 def om1_vendor_head(vendor):
@@ -1814,9 +1840,13 @@ def ios_om1(a):
     if core_hashes is None:
         raise ValueError('ios-om1: a canonical offline-core source is missing under '
                          + str(OM1_OFFLINE_CORE_DIR))
+    output_hashes = om1_stage_file_hashes(stage)
+    if output_hashes is None:
+        raise ValueError('ios-om1: cannot hash the generated stage under ' + str(stage))
     ios_om1_receipt_path(a.work).write_text(json.dumps({
         'replay_pin': OM1_REPLAY_PIN, 'manifest_sha256': sha(OM1_MANIFEST),
-        'elf_sha256': elf_sha, 'core_sha256': core_hashes}))
+        'elf_sha256': elf_sha, 'core_sha256': core_hashes,
+        'outputs_sha256': output_hashes}))
     print('  offline VU1 stage regenerated ' + str(stage))
     return stage
 

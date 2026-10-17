@@ -165,7 +165,8 @@ class Om1GenerateTest(unittest.TestCase):
             'replay_pin': pin or head,
             'manifest_sha256': build.sha(build.OM1_MANIFEST),
             'elf_sha256': build.sha(work / 'SLUS_207.72'),
-            'core_sha256': build.om1_core_hashes(core_dir)}))
+            'core_sha256': build.om1_core_hashes(core_dir),
+            'outputs_sha256': build.om1_stage_file_hashes(stage)}))
         return work, core_dir, head
 
     def test_current_true(self):
@@ -220,6 +221,21 @@ class Om1GenerateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             work, core_dir, head = self.make_work(temp)
             shutil.rmtree(work / 'ios-vendor-om1replay')
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_output_tamper(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            with open(work / 'om1-stage' / 'menus.s', 'ab') as f:
+                f.write(b'// tampered\n')
+            with patch.object(build, 'OM1_REPLAY_PIN', head):
+                self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
+
+    def test_current_false_on_extra_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work, core_dir, head = self.make_work(temp)
+            (work / 'om1-stage' / 'extra.o').write_text('// extra')
             with patch.object(build, 'OM1_REPLAY_PIN', head):
                 self.assertFalse(build.ios_om1_current(work, core_dir=core_dir))
 
