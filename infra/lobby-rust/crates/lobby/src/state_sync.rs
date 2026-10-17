@@ -106,6 +106,20 @@ pub struct Tracker {
 }
 
 impl Tracker {
+    /// New session on an already-known slot (app relaunch / rejoined late):
+    /// drop the old tick base, liveness, finish and drop marks so the fresh
+    /// tick stream is accepted instead of stale-silenced forever. Without
+    /// this, a relaunching client (ticks restart near 0) is swallowed
+    /// silently: no Forward, no counters, and no DropAi lines (sweep skips
+    /// slots already in `dropped`), which reads exactly like a dead relay.
+    pub fn rejoin(&mut self, slot: u16) {
+        self.last.remove(&slot);
+        self.last_recv.remove(&slot);
+        self.finished.remove(&slot);
+        self.dropped.retain(|&s| s != slot);
+        self.finalized = false;
+    }
+
     pub fn new(timeout_ms: u64) -> Self {
         Self {
             timeout: Duration::from_millis(timeout_ms),
@@ -258,6 +272,7 @@ struct Waiter {
 
 struct Seat {
     addr: SocketAddr,
+    client: [u8; 16],
     seen: Instant,
     quit: bool,
     start_sends: Vec<Instant>, // send time of each QP_START (index = seq)
@@ -267,8 +282,8 @@ struct Seat {
 }
 
 impl Seat {
-    fn new(addr: SocketAddr, now: Instant) -> Self {
-        Self { addr, seen: now, quit: false, start_sends: Vec::new(), go: None, result_sends: 0, result_last: None }
+    fn new(addr: SocketAddr, client: [u8; 16], now: Instant) -> Self {
+        Self { addr, client, seen: now, quit: false, start_sends: Vec::new(), go: None, result_sends: 0, result_last: None }
     }
 }
 
@@ -472,11 +487,41 @@ impl Hub {
             self.push(out, src, f, now);
             return;
         }
-        // Already seated: the START was lost (or is being confirmed).
+        // Already seated: the START was lost, or the client restarted and
+        // is re-announcing its session. Reset the slot's tick base so a
+        // fresh tick stream forwards instead of stale-silencing (Part 6).
         if let Some(&(id, slot)) = self.seat_of.get(&src) {
             if let Some(room) = self.rooms.get_mut(&id) {
                 room.seats[slot as usize].seen = now;
+                room.tracker.rejoin(slot);
             }
+            if let Some(f) = self.start_frame(id, slot, now) {
+                self.push(out, src, f, now);
+            }
+            return;
+        }
+        // Rejoin from a new source addr on a live seat (app relaunch picks
+        // a new ephemeral port): the same device takes its seat back. Same
+        // client id + same course = resume; anything else queues as a new
+        // waiter below. Finished rooms stay finished.
+        let takeover = self.rooms.iter().find_map(|(id, room)| {
+            if room.result.is_some() {
+                return None;
+            }
+            room.seats.iter().enumerate().find_map(|(i, s)| {
+                (!s.quit && s.client == j.client && room.course == j.course)
+                    .then_some((*id, i as u16, s.addr))
+            })
+        });
+        if let Some((id, slot, old)) = takeover {
+            self.seat_of.remove(&old);
+            self.seat_of.insert(src, (id, slot));
+            if let Some(room) = self.rooms.get_mut(&id) {
+                room.seats[slot as usize].addr = src;
+                room.seats[slot as usize].seen = now;
+                room.tracker.rejoin(slot);
+            }
+            info!(room = %short(&id), slot, "quickplay rejoin (seat takeover)");
             if let Some(f) = self.start_frame(id, slot, now) {
                 self.push(out, src, f, now);
             }
@@ -514,7 +559,7 @@ impl Hub {
         let id: [u8; 16] = rand::random();
         let room = Room {
             id,
-            seats: vec![Seat::new(a.addr, now), Seat::new(b.addr, now)],
+            seats: vec![Seat::new(a.addr, a.client, now), Seat::new(b.addr, b.client, now)],
             course: a.course,
             start_id: rand::random(),
             go_at: now + Duration::from_millis(self.cfg.start_delay_ms),
@@ -796,6 +841,61 @@ mod tests {
         assert_eq!(tr.forwarded, 2);
     }
 
+    #[test]
+    fn rejoin_resets_tick_base_and_drop_mark() {
+        let mut tr = Tracker::new(100);
+        let t0 = Instant::now();
+        tr.on_state(1, st(1, 39115, 0, 0.0), t0, vec![1]);
+        let late = t0 + Duration::from_millis(500);
+        assert_eq!(tr.sweep(&[0, 1], late).len(), 1);
+        // Fresh session restarts near tick 0: accepted after rejoin.
+        tr.rejoin(1);
+        let fresh = tr.on_state(1, st(1, 37, 0, 0.0), late, vec![2]);
+        assert_eq!(fresh.len(), 1);
+        assert_eq!(tr.last[&1].tick, 37);
+        // Drop mark cleared: a later timeout emits again.
+        let later = late + Duration::from_millis(500);
+        assert_eq!(tr.sweep(&[0, 1], later).len(), 1);
+    }
+    #[test]
+    fn rejoin_same_addr_resets_tick_floor() {
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 40000, 0, 0.0), t1);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+        // Client restarts (ticks near 0) and re-JOINs from the same addr:
+        // the fresh stream forwards instead of stale-silencing.
+        let t2 = t1 + Duration::from_millis(100);
+        let r = hub.on_datagram(addr(1), &join(1, 120), t2);
+        assert_eq!(start_of(&r, 1).1.slot, 0);
+        let r = hub.on_datagram(addr(1), &state_frame(&room, 0, 37, 0, 0.0), t2);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+    }
+    #[test]
+    fn rejoin_new_addr_takes_seat_back() {
+        let t0 = Instant::now();
+        let mut hub = Hub::new(Sscfg::default(), t0);
+        let room = paired(&mut hub, t0);
+        let t1 = t0 + Duration::from_secs(3);
+        hub.on_datagram(addr(1), &state_frame(&room, 0, 40000, 0, 0.0), t1);
+        // App relaunch: new ephemeral port, same client id, same course.
+        let t2 = t1 + Duration::from_millis(100);
+        let r = hub.on_datagram(addr(9), &join(1, 120), t2);
+        let (rr, s) = start_of(&r, 9);
+        assert_eq!(rr, room);
+        assert_eq!(s.slot, 0);
+        assert_eq!((hub.waiting(), hub.rooms()), (0, 1));
+        // Fresh ticks from the new addr forward; the old addr is dead.
+        let r = hub.on_datagram(addr(9), &state_frame(&room, 0, 37, 0, 0.0), t2);
+        assert_eq!(kinds(&r), vec![(2, KIND_STATE)]);
+        assert!(hub.on_datagram(addr(1), &state_frame(&room, 0, 40001, 0, 0.0), t2).is_empty());
+        // A stranger (new client id) queues instead of stealing.
+        let r = hub.on_datagram(addr(7), &join(3, 120), t2);
+        assert_eq!(kinds(&r), vec![(7, KIND_QP_WAIT)]);
+        assert_eq!(hub.waiting(), 1);
+    }
     #[test]
     fn stale_ticks_drop() {
         let mut tr = Tracker::new(2000);
