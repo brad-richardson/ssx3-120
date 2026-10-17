@@ -329,32 +329,32 @@ class DeviceTest(unittest.TestCase):
 
     def test_connected_physical_wins_over_paired_and_sim(self):
         out = self.listing([
-            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
-            ('Phone', '00008140-0002505001F3001C', 'available (paired)', 'iPhone17,2', 'physical'),
+            ('Pad', '00008000-00000000000000A1', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008000-00000000000000B2', 'available (paired)', 'iPhone17,2', 'physical'),
             ('Sim', 'AE710B2C-388C-42B3-8FC0-797DDDF07795', 'shutdown', 'iPhone18,3', 'simulated')])
         with patch.object(build, 'devicectl_devices', return_value=(True, out)):
             self.assertEqual(build.resolve_device(None, for_install=True),
-                             '00008112-001224302184A01E')
+                             '00008000-00000000000000A1')
 
     def test_explicit_device_hit(self):
         out = self.listing([
-            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
-            ('Phone', '00008140-0002505001F3001C', 'available (paired)', 'iPhone17,2', 'physical')])
+            ('Pad', '00008000-00000000000000A1', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008000-00000000000000B2', 'available (paired)', 'iPhone17,2', 'physical')])
         with patch.object(build, 'devicectl_devices', return_value=(True, out)):
-            self.assertEqual(build.resolve_device('00008140-0002505001F3001C', for_install=True),
-                             '00008140-0002505001F3001C')
+            self.assertEqual(build.resolve_device('00008000-00000000000000B2', for_install=True),
+                             '00008000-00000000000000B2')
 
     def test_explicit_device_miss(self):
         out = self.listing([
-            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical')])
+            ('Pad', '00008000-00000000000000A1', 'connected', 'iPad14,9', 'physical')])
         with patch.object(build, 'devicectl_devices', return_value=(True, out)):
             with self.assertRaises(ValueError):
                 build.resolve_device('00000000-0000000000000000', for_install=True)
 
     def test_two_connected_physical_needs_explicit(self):
         out = self.listing([
-            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
-            ('Phone', '00008140-0002505001F3001C', 'connected', 'iPhone17,2', 'physical')])
+            ('Pad', '00008000-00000000000000A1', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008000-00000000000000B2', 'connected', 'iPhone17,2', 'physical')])
         with patch.object(build, 'devicectl_devices', return_value=(True, out)):
             with self.assertRaises(ValueError):
                 build.resolve_device(None, for_install=True)
