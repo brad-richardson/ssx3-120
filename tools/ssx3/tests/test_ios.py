@@ -69,31 +69,28 @@ class IdentityTest(unittest.TestCase):
                 build.signing_identity('AB12CD34EF')
         self.assertIn('Xcode', str(ctx.exception))
 
+    def test_profile_constrains_identity(self):
+        # The profile's development cert is issued under another team
+        # while the Distribution cert matches the team: the profile wins,
+        # or the device refuses the app (0xe8008015).
+        listing = ('  1) 295EFB42E6734599E5726A9A5EF47EBD1EFEF7B1 '
+                   '"Apple Development: A User (ZZ99ZZ99ZZ)"\n'
+                   '  2) 48230B072A367DF7635D2D5505467695754DEC3A '
+                   '"Apple Distribution: A User (AB12CD34EF)"\n')
+        with patch.object(build, 'probe', return_value=(True, listing)), \
+             patch.object(build, 'profile_certificates',
+                          return_value={'295EFB42E6734599E5726A9A5EF47EBD1EFEF7B1'}):
+            self.assertEqual(
+                build.signing_identity('AB12CD34EF', profile='p.mobileprovision'),
+                '295EFB42E6734599E5726A9A5EF47EBD1EFEF7B1')
 
-class DeviceTest(unittest.TestCase):
-    LISTING = ('Devices:\n'
-               '  My iPad (00008112-001224302184A01E)\n'
-               '  Other Phone (00008110-000A1B2C3D4E5F60)\n')
-
-    def test_explicit_device_hit(self):
-        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
-            self.assertEqual(build.resolve_device('00008112-001224302184A01E'), '00008112-001224302184A01E')
-
-    def test_explicit_device_miss(self):
-        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
-            with self.assertRaises(ValueError):
-                build.resolve_device('00000000-0000000000000000')
-
-    def test_single_device_auto_pick(self):
-        one = 'Devices:\n  Solo iPad (00008112-001224302184A01E)\n'
-        with patch.object(build, 'devicectl_devices', return_value=(True, one)):
-            self.assertEqual(build.resolve_device(None, for_install=True), '00008112-001224302184A01E')
-
-    def test_several_devices_need_flag(self):
-        with patch.object(build, 'devicectl_devices', return_value=(True, self.LISTING)):
+    def test_identity_outside_profile_fails(self):
+        listing = '  1) DEADBEEF "Apple Development: A User (AB12CD34EF)"\n'
+        with patch.object(build, 'probe', return_value=(True, listing)), \
+             patch.object(build, 'profile_certificates', return_value={'UNKNOWN'}):
             with self.assertRaises(ValueError) as ctx:
-                build.resolve_device(None, for_install=True)
-        self.assertIn('--device', str(ctx.exception))
+                build.signing_identity('AB12CD34EF', profile='p.mobileprovision')
+        self.assertIn('provisioning profile', str(ctx.exception))
 
 
 class Om1StageTest(unittest.TestCase):
@@ -321,6 +318,48 @@ class DoctorIosTest(unittest.TestCase):
         self.assertTrue(all(row[1] is False for row in seen))
 
 
+class DeviceTest(unittest.TestCase):
+    ROW = '%-16s %-10s %-40s %-22s %s %s\n'
+    HEADER = 'Name Hostname Identifier State Model Reality\n'
+
+    def listing(self, rows):
+        return self.HEADER + ''.join(
+            self.ROW % (name, '', udid + ' (UDID)', state, model, reality)
+            for name, udid, state, model, reality in rows)
+
+    def test_connected_physical_wins_over_paired_and_sim(self):
+        out = self.listing([
+            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008140-0002505001F3001C', 'available (paired)', 'iPhone17,2', 'physical'),
+            ('Sim', 'AE710B2C-388C-42B3-8FC0-797DDDF07795', 'shutdown', 'iPhone18,3', 'simulated')])
+        with patch.object(build, 'devicectl_devices', return_value=(True, out)):
+            self.assertEqual(build.resolve_device(None, for_install=True),
+                             '00008112-001224302184A01E')
+
+    def test_explicit_device_hit(self):
+        out = self.listing([
+            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008140-0002505001F3001C', 'available (paired)', 'iPhone17,2', 'physical')])
+        with patch.object(build, 'devicectl_devices', return_value=(True, out)):
+            self.assertEqual(build.resolve_device('00008140-0002505001F3001C', for_install=True),
+                             '00008140-0002505001F3001C')
+
+    def test_explicit_device_miss(self):
+        out = self.listing([
+            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical')])
+        with patch.object(build, 'devicectl_devices', return_value=(True, out)):
+            with self.assertRaises(ValueError):
+                build.resolve_device('00000000-0000000000000000', for_install=True)
+
+    def test_two_connected_physical_needs_explicit(self):
+        out = self.listing([
+            ('Pad', '00008112-001224302184A01E', 'connected', 'iPad14,9', 'physical'),
+            ('Phone', '00008140-0002505001F3001C', 'connected', 'iPhone17,2', 'physical')])
+        with patch.object(build, 'devicectl_devices', return_value=(True, out)):
+            with self.assertRaises(ValueError):
+                build.resolve_device(None, for_install=True)
+
+
 class ProfileTest(unittest.TestCase):
     def write_profile(self, home, name, app_id, days_valid):
         prof_dir = Path(home) / 'Library/MobileDevice/Provisioning Profiles'
@@ -344,6 +383,15 @@ class ProfileTest(unittest.TestCase):
                 found = build.find_provisioning_profile(
                     'AB12CD34EF', 'com.ssx3recomp.ab12cd34ef', profiles_dir=temp)
             self.assertTrue(str(found).endswith('new.mobileprovision'))
+
+    def test_team_wildcard_matches(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.write_profile(temp, 'wild.mobileprovision', 'AB12CD34EF.*', 300)
+            with patch.object(build.subprocess, 'run',
+                              side_effect=lambda cmd, **kw: self.fake_security(cmd[-1])):
+                found = build.find_provisioning_profile(
+                    'AB12CD34EF', 'com.ssx3recomp.ab12cd34ef', profiles_dir=temp)
+            self.assertTrue(str(found).endswith('wild.mobileprovision'))
 
     def test_no_match_fails_clearly(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -994,16 +994,44 @@ def check_bundle_id(value):
     return value
 
 
-def signing_identity(team):
-    """Fingerprint of the user's codesigning identity for this team."""
+def profile_certificates(profile):
+    """SHA-1 fingerprints of a provisioning profile's developer certificates."""
+    import hashlib
+    import plistlib
+    import subprocess
+    raw = subprocess.run(['security', 'cms', '-D', '-i', str(profile)],
+                         stdout=subprocess.PIPE, check=False).stdout
+    certs = plistlib.loads(raw).get('DeveloperCertificates', [])
+    return {hashlib.sha1(bytes(der)).hexdigest().upper() for der in certs}
+
+
+def signing_identity(team, profile=None):
+    """Fingerprint of the user's codesigning identity for this team.
+
+    When the provisioning profile is known, the identity must be one of
+    its certificates: signing with any other identity (e.g. a
+    Distribution certificate under an unrelated team) produces an app
+    the device refuses with 0xe8008015. Without a profile, any
+    identity issued for the team is accepted (doctor-time probe)."""
     ok, detail = probe(['security', 'find-identity', '-v', '-p', 'codesigning'])
     if not ok:
         raise ValueError('cannot list signing identities: ' + detail)
+    identities = {}  # fingerprint -> full name
     for line in detail.splitlines():
-        if '(' + team + ')' in line:
-            match = re.search(r'^\s*\d+\)\s+([0-9A-F]+)\s', line)
-            if match:
-                return match[1]
+        match = re.search(r'^\s*\d+\)\s+([0-9A-F]+)\s+"([^"]+)"', line)
+        if match:
+            identities[match[1]] = match[2]
+    if profile is not None:
+        allowed = profile_certificates(profile)
+        for fingerprint, name in identities.items():
+            if fingerprint in allowed:
+                return fingerprint
+        raise ValueError('none of the keychain identities is in provisioning profile '
+                         + str(profile) + ' (profile certs: ' + ', '.join(sorted(allowed))
+                         + '); let Xcode refresh automatic signing for the bundle id')
+    for fingerprint, name in identities.items():
+        if '(' + team + ')' in name:
+            return fingerprint
     raise ValueError('no signing identity for team ' + team + ' in the keychain; '
                      'sign into Xcode with your Apple ID (Xcode > Settings > Accounts) '
                      'and let Xcode create the Apple Development certificate')
@@ -1491,8 +1519,16 @@ def resolve_device(want, for_install=False):
     ok, listing = devicectl_devices()
     if not ok:
         raise ValueError('cannot list devices:\n' + listing)
-    found = re.findall(r'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}', listing)
-    seen = list(dict.fromkeys(found))
+    # Only connected physical devices count: paired-but-absent phones and
+    # shutdown simulators are not install targets.
+    seen = [m.group(1) for line in listing.splitlines()
+            if 'connected' in line and 'physical' in line
+            for m in [re.search(r'([0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}) \(UDID\)', line)]
+            if m]
+    if want and want not in seen and want in listing:
+        # Explicit UDID present but not marked connected (state wording
+        # differs across Xcode versions): trust the explicit choice.
+        return want
     if want:
         if want in seen or want in listing:
             return want
@@ -1516,8 +1552,11 @@ def find_provisioning_profile(team, bundle_id, profiles_dir=None):
     from datetime import datetime, timezone
     wanted = team + '.' + bundle_id
     base = Path(profiles_dir) if profiles_dir is not None else Path.home()
-    profiles = sorted(base.glob(
-        'Library/MobileDevice/Provisioning Profiles/*.mobileprovision'))
+    # Xcode's automatic signing keeps its profiles under UserData, while
+    # manually installed ones live under MobileDevice: search both.
+    patterns = ('Library/MobileDevice/Provisioning Profiles/*.mobileprovision',
+                'Library/Developer/Xcode/UserData/Provisioning Profiles/*.mobileprovision')
+    profiles = sorted(p for pattern in patterns for p in base.glob(pattern))
     best, best_expiry = None, None
     now = datetime.now(timezone.utc)
     for profile in profiles:
@@ -1539,7 +1578,7 @@ def find_provisioning_profile(team, bundle_id, profiles_dir=None):
             platforms = data.get('Platform') or []
         except Exception:
             continue
-        if app_id != wanted or not expiry or expiry <= now:
+        if app_id not in (wanted, team + '.*') or not expiry or expiry <= now:
             continue
         if 'iOS' not in platforms:
             continue
@@ -1556,8 +1595,8 @@ def sign_staged_app(work, stage_app, team, bundle_id):
     """Sign the staged app with the user's team (profile from Xcode's
     automatic signing; entitlements generated, never committed)."""
     import plistlib
-    identity = signing_identity(team)
     profile = find_provisioning_profile(team, bundle_id)
+    identity = signing_identity(team, profile=profile)
     shutil.copy2(profile, stage_app / 'embedded.mobileprovision')
     entitlements = {'application-identifier': team + '.' + bundle_id,
                     'com.apple.developer.team-identifier': team,
