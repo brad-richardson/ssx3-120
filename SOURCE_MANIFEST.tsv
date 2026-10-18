@@ -74,7 +74,7 @@ infra/rollback-lobby-mcomm.sh	infra-staged	public-infra/rollback-lobby-mcomm.sh	
 justfile	authored:builder-ux-1	-	e406934788f295dd6c5fcfa7ad72cea3cc26fc3ac64d3e8b0257e331400bd324	618	new
 presets/full120-ios.env	fork@f7a96f23	tools/ssx3/presets/full120-ios.env	78405b44674f0c8671bc21916ffbe294b7dce26f01acbf66eff6fa026a0b3101	389	composition:synced-engine-fix-list
 presets/full120.env	fork@f7a96f23	tools/ssx3/presets/full120.env	49a78599d7c35c5e1485dd0291566b2126befe74cc39ef04d1c503ac8524704a	541	verbatim
-presets/ios.env	fork@f7a96f23	tools/ssx3/presets/ios.env	d2df87c8dff351ca6626154411c593cb2be3ba2ad9d0f24eb12cdb1f89ebcd41	1049	composition:reconciled-signed-off-play-keys
+presets/ios.env	fork@f7a96f23	tools/ssx3/presets/ios.env	b4051b698ee5e0a32654fbbb75045bfa4eb535787ec3c5e156ee3d1d1367a8bb	3565	composition:reconciled-signed-off-play-keys
 presets/ps2x.env	fork@5235b114	tools/ssx3/presets/ps2x.env	cbed1e8f27757bf8c97946329c4b094e64d5994801de4ed2e52acfa3596a9f3c	1565	composition:reconciled-signed-off-play-keys
 presets/online.env	authored:online	-	ddf104ade4449bdaa0b7bd3f962dafbd20c693bc2d5c4cef28b30ee0f236a259	382	new
 tests/det/README.md	authored:gate-docs	-	fbd2689ec58cd135e88daed346063e09bdc15ac77580cf17ae92621db33add75	2929	new
@@ -118,9 +118,9 @@ tools/bench/legs.example.json	authored:bench-template	-	0c9553b492a3032ac0c44a38
 tools/bench/winseries.py	lab@0ac8b01f	local/tooling/perf/winseries.py	69917d801fa0044492f04cfa4e29a9988cf90677b408ca081d8ba6386f3e1330	9309	composition:product-docstring
 tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17dc54ab2a6d511238945fcd4999767e5d90d74168a76722f72c3cbce121a8c1	6842	verbatim
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
-tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	52cbcd50ed41d5d6678de5db804714ccd63f620af9da4e4bf8219549fbc63269	23677	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
+tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	e78c442acb508d235b431551047dc248a70f12370fabaea9b58000d90d45f65d	24008	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	115e82b17e68c6ac4d19e9385ac945891a28896be7aac3f90d098bcee52c8a17	139690	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
+tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	0d418b28e5e98eb8a7b4b0c52785e0dedd39fbd5f4d20c1ea2d2a8ad9b15622a	144635	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
 tools/ssx3/knobs.tsv	fork@5235b114	tools/ssx3/knobs.tsv	7b34989913b8233c584ab7c6cf99fba2d722c6087f84a617b4a46903fbc49441	7745	verbatim
@@ -143,12 +143,13 @@ tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a75250
 tools/ssx3/tests/test_stage_fonts.py	fork@f7a96f23	tools/ssx3/tests/test_stage_fonts.py	7c033340c042818df6dea8567762c62567a9d25bad0dc3a7d81fdf8761f70d56	3839	verbatim
 tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	c46f97fe50e3c7c981329a8b3b1c6ee6210aae5597eef7f9a199a449cac09da7	9828	new
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
-tools/ssx3/tests/test_vu0_stage.py	authored:build-parity-fix-1	-	9f775e928104afe305518415c542d4b649cd1cc843b0c8c1cfe69436b1ad4014	11116	new
+tools/ssx3/tests/test_vu0_stage.py	authored:build-parity-fix-1	-	5ce8350d633b9e5cbef49c87de24d870d88113dbe7759414d7912a70a2aaf1e1	19719	new
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim
 tools/ssx3/upscale_textures.py	lab@0ac8b01f	tools/upscale_textures.py	08f3230ffc14d038e1028f0eab0831fdfe51fd891c23215889bb504940a74975	13703	composition:generalised-host-wording-and-data-contract
 tools/ssx3/verify-turnip.sh	fork@5235b114	tools/ssx3/verify-turnip.sh	acc577e8f3a280d75bc279fd25f1e5b7dda87468b3bac47a29d9e7cb944aab7b	3252	verbatim
+tools/ssx3/vu0-image-manifest.json	authored:build-parity-fix-1	-	da52c0c604ba93a472076d6774f1952f17a76ea8bc8d2163eeeda6818acca27e	1254	new
 tools/ssx3/write_prewarm.py	fork@f7a96f23	tools/ssx3/write_prewarm.py	7aef838b4211d832e312ff1b23ba5029e67feaec9daec2769bd25e4da5680703	844	verbatim
 tools/ssx3_codegen_scan.py	fork@f7a96f23	tools/ssx3_codegen_scan.py	de2ca1d0978856720ea1a06d0b7b66b5a97f52561a7af95889063ab644ffe8ce	7250	verbatim
 tools/ssx3/pgo/android/MANIFEST.json	authored:pgo-public-1	-	210b5a831e6b20bab9e50f1caa3b89d0a075161f4b0be98deb65333fbdad8fd6	1501	new

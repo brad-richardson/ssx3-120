@@ -290,19 +290,20 @@ saves.** Do not distribute generated code or apps containing it.
 
 ## Optional local optimization and iOS
 
-VU0 images: run `build.py vu0 --work <DIR>` (Mac-only) after prepare plus
-the mac and mac-libs steps. It boots your local runner with `PS2X_VU0_RECOMP_DUMP` set, so
-the runtime emitter writes `vu0e_<hash>.cpp` per encountered program into
-the private `work/vu0-stage` (receipt-gated resume; never in the repo), then
-stops. The android, ios and mac builds pick that stage up automatically
-(`--vu0-stage` overrides it); without a stage they build interpreter-only
-with one printed line. Or run your own baseline runner manually with
-`PS2X_VU0_RECOMP_DUMP` pointing to an existing private directory and pass it
-with `--vu0-stage`. If you already have your own raw 4 KiB microprogram
-image, the public `vu1_fixture_gen --image <image.bin> <output-dir>` can
-re-emit it without another boot. These outputs are game-derived and stay
-private. A build without a stage runs interpreted VU0; it does not take
-another user's VU images.
+VU0 images: run `build.py vu0 --work <DIR>` (any host) after prepare. It
+rebuilds each covered 4 KiB VU0 code image from your ELF using the shipped
+offset manifest (`tools/ssx3/vu0-image-manifest.json`: spans plus zero-fill
+with ELF/image/output hashes, no game bytes), then runs the engine's
+standalone vu0dump emitter to derive the pair/group tables into the private
+`work/vu0-stage` (receipt-gated resume; never in the repo). The android, ios
+and mac builds pick that stage up automatically (`--vu0-stage` overrides
+it); without a stage they build interpreter-only with one printed line.
+Or stage your own `vu0e_*.cpp` directory (e.g. from a
+`PS2X_VU0_RECOMP_DUMP` boot, or `vu1_fixture_gen --image` re-emission of
+your own raw 4 KiB image) and pass it with `--vu0-stage`. These outputs are
+game-derived and stay private. A build without a stage runs interpreted VU0;
+it does not take another user's VU images. Programs outside the manifest
+keep the interpreter fallback.
 
 Android PGO: `tools/ssx3/pgo/android/` ships a bundled profile (PB58,
 gzip-compressed; see `MANIFEST.json` for the trained fork/codegen and SHA).
@@ -325,16 +326,20 @@ They require your own game inputs and offline VU1 stage. The handwritten
 separate from the external recorded assembly/tables. iOS has no JIT VU1;
 its OM1 assembly/tables are local game-derived outputs. The complete portable
 recording/generation and app-signing recipe remains incomplete; consult the
-[build inventory](../../docs/ssx3-build.md). Shader prewarm lists are optional 24-byte host pipeline selector tuples
+[build inventory](../../docs/ssx3-build.md). Shader prewarm lists are 24-byte host pipeline selector tuples
 (PS/VS/extras, no texture, asset identifier, instruction or guest memory).
 [tfx-selectors.json](tfx-selectors.json) contains 247 shader configurations;
-write them to your private build directory with:
+the ios build serializes them into the app bundle (`tfx-selectors.bin`)
+and the iOS preset points `GE1_TFX_PREWARM` at that bundled file, so the
+adapter prewarms the shipped Metal coverage on first run. The file is
+staged and verified before the knob can take effect. To use a writable
+union file elsewhere, write the list to your private build directory with:
 
 ```sh
 python3 tools/ssx3/write_prewarm.py /path/to/private-build/tfx-prewarm.bin
 ```
 
-Set `GE1_TFX_PREWARM` to that writable file if desired. The renderer appends
+and set `GE1_TFX_PREWARM` to it. The renderer appends
 new host selector tuples while running. The format is defined by
 `PipelineSelectorMTL` in the pinned public ARMSX2 Metal renderer; this list
 is configuration, separate from the forbidden offline VU recordings.

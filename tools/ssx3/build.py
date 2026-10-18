@@ -502,10 +502,107 @@ def mac(a):
 # images the runtime falls back to the interpreter per program
 # (lookupRecompProgram returns nullptr on a registry miss and run() issues
 # the pair through issuePair<false>; no fail, no crash). Generate once with
-# `build.py vu0 --work <DIR>` (needs prepare + mac + mac-libs outputs), or pass --vu0-stage
+# `build.py vu0 --work <DIR>` (needs prepare outputs), or pass --vu0-stage
 # explicitly. Without a stage the builds keep today's interpreter behavior
 # with one printed line, so no existing flow breaks.
 VU0_IMAGE_GLOB = 'vu0e_*.cpp'
+
+# Offset manifest for the vu0 step (shipped): (micro_offset, elf_offset,
+# length) spans plus zero-fill ranges that rebuild each covered 4 KiB VU0
+# code image from the user's ELF, with ELF/image/output hashes and the
+# emitter pin. Offsets, lengths, IDs and hashes only: no instruction
+# words, generated C++, code image or data bytes are shipped. The manifest
+# must state every covered image hash; programs outside it keep the
+# interpreter fallback (engine default for an empty registry entry).
+VU0_IMAGE_MANIFEST = ROOT / 'tools/ssx3/vu0-image-manifest.json'
+
+
+def load_vu0_image_manifest():
+    try:
+        manifest = json.loads(VU0_IMAGE_MANIFEST.read_text())
+    except (OSError, ValueError):
+        raise ValueError('vu0 image manifest unreadable: ' + str(VU0_IMAGE_MANIFEST))
+    if manifest.get('elf_sha256') != ELF_SHA or not manifest.get('images'):
+        raise ValueError('vu0 image manifest does not cover this disc revision')
+    return manifest
+
+
+def reconstruct_vu0_images(elf_bytes, manifest):
+    """Rebuild every covered 4 KiB image from the user's ELF bytes.
+
+    Fail-closed: span bounds, micro-image assembly (spans plus zero-fill
+    must cover exactly 4096 bytes with no overlap) and the image SHA-256
+    are all verified before anything is emitted.
+    """
+    images = {}
+    for image in manifest['images']:
+        micro = bytearray(4096)
+        covered = bytearray(4096)
+        for span in image.get('spans', []):
+            start, length, elf_off = span['micro_offset'], span['length'], span['elf_offset']
+            if start < 0 or length <= 0 or start + length > 4096 or elf_off < 0 \
+                    or elf_off + length > len(elf_bytes):
+                raise ValueError('vu0 manifest span out of range: ' + str(span))
+            if any(covered[start:start + length]):
+                raise ValueError('vu0 manifest spans overlap')
+            micro[start:start + length] = elf_bytes[elf_off:elf_off + length]
+            covered[start:start + length] = b'\x01' * length
+        for fill in image.get('zero_fill', []):
+            start, length = fill['micro_offset'], fill['length']
+            if start < 0 or length <= 0 or start + length > 4096:
+                raise ValueError('vu0 manifest zero-fill out of range: ' + str(fill))
+            if any(covered[start:start + length]):
+                raise ValueError('vu0 manifest spans overlap')
+            covered[start:start + length] = b'\x01' * length
+        if not all(covered):
+            raise ValueError('vu0 manifest leaves image bytes uncovered: ' + image['xxh64'])
+        if hashlib.sha256(bytes(micro)).hexdigest() != image['image_sha256']:
+            raise ValueError('reconstructed VU0 image does not match the manifest: ' + image['xxh64'])
+        images['vu0e_' + image['xxh64'] + '.bin'] = bytes(micro)
+    return images
+
+
+def build_vu0_emitter(engine, work):
+    """Compile the engine's standalone vu0dump emitter for this host.
+
+    Same TU list and Release flags as the engine's vu0dump recipe; ARM Macs
+    add the pinned sse2neon shim (same v1.9.1 the engine CMake fetches).
+    The binary is cached in the work dir, keyed by the engine pin.
+    """
+    spec = load_vu0_image_manifest()['emitter']
+    cache = Path(work) / 'vu0-emitter'
+    binary = cache / 'vu0dump'
+    receipt = cache / 'emitter.json'
+    engine_head = subprocess.check_output(['git', '-C', str(engine), 'rev-parse', 'HEAD'],
+                                          text=True).strip()
+    try:
+        current = json.loads(receipt.read_text())
+    except (OSError, ValueError):
+        current = {}
+    if binary.is_file() and current.get('engine') == engine_head:
+        return binary
+    if platform.system() == 'Darwin':
+        cxx = Path('/opt/homebrew/opt/llvm/bin/clang++')
+        if not cxx.is_file():
+            cxx = Path(shutil.which('clang++') or 'clang++')
+    else:
+        cxx = Path(shutil.which('clang++') or 'clang++')
+    flags = list(spec['cxx_flags'])
+    includes = [engine / 'ps2xRuntime/include', engine / 'ps2xRuntime/src/lib/vu',
+                engine / 'ps2xRuntime/src/lib/Kernel']
+    if platform.system() == 'Darwin' and platform.machine() == 'arm64':
+        neon = Path(work) / 'sse2neon-source'
+        source(spec['sse2neon_repo'], spec['sse2neon_pin'], neon)
+        flags += spec['defines_arm64_mac']
+        includes = [neon] + includes
+    cache.mkdir(parents=True, exist_ok=True)
+    cmd = [str(cxx)] + flags + [x for p in includes for x in ('-I', str(p))] \
+        + [str(engine / s) for s in spec['sources']] + ['-o', str(binary)]
+    print('+ ' + ' '.join(cmd))
+    run(*cmd)
+    receipt.write_text(json.dumps({'engine': engine_head,
+                                   'emitter': spec['tool'] + '@' + engine_head}, indent=2) + '\n')
+    return binary
 
 
 def validate_vu0_stage(path):
@@ -641,45 +738,29 @@ def publish_vu0_stage(work, new, receipt_data):
 
 
 def vu0(a):
-    """vu0 step (Mac-only): capture the game's VU0 microprograms into
-    work/vu0-stage via the engine's PS2X_VU0_RECOMP_DUMP emitter, the same
-    idea as the OM1 step (generated from the user's ELF, never shipped).
-
-    Boots the local Mac runner (work/runner-build from the mac step, GE1 and
-    microVU libraries from mac-libs) on the user's slim image with the dump
-    dir set; the emitter writes
-    vu0e_<xxh64>.cpp per encountered program. Stops early once images land
-    (bounded wait); validates, publishes atomically and writes the receipt
-    (ELF SHA + output hashes + engine pin) that vu0_current gates on.
-    Resume: a current stage prints one line and is left alone.
+    """vu0 step (any host): rebuild the covered VU0 microprograms from the
+    user's ELF into work/vu0-stage, the same idea as the OM1 step
+    (generated from the user's disc, never shipped). No game boot, no
+    display, no Mac-only capture: the shipped offset manifest rebuilds
+    each 4 KiB image from ELF spans plus zero-fill (fail-closed on bounds
+    and image hash), then the engine's standalone vu0dump emitter derives
+    the pair/group tables. Validates, checks the expected output hashes,
+    publishes atomically and writes the receipt (ELF SHA + output hashes
+    + engine pin) that vu0_current gates on. Resume: a current stage
+    prints one line and is left alone.
     """
-    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise ValueError('the vu0 step needs a Mac (Apple silicon runner boot); on other '
-                         'hosts pass --vu0-stage explicitly')
+    manifest = load_vu0_image_manifest()
     try:
-        inputs = json.loads((a.work / 'inputs.json').read_text())
-    except (OSError, ValueError):
-        raise ValueError('vu0 needs prepare outputs in this work directory (run prepare first)')
-    try:
-        elf_sha = sha(a.work / 'SLUS_207.72')
+        elf_bytes = (a.work / 'SLUS_207.72').read_bytes()
     except OSError:
         raise ValueError('vu0 needs work/SLUS_207.72: run prepare with --ssx3-iso first')
-    if elf_sha != ELF_SHA:
-        raise ValueError('vu0: SLUS_207.72 sha ' + elf_sha[:12] + ' is not the supported disc revision')
+    if sha(a.work / 'SLUS_207.72') != ELF_SHA:
+        raise ValueError('vu0: SLUS_207.72 is not the supported disc revision')
     if vu0_current(a.work):
         print('  VU0 images current ' + str(a.work / 'vu0-stage'))
         return a.work / 'vu0-stage'
-    runner = a.work / 'runner-build/ps2xRuntime/ps2EntryRunner'
-    if not runner.is_file():
-        raise ValueError('vu0 needs the Mac runner: run the mac step in this work directory first')
-    ge1_lib = a.work / 'libs-build/ge1-adapter/libge1_gs.dylib'
-    microvu_lib = a.work / 'libs-build/libmv2_microvu.dylib'
-    resources = a.work / 'resources'
-    if not ge1_lib.is_file() or not microvu_lib.is_file() or not resources.is_dir():
-        raise ValueError('vu0 needs the Mac GE1/microVU libraries: run mac-libs in this work directory first')
-    slim = Path(inputs['slim_iso'])
-    if not slim.is_file() or sha(slim) != inputs['slim_sha256']:
-        raise ValueError('slim image changed since prepare; use a fresh --work directory')
+    images = reconstruct_vu0_images(elf_bytes, manifest)
+    emitter = build_vu0_emitter(ENGINE, a.work)
     with vu0_stage_lock(a.work):
         try:
             vu0_receipt_path(a.work).unlink()
@@ -689,52 +770,24 @@ def vu0(a):
         if new.is_symlink() or new.exists():
             new.unlink() if new.is_symlink() else shutil.rmtree(new)
         new.mkdir(parents=True)
-        mc = a.work / 'vu0-mc0'
-        mc.mkdir(exist_ok=True)
-        (a.work / 'gs-data').mkdir(exist_ok=True)
-        # The play boot env (same game path the play() helper boots): the
-        # minimal env stalls in early SIF init and never uploads VU0 code.
-        # VU0_RECOMP stays 0 so capture runs the exact interpreter path;
-        # the dump side-channel still fires (dumpDir set).
-        env = os.environ.copy()
-        env.update({'PS2X_CD_IMAGE': str(slim), 'PS2X_MC_ROOT': str(mc),
-            'PS2X_SKIP_MOVIE': '1', 'PS2X_GS_BACKEND': 'external',
-            'PS2X_GS_EXTERNAL_LIBRARY': str(ge1_lib),
-            'PS2X_MICROVU_LIB': str(microvu_lib),
-            'PS2X_VU1_ENGINE': 'microvu', 'PS2X_MTVU': '1', 'PS2X_VU0_RECOMP': '0',
-            'GE1_RENDERER': 'metal', 'GE1_GS_RESOURCES_DIR': str(resources),
-            'GE1_GS_DATA_DIR': str(a.work / 'gs-data'),
-            'PS2X_VU0_RECOMP_DUMP': str(new)})
-        # The VU0 program uploads during early boot; stop soon after images
-        # land instead of playing the game. Bounded well under the 600 s
-        # boot cap; a missing display or a hung boot fails loud.
-        print('+ dump boot ' + str(runner) + ' (PS2X_VU0_RECOMP_DUMP=' + str(new) + ')')
-        proc = subprocess.Popen([str(runner), str(a.work / 'SLUS_207.72')],
-                                env=env, cwd=str(a.work),
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        try:
-            deadline = time.monotonic() + 300
-            while time.monotonic() < deadline:
-                if sorted(new.glob(VU0_IMAGE_GLOB)):
-                    break
-                if proc.poll() is not None:
-                    break
-                time.sleep(5)
-        finally:
-            if proc.poll() is None:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=30)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
+        for name, code in sorted(images.items()):
+            image_bin = new / name
+            image_bin.write_bytes(code)
+            print('+ emit ' + name)
+            run(str(emitter), str(image_bin), str(new))
+            image_bin.unlink()
         validate_vu0_stage(new)
         output_hashes = vu0_stage_file_hashes(new)
         if output_hashes is None:
             raise ValueError('vu0: cannot hash the generated stage under ' + str(new))
+        for image in manifest['images']:
+            for name, want in image.get('expected_outputs_sha256', {}).items():
+                if output_hashes.get(name) != want:
+                    raise ValueError('vu0: emitted ' + name + ' does not match the manifest')
         engine_head = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
                                               text=True).strip()
         stage = publish_vu0_stage(a.work, new, {
-            'elf_sha256': elf_sha, 'engine': engine_head,
+            'elf_sha256': ELF_SHA, 'engine': engine_head,
             'outputs_sha256': output_hashes})
     print('  VU0 images generated ' + str(stage))
     return stage
@@ -1060,6 +1113,53 @@ def font_pack_sources(files):
         return []
     return [(p, 'font-pack/' + p.relative_to(staged).as_posix())
             for p in sorted(staged.rglob('*')) if p.is_file()]
+
+
+TFX_SELECTORS_JSON = ROOT / 'tools/ssx3/tfx-selectors.json'
+TFX_SELECTORS_BIN = 'tfx-selectors.bin'
+
+
+def validate_tfx_selectors(path=None):
+    """Fail clearly when the shipped TFX selector coverage is not the
+    renderer-specific pipeline-state metadata the prewarm path consumes:
+    247 Metal rows of six little-endian u32 words (24 bytes each). Pure
+    pipeline-state metadata: no textures, shader code, geometry or guest
+    code. Returns the row count."""
+    try:
+        data = json.loads((Path(path) if path else TFX_SELECTORS_JSON).read_text())
+    except (OSError, ValueError):
+        raise ValueError('tfx selectors unreadable: ' + str(path or TFX_SELECTORS_JSON))
+    if data.get('format') != 'PipelineSelectorMTL little-endian 24-byte words':
+        raise ValueError('tfx selectors have an unexpected record format')
+    rows = data.get('selectors')
+    if not isinstance(rows, list) or len(rows) != 247:
+        raise ValueError('tfx selectors must hold exactly 247 Metal rows')
+    for row in rows:
+        if not isinstance(row, list) or len(row) != 6:
+            raise ValueError('tfx selector row must hold six words')
+        for word in row:
+            try:
+                int(word, 16)
+            except (TypeError, ValueError):
+                raise ValueError('tfx selector word must be a hex string')
+    return len(rows)
+
+
+def stage_tfx_selectors(app):
+    """Serialize the shipped Metal selector coverage into the staged iOS
+    app bundle (tfx-selectors.bin, 247 x 24 bytes) and return its SHA-256.
+
+    The file lands BEFORE the GE1_TFX_PREWARM preset knob takes effect:
+    setting the knob without its file flips the adapter's pipe-flush
+    cadence 0 -> 600 with no union coverage to prewarm. Fail loud when
+    the coverage or the writer is missing."""
+    target = Path(app) / TFX_SELECTORS_BIN
+    if target.exists():
+        raise ValueError('refusing to overwrite an existing staged selector file: ' + str(target))
+    run(sys.executable, str(ROOT / 'tools/ssx3/write_prewarm.py'), str(target))
+    if not target.is_file() or target.stat().st_size != 247 * 24:
+        raise ValueError('tfx selector staging produced no 247-row coverage file: ' + str(target))
+    return sha(target)
 
 
 def stage_fonts(a, inputs, files, device):
@@ -2411,6 +2511,12 @@ def ios(a):
                  and not line.startswith('GE1_TEX_PRELOAD=')]
         lines += ['GE1_TEX_REPLACE=${BUNDLE}/font-pack', 'GE1_TEX_PRELOAD=1']
         env_file.write_text('\n'.join(lines) + '\n')
+    # P2: the Metal TFX selector coverage ships inside the bundle; the
+    # staged ps2x.env points GE1_TFX_PREWARM at it. The file is written
+    # and verified BEFORE the knob can take effect (the knob without its
+    # file still flips the adapter's pipe-flush cadence 0 -> 600).
+    validate_tfx_selectors()
+    tfx_sha = stage_tfx_selectors(app)
     subprocess.run(['find', str(app), '-name', '._*', '-delete'], check=False)
     identity = sign_staged_app(a.work, app, team, bundle_id)
     (a.work / 'ios-app.json').write_text(json.dumps({
@@ -2419,6 +2525,7 @@ def ios(a):
                                           text=True).strip(),
         'ge1_vendor': GE1_VENDOR_PIN, 'om1_vendor': receipt.get('om1_vendor'),
         'om1_stage': str(om1_stage), 'om1_lib': str(om1_lib),
+        'tfx_selectors_sha256': tfx_sha,
         'slim_sha256': inputs['slim_sha256'], 'elf_sha256': inputs['elf_sha256'],
         'signed_binary_sha256': sha(app / 'ps2EntryRunner'),
         'preset_sha256': sha(app / 'ps2x.env'),
@@ -2782,7 +2889,7 @@ def main():
     p.add_argument('--device', help='iOS device UDID for ios install (default: the single connected device)')
     p.add_argument('--bundle-id', help='iOS bundle id (default: com.ssx3recomp.<team>)')
     p.add_argument('--om1-stage', type=Path, help='offline VU1 stage directory override (default: generated from your disc into work/om1-stage; ios app only)')
-    p.add_argument('--vu0-stage', type=Path, help='VU0 image directory override (default: work/vu0-stage from the vu0 step; android/ios/mac builds)')
+    p.add_argument('--vu0-stage', type=Path, help='VU0 image directory override (default: work/vu0-stage rebuilt from your disc by the vu0 step; android/ios/mac builds)')
     p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
     p.add_argument('--jnilibs', type=Path, help='own source-built Android JNI libraries')
     p.add_argument('--prebuilt', action='store_true', help='opt in to verified prebuilt Android support libraries (default: build them from source)')

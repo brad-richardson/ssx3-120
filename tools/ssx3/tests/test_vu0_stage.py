@@ -270,11 +270,190 @@ class VendorPinTest(unittest.TestCase):
         self.assertEqual(lock['vendor']['armsx2']['pin'], build.ANDROID_GE1_VENDOR_PIN)
 
 
+def synthetic_manifest():
+    import hashlib
+    elf = bytes(range(256)) * 16
+    spans = [{'micro_offset': 0, 'elf_offset': 0, 'length': 2048},
+             {'micro_offset': 2048, 'elf_offset': 2048, 'length': 1856}]
+    micro = bytearray(4096)
+    micro[0:2048] = elf[0:2048]
+    micro[2048:3904] = elf[2048:3904]
+    return elf, {'elf_sha256': build.ELF_SHA,
+                 'images': [{'xxh64': 'test',
+                             'image_sha256': hashlib.sha256(bytes(micro)).hexdigest(),
+                             'spans': spans,
+                             'zero_fill': [{'micro_offset': 3904, 'length': 192}],
+                             'expected_outputs_sha256': {}}]}
+
+
+class ManifestTest(unittest.TestCase):
+    def test_shipped_manifest_shape(self):
+        manifest = build.load_vu0_image_manifest()
+        self.assertEqual(manifest['elf_sha256'], build.ELF_SHA)
+        self.assertEqual(len(manifest['images']), 1)
+        image = manifest['images'][0]
+        self.assertEqual(image['xxh64'], '40829a098c260b4f')
+        covered = bytearray(4096)
+        for span in image['spans']:
+            covered[span['micro_offset']:span['micro_offset'] + span['length']] = b'\x01' * span['length']
+        for fill in image['zero_fill']:
+            covered[fill['micro_offset']:fill['micro_offset'] + fill['length']] = b'\x01' * fill['length']
+        self.assertTrue(all(covered))
+        self.assertEqual(sum(s['length'] for s in image['spans']) + sum(f['length'] for f in image['zero_fill']), 4096)
+        self.assertIn('vu0e_40829a098c260b4f.cpp', image['expected_outputs_sha256'])
+        self.assertEqual(manifest['emitter']['engine_pin'],
+                         '5235b1144d8274b2ab2fd2e9a0dfe642c41f73a8')
+
+    def test_reconstruct_fixture(self):
+        elf, manifest = synthetic_manifest()
+        images = build.reconstruct_vu0_images(elf, manifest)
+        self.assertEqual(list(images), ['vu0e_test.bin'])
+        self.assertEqual(len(images['vu0e_test.bin']), 4096)
+        self.assertEqual(images['vu0e_test.bin'][3904:], bytes(192))
+
+    def test_reconstruct_rejects_overlap(self):
+        elf, manifest = synthetic_manifest()
+        manifest['images'][0]['spans'].append(
+            {'micro_offset': 0, 'elf_offset': 100, 'length': 64})
+        with self.assertRaises(ValueError):
+            build.reconstruct_vu0_images(elf, manifest)
+
+    def test_reconstruct_rejects_out_of_range(self):
+        elf, manifest = synthetic_manifest()
+        manifest['images'][0]['spans'][0]['elf_offset'] = len(elf) - 10
+        with self.assertRaises(ValueError):
+            build.reconstruct_vu0_images(elf, manifest)
+
+    def test_reconstruct_rejects_sha_mismatch(self):
+        elf, manifest = synthetic_manifest()
+        manifest['images'][0]['image_sha256'] = '0' * 64
+        with self.assertRaises(ValueError):
+            build.reconstruct_vu0_images(elf, manifest)
+
+    def test_reconstruct_rejects_gap(self):
+        elf, manifest = synthetic_manifest()
+        manifest['images'][0]['zero_fill'] = []
+        with self.assertRaises(ValueError):
+            build.reconstruct_vu0_images(elf, manifest)
+
+
 class ManifestPermissionTest(unittest.TestCase):
     def test_internet_permission_declared_once(self):
         text = (ROOT / 'apps/android/app/src/main/AndroidManifest.xml').read_text()
         self.assertEqual(text.count('android.permission.INTERNET'), 1)
         self.assertIn('<uses-permission android:name="android.permission.INTERNET" />', text)
+
+
+class TfxSelectorsTest(unittest.TestCase):
+    def test_shipped_coverage_validates(self):
+        self.assertEqual(build.validate_tfx_selectors(), 247)
+
+    def test_bad_format_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / 'bad.json'
+            bad.write_text(json.dumps({'format': 'nope', 'selectors': []}))
+            with self.assertRaises(ValueError):
+                build.validate_tfx_selectors(bad)
+
+    def test_bad_row_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / 'bad.json'
+            data = json.loads((ROOT / 'tools/ssx3/tfx-selectors.json').read_text())
+            data['selectors'] = data['selectors'][:246] + [['0x1']]
+            bad.write_text(json.dumps(data))
+            with self.assertRaises(ValueError):
+                build.validate_tfx_selectors(bad)
+
+    def test_staged_bytes_match_writer(self):
+        import struct
+        with tempfile.TemporaryDirectory() as tmp:
+            app = Path(tmp) / 'app'
+            app.mkdir()
+            digest = build.stage_tfx_selectors(app)
+            blob = (app / 'tfx-selectors.bin').read_bytes()
+            self.assertEqual(len(blob), 247 * 24)
+            data = json.loads((ROOT / 'tools/ssx3/tfx-selectors.json').read_text())
+            expect = b''.join(struct.pack('<6I', *(int(x, 16) for x in row))
+                              for row in data['selectors'])
+            self.assertEqual(blob, expect)
+            self.assertRegex(digest, r'^[0-9a-f]{64}$')
+
+    def test_preset_points_at_bundled_file(self):
+        text = (ROOT / 'presets/ios.env').read_text()
+        self.assertIn('GE1_TFX_PREWARM=${BUNDLE}/tfx-selectors.bin', text)
+
+
+class IosTfxStagingTest(unittest.TestCase):
+    """ios() stages tfx-selectors.bin into the bundle and records it.
+
+    The file lands before the GE1_TFX_PREWARM knob can take effect: the
+    same staging run that copies the preset (which sets the knob) writes
+    and verifies the file, then records its digest before signing.
+    """
+
+    def run_ios(self, work):
+        import plistlib
+        seen = {}
+        real_run = build.run
+
+        def fake_run(*args, **kwargs):
+            if any('write_prewarm.py' in str(x) for x in args):
+                seen['prewarm'] = True
+                return real_run(*args, **kwargs)
+            built = work / 'ios-app-build/ps2xRuntime/Release-iphoneos/ps2EntryRunner.app'
+            built.mkdir(parents=True, exist_ok=True)
+            (built / 'ps2EntryRunner').write_bytes(b'fake-runner')
+            with open(built / 'Info.plist', 'wb') as f:
+                plistlib.dump({'CFBundleIdentifier': 'com.test.ssx3'}, f)
+            seen['ran'] = True
+
+        work.mkdir(parents=True, exist_ok=True)
+        (work / 'inputs.json').write_text(json.dumps({'iso': 'x', 'slim_iso': 'y', 'slim_sha256': 'z',
+                                                       'elf_sha256': build.ELF_SHA}))
+        for name in ('SLUS_207.72', 'SSX3.iso', 'SSX3.iso.holes'):
+            (work / name).write_bytes(b'disc-bytes')
+        (work / 'ios-libs.json').write_text(json.dumps({'ge1_dir': str(work / 'ge1'),
+                                                         'om1_dir': str(work / 'om1'),
+                                                         'om1_vendor': 'v'}))
+        (work / 'ge1').mkdir()
+        (work / 'om1').mkdir()
+        (work / 'ios-libs/MoltenVK.framework').mkdir(parents=True)
+        (work / 'ios-vendor').mkdir()
+        (work / 'ios-ffmpeg').mkdir(exist_ok=True)
+        (work / 'ios-sdl2/lib/cmake/SDL2').mkdir(parents=True)
+        a = types.SimpleNamespace(work=work, team='E4R78PLLKY', jobs=2, dry_run=False,
+                                  install=False, skip_fonts=True, vu0_stage=None,
+                                  om1_stage=None, bundle_id=None, device=None)
+        with patch.object(build, 'ios_libs_current', return_value=True), \
+             patch.object(build, 'ensure_ios_om1_stage', return_value=work / 'om1stage'), \
+             patch.object(build, 'sign_staged_app', return_value='fake-id'), \
+             patch.object(build, 'verified_disc_payload',
+                          return_value=[(work / 'SLUS_207.72', 'SLUS_207.72'),
+                                        (work / 'SSX3.iso', 'SSX3.iso'),
+                                        (work / 'SSX3.iso.holes', 'SSX3.iso.holes')]), \
+             patch.object(build, 'run', side_effect=fake_run):
+            with redirect_stdout(io.StringIO()):
+                build.ios(a)
+        self.assertTrue(seen.get('ran'))
+        apps = list((work / 'ios-stage').glob('*.app'))
+        self.assertEqual(len(apps), 1)
+        return apps[0]
+
+    def test_file_staged_before_knob(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.run_ios(Path(tmp) / 'work')
+            blob = (app / 'tfx-selectors.bin').read_bytes()
+            self.assertEqual(len(blob), 247 * 24)
+            env = (app / 'ps2x.env').read_text()
+            self.assertIn('GE1_TFX_PREWARM=${BUNDLE}/tfx-selectors.bin', env)
+
+    def test_receipt_records_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            app = self.run_ios(work)
+            receipt = json.loads((work / 'ios-app.json').read_text())
+            self.assertEqual(receipt['tfx_selectors_sha256'], build.sha(app / 'tfx-selectors.bin'))
 
 
 if __name__ == '__main__':
