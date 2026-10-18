@@ -284,9 +284,11 @@ class Build:
     def phase_menu(self, courspit):
         dest = self.W / 'menu' / 'DATA' / 'UI'
         receipt = self.W / 'menu' / 'menu.json'
+        # --member takes the COURSPIT input names (ABC1.ssh); the TP names
+        # are the staged outputs menu_assets.py writes (TPABC1.SSH).
         run(self.logs, 'menu', sys.executable, T / 'tk52' / 'menu_assets.py',
             '--courspit', courspit,
-            *sum((['--member', m] for m in TP_PANES), []),
+            *sum((['--member', m[2:] + '.ssh'] for m in TP_PANES), []),
             '--out', self.W / 'menu', '--receipt', receipt, cwd=self.W)
         got = sorted(p.name for p in dest.glob('TP*'))
         want = sorted(f'{m}.SSH' for m in TP_PANES)

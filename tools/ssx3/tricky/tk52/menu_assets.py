@@ -23,7 +23,9 @@ outputs = []
 for name in a.member:
     m = next(m for m in members if m['path'].casefold() == name.casefold())
     blob = data[m['offset']:m['offset']+m['size']]
-    assert blob[:4] == b'SHPS' and len(blob) <= 0x109a0
+    # Staged panes are verbatim members: 66720 B (x7) and 66736 B (x2),
+    # SHPS magic; bound covers both observed sizes (tkp5 staging).
+    assert blob[:4] == b'SHPS' and len(blob) <= 0x10500
     dest = Path(a.out) / 'DATA/UI' / ('TP'+m['path'].upper())
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(blob)
