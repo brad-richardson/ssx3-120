@@ -22,7 +22,9 @@ from pathlib import Path
 
 # Port: the lane imported TK12's world reader; here it is a package sibling
 # (provided by the world-pipeline port).
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_HERE = Path(__file__).resolve().parent
+sys.path[:0] = [str(_HERE / d) for d in ('tk12', 'tk13', 'tk30',
+                                        'shared')] + [str(_HERE)]
 from wlib import W
 
 sha = lambda b: hashlib.sha256(b).hexdigest()

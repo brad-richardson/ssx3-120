@@ -11,7 +11,10 @@ sys.dont_write_bytecode=True
 # Port: the lane repo-rooted every import; here every helper is a sibling in
 # this package (wlib, tricky_pbd, tkp4_speech/parse_desc, gamecube_scenery,
 # replace_terrain/placement, ps2_as_gc30 come from the world-pipeline port).
-sys.path[:0]=[str(Path(__file__).resolve().parent)]
+_HERE = Path(__file__).resolve().parent
+sys.path[:0] = [str(_HERE / d) for d in ('tk12', 'tk13', 'tk30',
+                                        'shared')] + [str(_HERE)]
+
 from speech_merge import parse_desc
 from wlib import W
 from tricky_pbd import PBD

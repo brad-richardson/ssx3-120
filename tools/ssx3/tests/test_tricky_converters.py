@@ -8,7 +8,9 @@ import importlib.util
 import json
 import math
 import struct
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -302,6 +304,23 @@ class BannerTest(unittest.TestCase):
         for r in rows:
             title = r[2]
             self.assertTrue(title and '"' not in title)
+
+
+class GemToolImportTest(unittest.TestCase):
+    # bake_gems/gem_step import wlib, which lives in tricky/tk12 — not the
+    # script dir. The driver runs tools with cwd=<workdir> and a stripped
+    # PYTHONPATH, so each tool must put tk12 on sys.path itself. Run every
+    # gem tool's --help from a bare temp dir: import failure fails here.
+    TOOLS = ('bake_gems.py', 'gem_step.py', 'bake_mega_gems.py')
+
+    def test_gem_tools_import_away_from_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for tool in self.TOOLS:
+                with self.subTest(tool=tool):
+                    r = subprocess.run(
+                        [sys.executable, str(TRICKY / tool), '--help'],
+                        cwd=tmp, capture_output=True, text=True, timeout=120)
+                    self.assertEqual(r.returncode, 0, r.stderr[-500:])
 
 
 if __name__ == '__main__':
