@@ -2684,6 +2684,8 @@ def ios_onecmd(a):
     # F03: create WORK before any step writes into it (fresh iOS one-command
     # setups failed when prepare wrote SLUS_207.72 under a missing parent).
     a.work.mkdir(parents=True, exist_ok=True)
+    # F15: disk preflight before anything heavy (measured budgets in README).
+    check_capacity(a.work, 'ios')
     doctor(a)
     if a.dry_run:
         ios(a)
@@ -2817,6 +2819,53 @@ def needs_prepare(step, dry_run):
     which lists the prepared payload) still requires prepare first.
     """
     return step != 'prepare' and step != 'tricky' and not (step == 'ios' and dry_run)
+
+
+def host_memory_bytes():
+    """Total host RAM in bytes, or None when it cannot be read (stdlib only)."""
+    import platform as platform_module
+    try:
+        if platform_module.system() == 'Darwin':
+            return int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True).strip())
+        if platform_module.system() == 'Linux':
+            with open('/proc/meminfo') as f:
+                for line in f:
+                    if line.startswith('MemTotal:'):
+                        return int(line.split()[1]) * 1024
+    except (OSError, subprocess.CalledProcessError, ValueError, IndexError):
+        pass
+    return None
+
+
+# F15: measured cold-build footprints (mini-external live dirs, 2026-10-18;
+# see README budgets): full Android SDK 3.4 GB (NDK 2.8), managed JDK 0.3 GB,
+# staged slim ISO 1.7 GB, prepare outputs ~0.8 GB (codegen 272 MB +
+# generator 504 MB), Mac runner build 1.9 GB, whole Mac work dir 5.8 GB,
+# iOS work dir 13 GB, APK ~0.34 GB. Requirements keep ~2x headroom over the
+# measured work contents plus Gradle/Xcode caches outside --work.
+MIN_FREE_BYTES = {'android': 25 * 1024**3, 'ios': 20 * 1024**3}
+MIN_FREE_BYTES_DEFAULT = 12 * 1024**3
+MIN_MEMORY_BYTES_WARN = 8 * 1024**3
+
+
+def check_capacity(work, target):
+    """F15: fail before heavy work when the work filesystem is too full.
+
+    Disk is enforced (a full disk mid-build corrupts outputs); low RAM is
+    a warning only (small hosts can still build with --jobs 1).
+    """
+    required = MIN_FREE_BYTES.get(target, MIN_FREE_BYTES_DEFAULT)
+    free = shutil.disk_usage(str(work)).free
+    if free < required:
+        raise ValueError('host preflight: only %.1f GB free under %s, need ~%d GB free '
+                         'for a %s cold build (measured footprints in README; '
+                         'free space or pick another --work)' %
+                         (free / 1024**3, work, required // 1024**3, target))
+    total = host_memory_bytes()
+    if total is not None and total < MIN_MEMORY_BYTES_WARN:
+        print('warning: host RAM is %.1f GB; 8+ GB is recommended '
+              '(use --jobs 1 on small hosts)' % (total / 1024**3))
+    return True
 
 
 def check_install_device(a, check):
@@ -3515,6 +3564,8 @@ def android_onecmd(a):
     a.work.mkdir(parents=True, exist_ok=True)
     if not a.ssx3_iso:
         raise ValueError('android one-command needs --ssx3-iso <your-USA-disc>')
+    # F15: disk preflight before anything heavy (measured budgets in README).
+    check_capacity(a.work, 'android')
     # F12: disc identity and native host tools before any JDK/SDK download.
     a.iso = validate_ssx3_iso(a.ssx3_iso)
     preflight_host_tools()

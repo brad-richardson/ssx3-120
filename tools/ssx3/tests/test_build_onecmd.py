@@ -302,6 +302,41 @@ class DryRunGateTest(unittest.TestCase):
         self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
 
 
+class CapacityTest(unittest.TestCase):
+    """F15: disk preflight with documented free-space numbers."""
+
+    def test_full_disk_fails_with_numbers(self):
+        import collections
+        usage = collections.namedtuple('usage', 'total used free')
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            with patch.object(build.shutil, 'disk_usage',
+                              return_value=usage(100, 99, 1 * 1024**3)):
+                with self.assertRaisesRegex(ValueError, r'only 1.0 GB free.*need ~25 GB.*android'):
+                    build.check_capacity(work, 'android')
+
+    def test_roomy_disk_passes(self):
+        import collections
+        usage = collections.namedtuple('usage', 'total used free')
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            with patch.object(build.shutil, 'disk_usage',
+                              return_value=usage(500 * 1024**3, 100 * 1024**3, 400 * 1024**3)):
+                self.assertTrue(build.check_capacity(work, 'android'))
+                self.assertTrue(build.check_capacity(work, 'other-target'))
+
+    def test_memory_probe_never_raises(self):
+        self.assertTrue(build.host_memory_bytes() is None or build.host_memory_bytes() > 0)
+
+    def test_budgets_are_documented(self):
+        text = (ROOT / 'README.md').read_text()
+        self.assertIn('25 GB free', text)
+        self.assertIn('20 GB free', text)
+        self.assertIn('3.4 GB', text)
+
+
 class InstallDeviceTest(unittest.TestCase):
     """F14: --install discovers its target in the doctor, not after the build."""
 

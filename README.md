@@ -91,6 +91,21 @@ by default; pass `--prebuilt` to reuse a verified prebuilt release when one
 matches this checkout, with automatic fallback to source;
 details in [tools/ssx3](tools/ssx3/README.md).
 
+Disk, memory and time budgets (F15; measured 2026-10-18 from existing
+build work dirs, Mac mini host): keep **25 GB free** for an Android cold
+build, **20 GB free** for iOS, **12 GB free** for prepare/Mac. The builder
+checks this before downloading anything and fails with the numbers when
+the work filesystem is too full. Measured components: full Android SDK
+3.4 GB (NDK 2.8 GB, build-tools 187 MB, platforms 126 MB, CMake 94 MB,
+platform-tools 37 MB), managed Temurin JDK 17 0.3 GB, staged slim ISO
+1.7 GB (your full 3.0 GB disc stays outside `--work`), prepare outputs
+~0.8 GB (codegen 272 MB + generator build 504 MB + ELF 3.7 MB), Mac
+runner build 1.9 GB, whole Mac work dir 5.8 GB, iOS work dir 13 GB
+(several timestamped build dirs), APK ~0.34 GB — plus Gradle/Xcode
+caches outside `--work`, hence the ~2x headroom. RAM: 8+ GB recommended
+(the default is `--jobs 8`; small hosts should pass `--jobs 1` — low RAM
+is a warning, a full disk is an error).
+
 What the builder does with your disc: validates the ISO/ELF hashes, writes
 a slim image plus a hole table into `--work`, generates EE code with the
 pinned generator into `--work/codegen` (never into this repo), and links it
