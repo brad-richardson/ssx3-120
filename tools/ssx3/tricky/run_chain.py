@@ -642,6 +642,16 @@ COURSES = {
         rails_tool='tk21/make_rails21.py',
         rails_template_group=115,
         oracle_h='261ed4ef724d540b0bc1f5d4efa72283081cbf59c20f69d7d6fa61092df6f537',
+        # TK26 mega-c (final terrain, tk-mega-1 step 5): re-terrain over h
+        # (stem MEGA), --compact-ids, no --prune-orphans,
+        # --lm-alpha-scale 1.0 over the regenerated tex20 list.
+        terrain_tool='tk26/make_terrain_tex23.py',
+        terrain_L='megapl_L.ssh',
+        terrain_extra=['--mips', '4', '--prune', '--compact-ids',
+                       '--exact-bounds', '--mips-only',
+                       '{data}/mega-line-tex20.txt',
+                       '--offline-tex-max', '64',
+                       '--lm-alpha-scale', '1.0'],
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
         floor_group=94,
         oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
