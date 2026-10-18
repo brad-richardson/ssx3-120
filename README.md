@@ -46,6 +46,19 @@ and build the Tricky layer from it with the in-tree converter driver
 same command. Supported Tricky discs:
 [docs/tricky-inputs.md](docs/tricky-inputs.md).
 
+### Why is the Tricky step slower?
+
+The SSX 3 build recompiles SSX 3 and reads assets straight from your
+disc. Tricky courses are converted to run inside SSX 3's engine — so SSX 3
+handling, tricks and scoring apply — which means converting every course's
+geometry, collision, resets, race lines, gems, HUD and menus, plus audio
+when you have the tools for it, then recompressing each course archive in
+the game's own archive format. That recompression is most of the time:
+currently ~X min on an 8-core machine [TODO: fill in from the final timed
+run]. The step is optional: skip it by leaving out `--tricky-iso`
+(Tricky audio needs local ffmpeg + vgmstream installs). It runs once,
+then its outputs are cached in your work directory.
+
 Prefer your own toolchain? `--no-auto-download` never fetches: the builder
 uses only what it finds and fails with a precise
 "missing X; set Y or drop --no-auto-download" message. Search order: JDK =
