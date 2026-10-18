@@ -95,7 +95,10 @@ TRICKY_SPEECH_MEMBERS = ['data\\speech\\mc\\Wipeout.dat',
 SSX3_SPEECH_DIR = 'data\\speech\\char\\'
 GEM_COURSES = (('GARI', 33), ('SNOW', 56), ('MESA', 80),
                ('MERQ', 148), ('ALOHA', 22), ('ELYS', 135))
-GEM_DONOR_STEM = {'MERQ': 'merquer', 'ELYS': 'elysium'}
+# Note: donor dirs use the donor stem (donor/merquer, donor/elysium) but
+# effects files use the recipe effects stem (effects/merq.json,
+# effects/elys.json); phase_gems derives the latter from COURSES like the
+# producer does. Do not reintroduce a shared stem map for both.
 # itstricky (Tricky JUKEBOX.BIG): stereo 36 kHz, 6,602,400 frames; the
 # staged song is its 48 kHz resample gained -1.69 dB to the music bed.
 SONG_MEMBER = 'itstricky'
@@ -521,7 +524,10 @@ class Build:
                 continue
             world = self.W / f'w-{c}-f11' / f'{arch}.BIG'
             scenery = self.W / f'w-{c}-b' / 'scenery.json'
-            effects = self.W / 'effects' / f'{GEM_DONOR_STEM.get(arch, arch)}.json'
+            # Effects stem comes from the recipe (like the producer in
+            # run_chain.effects_json), NOT the donor stem: merq/elys.
+            effects = self.W / 'effects' / \
+                f"{COURSES[c].get('effects', COURSES[c]['donor'])}.json"
             specs += ['--course', f'{arch}:{world}:{scenery}:{effects}:{group}']
         partial = len(specs) < len(GEM_COURSES)
         sidecar = ge / 'gems-345.tsv'

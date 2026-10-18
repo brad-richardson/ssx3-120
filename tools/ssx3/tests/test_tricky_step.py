@@ -702,6 +702,42 @@ class BuildTrickyDriverTest(unittest.TestCase):
                      str(stage / f'{song}.mus'), str(stage / f'{song}.mpf'),
                      '--offsets', str(stage / f'{song}.tsv')])
 
+    def test_gems_effects_use_recipe_stems(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work, tricky_iso=work / 't.iso',
+                               ssx3_iso=work / 's.iso')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.a = work, args
+            b.skipped = {f'resets-{c}': 'x'
+                         for c in ('gari', 'snow', 'mesa', 'aloha')}
+            b.logs = work / 'logs'
+            for c in ('pipe', 'alaska', 'untrack'):
+                d = work / f'w-{c}-s5'
+                d.mkdir(parents=True)
+                (d / f'{c.upper()}.BIG').write_bytes(b'x')
+            calls = []
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                calls.append((name, list(argv)))
+                if '--out' in argv:
+                    o = Path(argv[argv.index('--out') + 1])
+                    o.parent.mkdir(parents=True, exist_ok=True)
+                    o.write_bytes(b'g')
+                return Path(logdir) / f'{name}.log'
+
+            with patch.object(driver, 'run', side_effect=fake_run):
+                out = b.phase_gems()
+            self.assertEqual(out, work / 'gems' / 'gems-483.tsv')
+            specs = [a for n, a in calls if n == 'bake-gems'][0]
+            courses = [specs[i + 1] for i, x in enumerate(specs)
+                       if x == '--course']
+            self.assertTrue(any('effects/merq.json' in s for s in courses))
+            self.assertTrue(any('effects/elys.json' in s for s in courses))
+            self.assertFalse(any('merquer.json' in s or 'elysium.json' in s
+                                 for s in courses))
+
     def test_hud_atlas_reads_the_tricky_iso(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp) / 'w'
