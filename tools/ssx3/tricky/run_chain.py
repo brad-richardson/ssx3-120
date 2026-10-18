@@ -73,7 +73,8 @@ def build_world_args(loc, tmpl, src, tgt, yaw, scale, pin, extra=()):
 # note (never silently): the oracles, not the rung list, are the gate.
 RUN_ORDER = ['extract', 'ps2', 'build', 'race', 'resets', 'scenery',
              'terrain', 'sg', 'cand', 'finalw', 'bind', 'floor', 'composite',
-             'play', 'blend', 'fix', 's1', 's2', 's3', 's4', 's5', 'routes']
+             'play', 'blend', 'fix', 's1', 's2', 's3', 's4', 's5', 'routes',
+             'gems']
 # Tail (TKP5 chain.sh order): play = TK37b composite10 of the floor final;
 # blend = TK42c materialize + patch_blend + composite to the staged TK49;
 # fix = TK56 class-row rebind of staged; s1 = TK53 triggers (mesa);
@@ -672,6 +673,10 @@ COURSES = {
         routes_group=94,
         routes_args=['boost', '--rid', '94', '--program', '34', '--slot', '2'],
         oracle_routes='0d0677c46d04fc99c735db84543d2fb344fcc17faf653db9d5fa5c6318f524bc',
+        # MGX1 gems follow-up (tk-mega-1 step 8): +38 MEGA rows over the
+        # workdir 483-row prior sidecar; oracle 467d0357 (521 rows).
+        gems_bake=True,
+        oracle_gems='467d0357a106a079642c4515bc22f619bc594a0505528a7c9e041883f661d598',
     ),
 }
 
@@ -1443,6 +1448,35 @@ class Chain:
             check(out, r['oracle_routes'], f'{c} routes-final')
         return out
 
+    # -- rung: mega gems sidecar (MGX1 follow-up) --------------------------------
+    # bake_mega_gems.py over the chain-built s5 descriptor + the SSX 3 ISO
+    # + the workdir donor .pbd + the regenerated donor effects census +
+    # the workdir 483-row prior sidecar (built by the gate's bake_gems +
+    # gem_step steps from this workdir's own course outputs). Without a
+    # chain base or that sidecar the rung records a skip, never a
+    # reference. Output is the 521-row tricky-gems.tsv.
+    def rung_gems(self, c, r, desc, ddir):
+        sidecar = self.W / 'gems-483.tsv'
+        if desc is None or not sidecar.is_file():
+            print(f'{c} gems skipped (no chain base or workdir 483 sidecar)',
+                  flush=True)
+            return None
+        w = self.W / f'w-{c}-gems'
+        w.mkdir(parents=True, exist_ok=True)
+        out = w / 'tricky-gems.tsv'
+        ddir = ddir or self.donor / r['donor']
+        effects = self.effects_json(c, r, ddir)
+        run('gems', sys.executable, self.T / 'bake_mega_gems.py',
+            '--descriptor', desc, '--iso', self.a.ssx3_iso,
+            '--pbd', ddir / f"{r['donor']}.pbd",
+            '--effects', effects, '--sidecar', sidecar,
+            '--world-out', w / 'mat.BIG', '--out', out,
+            '--receipt', w / 'gems.json',
+            cwd=self.W, log=self.log(c, 'gems'))
+        if r.get('oracle_gems'):
+            check(out, r['oracle_gems'], f'{c} gems')
+        return out
+
     # -- global: COURSPIT preview chain -------------------------------------------
     # Frozen COURSPIT from the stock ISO, then one preview_step per course
     # (members are disjoint, order fixed). Proven: 3332b0af (TKP5).
@@ -1615,6 +1649,11 @@ class Chain:
                 self.rung_routes(c, r, latest)
             else:
                 print(f'{c} routes skipped (not a routes course)', flush=True)
+        if 'gems' in order:
+            if r.get('gems_bake'):
+                self.rung_gems(c, r, latest, ddir)
+            else:
+                print(f'{c} gems skipped (not wired)', flush=True)
         print(f'{c} done through {order[-1]}', flush=True)
 
 

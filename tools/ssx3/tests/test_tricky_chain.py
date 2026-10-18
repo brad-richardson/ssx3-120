@@ -487,6 +487,40 @@ class RailTemplateTest(unittest.TestCase):
         self.assertIn('conflicting', r.stdout + r.stderr)
 
 
+class GemsRungTest(unittest.TestCase):
+    """tk-mega-1 step 8: MGX1 gems follow-up rung after routes."""
+
+    def test_gems_last_in_order(self):
+        order = run_chain.RUN_ORDER
+        self.assertLess(order.index('routes'), order.index('gems'))
+        self.assertEqual(order[-1], 'gems')
+
+    def test_mega_gems_wired(self):
+        recipe = run_chain.COURSES['mega']
+        self.assertTrue(recipe.get('gems_bake'))
+        self.assertEqual(recipe.get('oracle_gems'),
+                         '467d0357a106a079642c4515bc22f619bc594a0505528a7c9e041883f661d598')
+        wired = {c for c, r in run_chain.COURSES.items()
+                 if r.get('gems_bake')}
+        self.assertEqual(wired, {'mega'})
+
+    def test_gems_rung_skips_without_base_or_sidecar(self):
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp)
+            chain = run_chain.Chain(args)
+            recipe = dict(run_chain.COURSES['mega'])
+            self.assertIsNone(chain.rung_gems('mega', recipe, None, None))
+            sentinel = Path(temp) / 'MEGA.BIG'
+            sentinel.write_bytes(b'x')
+            self.assertIsNone(chain.rung_gems('mega', recipe, sentinel, None))
+
+    def test_gem_tools_import(self):
+        for tool in ('bake_gems', 'gem_step', 'bake_mega_gems'):
+            mod = load(f'tk_{tool}', TRICKY / f'{tool}.py')
+            self.assertTrue(callable(mod.main), tool)
+
+
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""
 
