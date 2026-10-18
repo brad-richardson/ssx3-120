@@ -2608,6 +2608,21 @@ def stage(a):
             (files / name).write_text(src.read_text().replace(PUBLIC_APP_ID, a.app_id))
         else:
             shutil.copy2(src, files / name)
+    # Android online staging (appsec-fix-1): the public Android build carries
+    # online like the iOS preset does. presets/online.env stays the single
+    # definition of the lobby rows; the staged ps2x.env appends them so the
+    # runtime (which layers only ps2x.env + full120.env) arms
+    # PS2X_NET=1 / ssx.bradr.dev / Quick Play. STOCK120 is deliberately not
+    # staged (code default off, per the decided default).
+    online_src = presets / 'online.env'
+    if not online_src.is_file():
+        raise ValueError('missing shipped preset: ' + str(online_src))
+    online_rows = [line.strip() for line in online_src.read_text().splitlines()
+                   if line.strip() and not line.strip().startswith('#')]
+    with (files / 'ps2x.env').open('a') as staged:
+        staged.write('# Online layer from presets/online.env (staged copy).\n')
+        for row in online_rows:
+            staged.write(row + '\n')
     resources = a.work / 'android-resources'
     if not resources.is_dir():
         raise ValueError('stage requires android-libs first (missing android-resources in work dir)')
