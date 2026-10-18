@@ -656,10 +656,12 @@ class PresetHygieneTest(unittest.TestCase):
             self.assertIn(required, keys)
         # Achievements are out of the product (Brad 10-17); the Tricky bundle
         # rows ship (each fails closed without its files). SKIP_MOVIE/PAD_SCRIPT
-        # stay out (dev-only).
+        # stay out (dev-only). Marker + quick-state UI are settings-panel
+        # defaults (off/hidden, Brad 10-18), never preset lines (G3).
         for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_SKIP_MOVIE=',
                           'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision',
-                          'PS2X_OM1_DENY=', 'PS2X_ACHIEVEMENTS'):
+                          'PS2X_OM1_DENY=', 'PS2X_ACHIEVEMENTS',
+                          'PS2X_INPUT_MARKER=', 'PS2X_QUICKSTATE_UI='):
             self.assertNotIn(forbidden, joined)
 
     def test_play_values_are_explicit(self):
@@ -668,7 +670,9 @@ class PresetHygieneTest(unittest.TestCase):
             if line and not line.startswith('#') and '=' in line:
                 key, value = line.split('=', 1)
                 values[key] = value
-        self.assertEqual(values['GE1_UPSCALE'], '2')
+        # G3 (public-parity-2): no explicit GE1_UPSCALE — the settings panel +
+        # device tier own resolution (capable iOS: Screen on 1080p else 2x).
+        self.assertNotIn('GE1_UPSCALE', values)
         self.assertEqual(values['GE1_CAS'], '0.25')
         self.assertEqual(values['PS2X_GE1_EXPORT_SIZE'], 'display')
         self.assertEqual(values['PS2X_NET_SERVER'], 'ssx.bradr.dev')
