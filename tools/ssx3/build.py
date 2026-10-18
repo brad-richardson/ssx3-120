@@ -2621,7 +2621,9 @@ def stage(a):
         return files
     print('Push it with these commands (stage prints them; it does not run them):')
     print('  adb install -r ' + str(apk))
-    print('  adb shell am start -n ' + a.app_id + '/android.app.NativeActivity')
+    # F6: bootstrap through the exported Launch60 alias (the trampoline),
+    # never the non-exported NativeActivity directly.
+    print('  adb shell am start -n ' + a.app_id + '/.Launch60')
     print('  adb shell am force-stop ' + a.app_id)
     print('  adb shell test -d ' + device + '/ge1-data')
     print('  adb shell test -d ' + device + '/mc0')
@@ -2751,7 +2753,9 @@ def install(a):
     # the app before the native activity loads. A boot without staged disc data
     # may exit immediately; only directory creation is needed here.
     try:
-        adb(a, 'shell', 'am', 'start', '-n', a.app_id + '/android.app.NativeActivity')
+        # F6: bootstrap through the exported Launch60 alias (the trampoline),
+        # never the non-exported NativeActivity directly.
+        adb(a, 'shell', 'am', 'start', '-n', a.app_id + '/.Launch60')
         # am start returns before Application.onCreate runs. Wait for the app
         # to create both directories before stopping its bootstrap process.
         deadline = time.monotonic() + 30

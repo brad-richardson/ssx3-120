@@ -17,8 +17,9 @@ import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Set;
 
-// Runs for launcher aliases AND direct NativeActivity harness launches, before
-// native env initialization. Only app-pack is managed; external play data is not.
+// Runs for the launcher aliases (via the LaunchActivity trampoline; F6 made
+// NativeActivity non-exported), before native env initialization. Only
+// app-pack is managed; external play data is not.
 public final class RunnerApplication extends Application {
     private static final String TAG = "ps2x";
 

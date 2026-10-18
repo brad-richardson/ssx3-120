@@ -60,7 +60,7 @@ class PublicInstallStageTest(unittest.TestCase):
                 build.install(args)
             self.assertFalse(any('mkdir' in str(part) for call in calls for part in call))
             self.assertLess(calls.index(('shell', 'am', 'start', '-n',
-                                         'com.ssx3.recomp/android.app.NativeActivity')),
+                                         'com.ssx3.recomp/.Launch60')),
                             next(i for i, call in enumerate(calls) if call[0] == 'push'))
             self.assertIn(('shell', 'chmod', '-R', 'o+rX',
                            '/sdcard/Android/data/com.ssx3.recomp/files/ge1-resources'), calls)

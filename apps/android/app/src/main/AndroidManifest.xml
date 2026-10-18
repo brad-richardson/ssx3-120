@@ -23,16 +23,18 @@
             android:name="android.game_mode_config"
             android:resource="@xml/game_mode_config" />
 
-        <!-- TG1: exported (no launcher entry) so tooling can use
-             am start -n <applicationId>/android.app.NativeActivity (60, base
-             env). singleTask: one runtime per process; a relaunch brings the
+        <!-- F6 (appsec-fix-1): non-exported so only the LaunchActivity
+             trampoline (via the exported Launch60/Launch120 aliases) can
+             start the runtime with its RAM/panel policy and 60/120
+             selection. Tooling bootstraps through the Launch60 alias.
+             singleTask: one runtime per process; a relaunch brings the
              running game forward. -->
         <activity
             android:name="android.app.NativeActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation"
             android:screenOrientation="landscape"
             android:launchMode="singleTask"
-            android:exported="true">
+            android:exported="false">
 
             <!-- Runner shared library built by ps2xRuntime/CMakeLists.txt -->
             <meta-data
