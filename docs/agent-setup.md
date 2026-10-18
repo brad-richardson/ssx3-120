@@ -40,10 +40,13 @@ device. The offline-VU1 microVU stage is generated from your disc into
 `work/om1-stage` by the builder (`--om1-stage` overrides it).
 
 ```sh
-./build ios --dry-run --team <TEAM10> --work ~/ssx3-work
+./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work
 ./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work
 ./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work --install
 ```
+
+The dry run needs no prepared outputs (F06: the old first command omitted
+`--ssx3-iso` and died at the prepare gate before reaching dry-run).
 
 What each run does: `doctor` (Xcode, CMake, signing identity, device),
 `prepare` (ISO validation + codegen), `ios-libs` (GE1 renderer, OM1

@@ -268,6 +268,33 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class DryRunGateTest(unittest.TestCase):
+    """F06: the first iOS dry-run works before prepare."""
+
+    def test_needs_prepare_truth_table(self):
+        self.assertFalse(build.needs_prepare('prepare', False))
+        self.assertFalse(build.needs_prepare('tricky', False))
+        self.assertFalse(build.needs_prepare('ios', True))
+        self.assertTrue(build.needs_prepare('ios', False))
+        self.assertTrue(build.needs_prepare('install', True))
+        self.assertTrue(build.needs_prepare('android', False))
+
+    def test_ios_dry_run_needs_no_inputs_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'fresh-work'
+            work.mkdir()
+            args = onecmd_args(work, team='ABCDE12345', device=None,
+                               install=False, dry_run=True,
+                               bundle_id=None, app_id=build.PUBLIC_APP_ID,
+                               app_label=None, om1_stage=None,
+                               no_pgo=True, pgo_profile=None)
+            build.ios(args)  # must not raise on missing prepare outputs
+
+    def test_documented_first_command_is_one_command_dry_run(self):
+        text = (ROOT / 'docs/agent-setup.md').read_text()
+        self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
+
+
 class WorkDirCreationTest(unittest.TestCase):
     """F03: one-command paths create WORK before any step writes into it."""
 

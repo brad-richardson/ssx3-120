@@ -2780,6 +2780,17 @@ def resolve_adb(a):
     return str(adb)
 
 
+def needs_prepare(step, dry_run):
+    """Whether a step-by-step invocation requires prepared outputs (F06).
+
+    `ios --dry-run` is the pre-prepare probe: ios() reports MISSING
+    outputs itself, so the gate lets it through without inputs.json.
+    Every other non-prepare/tricky step (including `install --dry-run`,
+    which lists the prepared payload) still requires prepare first.
+    """
+    return step != 'prepare' and step != 'tricky' and not (step == 'ios' and dry_run)
+
+
 def adb(a, *args, capture=False):
     binary = resolve_adb(a)
     command = [binary] + (['-s', a.serial] if a.serial else []) + list(map(str, args))
@@ -3489,7 +3500,7 @@ def main():
     if a.step == 'tricky' and a.dry_run:
         tricky_dry_run(a)
         return
-    if a.step != 'prepare' and a.step != 'tricky' and not (a.work / 'inputs.json').is_file():
+    if needs_prepare(a.step, a.dry_run) and not (a.work / 'inputs.json').is_file():
         p.error('run prepare in this work directory first')
     a.work.mkdir(parents=True, exist_ok=True)
     if a.step == 'tricky':
