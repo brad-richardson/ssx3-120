@@ -132,6 +132,15 @@ class ResolvePgoTest(unittest.TestCase):
                 self.assertEqual(result, str(dest))
                 self.assertIn('PGO profile applied', out.getvalue())
 
+    def test_ios_default_codegen_applies_bundled_profile(self):
+        # G10 (public-parity-2): the default public codegen is probe-backed
+        # validated on iOS, so a plain ios build applies PGO without an
+        # explicit --pgo-profile override.
+        manifest = build.pgo_manifest('ios')
+        self.assertTrue(build.pgo_fresh(
+            manifest,
+            '77537c0511e6bf20dcd999594cc1a8b6aa451acabf38d8d29c0b119ce8efc002'))
+
     def test_bundled_manifests_match_archives(self):
         for platform in ('android', 'ios'):
             manifest = build.pgo_manifest(platform)

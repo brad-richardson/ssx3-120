@@ -160,7 +160,7 @@ tools/ssx3/write_prewarm.py	fork@f7a96f23	tools/ssx3/write_prewarm.py	7aef838b42
 tools/ssx3_codegen_scan.py	fork@f7a96f23	tools/ssx3_codegen_scan.py	de2ca1d0978856720ea1a06d0b7b66b5a97f52561a7af95889063ab644ffe8ce	7250	verbatim
 tools/ssx3/pgo/android/MANIFEST.json	authored:pgo-public-1	-	210b5a831e6b20bab9e50f1caa3b89d0a075161f4b0be98deb65333fbdad8fd6	1501	new
 tools/ssx3/pgo/android/profile.profdata.gz	lab-pgo:pb58	-	f7c8eecf60d416b2145e977660aca8b7fa16c2e5943b2e7ac1ac35a9007a46bc	1734322	new
-tools/ssx3/pgo/ios/MANIFEST.json	authored:pgo-public-1	-	cd6ed38b72162f51d2f351270ae900e37e3e7ef49a2370cbde58fb98421f815f	962	new
+tools/ssx3/pgo/ios/MANIFEST.json	authored:pgo-public-1	-	4be0b6ad8b9b78e35ca86e4a98700fc0bdc4c8b29fde9764853083348fb9580f	1850	new
 tools/ssx3/pgo/ios/profile.profdata.gz	lab-pgo:ipb30	-	c89faf19a4a69a8f3ab4d823e0efd3644cb4731ebea06a3705e5ef3e370b0bdc	1639399	new
-tools/ssx3/tests/test_pgo.py	authored:pgo-public-1	-	beba6891a453867ab19cddb8053ce96e357b638d0a46cadafef8da4ffd32c231	8230	new
+tools/ssx3/tests/test_pgo.py	authored:pgo-public-1	-	6437270518e75fedbecfb2995e0d866e07b709f21a18a5d00eac71f37dc61ac3	8675	new
 tools/ssx3/tests/test_ios_flags.py	authored:pgo-public-1	-	67e241a477acf3d77e759d069dc1eab603a73210e3269318e6c16bd5fad8e693	8915	new
