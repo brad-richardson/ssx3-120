@@ -29,8 +29,9 @@ The JDK and Android SDK/NDK download automatically (pinned, SHA-checked)
 unless `--no-auto-download` is passed — then set `JAVA_HOME`,
 `ANDROID_HOME`, and the NDK yourself. Debug step by step with
 `python3 build.py doctor --target android`, `prepare`, `android-libs`,
-`android`. `--device <serial>` picks among several devices
-(`adb devices` lists them).
+`android`. `--serial <adb-serial>` picks among several Android devices
+(`adb devices` lists them); `--device <udid>` is iOS-only and
+`--serial` is Android-only — the builder rejects the swapped combination.
 
 ## iOS (host: macOS Apple silicon with Xcode; target: iPhone/iPad)
 

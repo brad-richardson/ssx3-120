@@ -295,6 +295,36 @@ class DryRunGateTest(unittest.TestCase):
         self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
 
 
+class DeviceFlagTest(unittest.TestCase):
+    """F11: --serial is Android-only, --device is iOS-only."""
+
+    def test_helper_truth_table(self):
+        self.assertIsNone(build.check_device_flags('android', None, 'XYZ'))
+        self.assertIsNone(build.check_device_flags('ios', 'udid', None))
+        self.assertIn('--serial', build.check_device_flags('android', 'udid', None))
+        self.assertIn('--device', build.check_device_flags('ios', None, 'XYZ'))
+        self.assertIsNone(build.check_device_flags('doctor', 'udid', None))
+
+    def test_parser_rejects_swapped_selectors(self):
+        for step, device, serial, hint in (
+                ('android', 'udid', None, '--serial'),
+                ('ios', None, 'XYZ', '--device')):
+            argv = [step, '--work', '/tmp/w', '--ssx3-iso', '/tmp/x.iso']
+            if device:
+                argv += ['--device', device]
+            if serial:
+                argv += ['--serial', serial]
+            proc = subprocess.run([sys.executable, HERE / 'build.py'] + argv,
+                                  capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn(hint, proc.stderr)
+
+    def test_guide_names_serial_for_android(self):
+        text = (ROOT / 'docs/agent-setup.md').read_text()
+        self.assertIn('--serial <adb-serial>', text)
+        self.assertNotIn('--device <serial>', text)
+
+
 class WorkDirCreationTest(unittest.TestCase):
     """F03: one-command paths create WORK before any step writes into it."""
 

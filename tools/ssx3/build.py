@@ -2780,6 +2780,18 @@ def resolve_adb(a):
     return str(adb)
 
 
+def check_device_flags(step, device, serial):
+    """F11: --serial is Android-only, --device is iOS-only. Returns the
+    p.error message, or None when the combination is valid."""
+    if step == 'android' and device:
+        return ('--device is iOS-only; use --serial <adb-serial> to pick '
+                'an Android device (adb devices lists them)')
+    if step in ('ios', 'ios-libs') and serial:
+        return ('--serial is Android-only; use --device <udid> to pick an '
+                'iOS device (xcrun devicectl list devices)')
+    return None
+
+
 def needs_prepare(step, dry_run):
     """Whether a step-by-step invocation requires prepared outputs (F06).
 
@@ -3452,6 +3464,9 @@ def main():
     p.add_argument('--engine', type=Path, default=None,
                    help='engine checkout (default: SSX3_ENGINE_DIR or deps/PS2Recomp submodule)')
     a = p.parse_args()
+    device_flag_error = check_device_flags(a.step, a.device, a.serial)
+    if device_flag_error:
+        p.error(device_flag_error)
     global ENGINE
     if a.engine is not None:
         ENGINE = a.engine.resolve()
