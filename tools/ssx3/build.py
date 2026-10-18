@@ -1979,6 +1979,45 @@ def ios_om1(a):
     return stage
 
 
+IOS_MCPU = 'apple-a15'
+
+
+def xcrun_llvm():
+    """Apple compilers for the iOS app build (D05: never inherit CC/CXX)."""
+    cc = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--find', 'clang'],
+                                 text=True).strip()
+    cxx = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--find', 'clang++'],
+                                  text=True).strip()
+    return cc, cxx
+
+
+def ios_build_versions(cc, cxx):
+    """Compiler/SDK versions recorded in the iOS build receipt (D05)."""
+    def first_line(*cmd):
+        try:
+            return subprocess.check_output(list(cmd), text=True).strip().splitlines()[0]
+        except (OSError, subprocess.CalledProcessError, IndexError):
+            return 'unknown'
+    return {
+        'c_compiler': cc,
+        'cxx_compiler': cxx,
+        'c_compiler_version': first_line(cc, '--version'),
+        'xcode_version': first_line('xcodebuild', '-version'),
+        'iphoneos_sdk_version': first_line('xcrun', '--sdk', 'iphoneos', '--show-sdk-version'),
+    }
+
+
+def ios_release_flags(pgo_data):
+    """iOS app Release flags (D04 apple-a15 tuning plus optional PGO use)."""
+    base = '-O3 -DNDEBUG -mcpu=' + IOS_MCPU
+    flags = ['-DCMAKE_C_FLAGS_RELEASE=' + base, '-DCMAKE_CXX_FLAGS_RELEASE=' + base]
+    if pgo_data:
+        flags[0] += ' -fprofile-use=' + pgo_data
+        flags[1] += ' -fprofile-use=' + pgo_data
+        flags.append('-DCMAKE_EXE_LINKER_FLAGS_RELEASE=-fprofile-use=' + pgo_data)
+    return flags
+
+
 def ios(a):
     team = check_team(a)
     bundle_id = check_bundle_id(getattr(a, 'bundle_id', None) or default_bundle_id(team))
@@ -1989,6 +2028,10 @@ def ios(a):
         print('  GE1 vendor ' + GE1_VENDOR_REPO + ' @ ' + GE1_VENDOR_SHORT)
         print('  OM1 vendor ' + OM1_VENDOR_REPO + ' @ ' + OM1_VENDOR_SHORT)
         print('  offline VU1 stage ' + str(getattr(a, 'om1_stage', None) or 'generated work/om1-stage'))
+        print('  Release flags -O3 -DNDEBUG -mcpu=' + IOS_MCPU + '; PGO '
+              + ('off (--no-pgo)' if getattr(a, 'no_pgo', False)
+                 else ('explicit ' + str(getattr(a, 'pgo_profile', None))
+                       if getattr(a, 'pgo_profile', None) else 'bundled when fresh for your codegen')))
         print('  prepare outputs ' + ('current' if prepare_current(a.work) else 'MISSING (run prepare)') + ': '
               + str(a.work / 'codegen'))
         print('  ios-libs ' + ('current' if ios_libs_current(a.work) else 'MISSING (run ios-libs)') + ': '
@@ -2016,30 +2059,41 @@ def ios(a):
         raise ValueError('ios-libs build directory is gone; re-run ios-libs')
     pgo_data = resolve_pgo(a.work, 'ios', explicit=getattr(a, 'pgo_profile', None),
                            disabled=getattr(a, 'no_pgo', False))
-    pgo_flags = []
-    if pgo_data:
-        pgo_flags = ['-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -fprofile-use=' + pgo_data,
-                     '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -fprofile-use=' + pgo_data,
-                     '-DCMAKE_EXE_LINKER_FLAGS_RELEASE=-fprofile-use=' + pgo_data]
+    cc, cxx = xcrun_llvm()
+    versions = ios_build_versions(cc, cxx)
+    print('iOS compilers: ' + cc + ' / ' + cxx + ' (' + versions['c_compiler_version']
+          + '; Xcode ' + versions['xcode_version'] + '; iphoneos '
+          + versions['iphoneos_sdk_version'] + ')')
+    release_flags = ios_release_flags(pgo_data)
     build_dir = a.work / 'ios-app-build'
-    run('cmake', '-S', ENGINE, '-B', build_dir, '-G', 'Xcode',
-        '-DCMAKE_TOOLCHAIN_FILE=' + str(ROOT / 'tools/ssx3/ios/toolchain.cmake'),
-        '-DCMAKE_CONFIGURATION_TYPES=Release', *pgo_flags,
-        '-DPS2X_BUILD_RECOMP=OFF', '-DPS2X_BUILD_ANALYZER=OFF',
-        '-DPS2X_BUILD_TEST=OFF', '-DPS2X_BUILD_STUDIO=OFF',
-        '-DPS2X_ENABLE_SCCACHE=OFF', '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF',
-        '-DPS2X_ENABLE_RUNTIME_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
-        '-DPS2X_ENABLE_FFMPEG=ON', '-DPS2X_FFMPEG_IOS_ROOT=' + str(a.work / 'ios-ffmpeg'),
-        '-DSDL2_DIR=' + str(a.work / 'ios-sdl2/lib/cmake/SDL2'),
-        '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
-        '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
-        '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
-        '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(om1_lib),
-        '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
-        '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
-        '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
-    run('cmake', '--build', build_dir, '--config', 'Release',
-        '--target', 'ps2EntryRunner', '--', '-jobs', str(a.jobs))
+    # D05: the app configure AND build must not inherit Homebrew CC/CXX.
+    saved_cc = os.environ.pop('CC', None)
+    saved_cxx = os.environ.pop('CXX', None)
+    try:
+        run('cmake', '-S', ENGINE, '-B', build_dir, '-G', 'Xcode',
+            '-DCMAKE_TOOLCHAIN_FILE=' + str(ROOT / 'tools/ssx3/ios/toolchain.cmake'),
+            '-DCMAKE_C_COMPILER=' + cc, '-DCMAKE_CXX_COMPILER=' + cxx,
+            '-DCMAKE_CONFIGURATION_TYPES=Release', *release_flags,
+            '-DPS2X_BUILD_RECOMP=OFF', '-DPS2X_BUILD_ANALYZER=OFF',
+            '-DPS2X_BUILD_TEST=OFF', '-DPS2X_BUILD_STUDIO=OFF',
+            '-DPS2X_ENABLE_SCCACHE=OFF', '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF',
+            '-DPS2X_ENABLE_RUNTIME_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
+            '-DPS2X_ENABLE_FFMPEG=ON', '-DPS2X_FFMPEG_IOS_ROOT=' + str(a.work / 'ios-ffmpeg'),
+            '-DSDL2_DIR=' + str(a.work / 'ios-sdl2/lib/cmake/SDL2'),
+            '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+            '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
+            '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
+            '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(om1_lib),
+            '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
+            '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
+            '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
+        run('cmake', '--build', build_dir, '--config', 'Release',
+            '--target', 'ps2EntryRunner', '--', '-jobs', str(a.jobs))
+    finally:
+        if saved_cc is not None:
+            os.environ['CC'] = saved_cc
+        if saved_cxx is not None:
+            os.environ['CXX'] = saved_cxx
     built = build_dir / 'ps2xRuntime/Release-iphoneos/ps2EntryRunner.app'
     if not built.is_dir():
         raise ValueError('iOS app bundle missing after build: ' + str(built))
@@ -2090,7 +2144,14 @@ def ios(a):
         'om1_stage': str(om1_stage), 'om1_lib': str(om1_lib),
         'slim_sha256': inputs['slim_sha256'], 'elf_sha256': inputs['elf_sha256'],
         'signed_binary_sha256': sha(app / 'ps2EntryRunner'),
-        'preset_sha256': sha(app / 'ps2x.env')}, indent=2, sort_keys=True) + '\n')
+        'preset_sha256': sha(app / 'ps2x.env'),
+        'xcode_version': versions['xcode_version'],
+        'iphoneos_sdk_version': versions['iphoneos_sdk_version'],
+        'c_compiler': versions['c_compiler'],
+        'cxx_compiler': versions['cxx_compiler'],
+        'c_compiler_version': versions['c_compiler_version'],
+        'c_flags_release': release_flags[0], 'cxx_flags_release': release_flags[1],
+        'pgo_profile': pgo_data or None}, indent=2, sort_keys=True) + '\n')
     print('Staged signed iOS app in ' + str(app))
     print('Install it with: ./build.py ios --ssx3-iso <ISO> --work <DIR> --team ' + team
           + ' --om1-stage <STAGE> --install (plain install; existing cards and saves are kept)')
