@@ -49,6 +49,7 @@ PS2X_ADPF	active-lane	AD1	lanes:GSR1	keep
 PS2X_ADPF_REPORT	dead	PW2	no setter	B4d
 PS2X_ADPF_TARGET_MS	dead	AD1	no setter	B4d
 PS2X_ANDROID_PAUSE_BG	dead	BG1	no setter	B4d
+PS2X_ANDROID_INTERNAL_DIR	active-lane	appsec-fix-1	fork ps2xRuntime/src/lib/ps2_android_runtime.cpp (F2 internal secret dir) + apps/android RunnerApplication.java sets it from getFilesDir	keep
 PS2X_ASPECT	diag	I26	tools/bench/bench-android.py	keep
 PS2X_AUDIO_DC_BLOCK	play-default	AU19	ps2_knobs.h compiled default; tests/det/knob_matrix.py; lanes:AU18,AU19,FLK1,IN4,IPB7,IPR1,RRV1	keep
 PS2X_AUDIO_RESAMPLE	play-default	AU13	ps2_knobs.h compiled default; odin ps2x.env; ios bundled ps2x.env; tests/det/knob_matrix.py; lanes:AU17,AU18,AU19,CFG1,IPB3,MW2	keep
@@ -64,6 +65,7 @@ PS2X_COVERAGE_TICK	gate	CT1	tests/det/boot/ssx3_boot.py; tools/bench/eebench.py;
 PS2X_DEINTERLACE	play-default	Present full frames by default	ios bundled ps2x.env; tests/det/knob_matrix.py; lanes:AU19,CFG1,ISH1,IV1b,MPW1,MW2	keep
 PS2X_DETERMINISTIC	gate	E55B2	tests/det/boot/ssx3_boot.py; tools/replay/padrec_replay_env.py; tools/bench/eebench.py; lanes:ECR1,IP7,IV1,IV1b,LT1,LT1b,MQ1,MQ2,MQ3,MQ4,OBE	keep
 PS2X_DET_HASH_EVERY	gate	E55C2	tests/det/boot/ssx3_boot.py; tools/bench/eebench.py; lanes:LT1b,OMF1,TK24,TK24b,TK24c,TK25b,TK37b,TKP2	keep
+PS2X_DEV	user-toggle	appsec-fix-1	fork ps2xRuntime/include/ps2_diag_gate.h (F4 public diag gate; lab envs set =1; det gate env sets it)	keep
 PS2X_DEV_NO_THINLTO	active-lane	not found	exact last execution not found)	KNC2 inventory (keep pending review)
 PS2X_DIAG_PARK	dead	Diag: T1 park snapshot emitter	KNC6: absent from runtime/adapter at d51e1821 and vendor 02561a9c9a; prior cleanup or local-only diag	KNC6 (removed metadata)
 PS2X_DIAG_PARK_DIR	dead	Diag: T1 park snapshot emitter	no setter	P2
@@ -169,6 +171,7 @@ PS2X_INTC_LOG	dead	CT1	no setter	B3
 PS2X_IOP_MODE	active-lane		lanes:RRV1,UPR1	keep
 PS2X_IOS_AUDIO_SESSION	diag	IA1	lanes:AU17,AU18,AX4,FLK1,GKV1,HK1,IHP1,IN3,IN4,IOSL1,IOSR1,IP7,IPB1,IPB2,IPB3,IPB7,IPB8,IPG1,IPR1,ISH1,ISH2,ITH1,IV1,IV1b,MPW1,MQ4,MW2,OBE1,PGO2,PKB1,PL3,PRV1,PSO1,PT	keep
 PS2X_IOS_DOCUMENTS	active-lane	QSR1	host-set by ps2_ios_runtime.mm to the app Documents path (quick-save slot dir), not a user knob; lanes:QSR1	keep
+PS2X_IOS_SUPPORT	active-lane	appsec-fix-1	host-set by ps2_ios_runtime.mm to Library/Application Support (F2 non-shared secret dir), not a user knob	keep
 PS2X_IOS_TOUCH_EVENTS	user-toggle	IN4	fork src/lib/ps2_ios_runtime.mm; lanes:IN3,IN4	keep
 PS2X_LAUNCH_HZ	user-toggle	TG1	fork android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	keep
 PS2X_LAB_UNCAPPED	diag	mac-speed-1	fork ps2xRuntime/src/lib/ps2_runtime.cpp:4947 lab-only host-present decoupling (=1 drops FPS limiter + GL vsync wait; guest untouched)	keep

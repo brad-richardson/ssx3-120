@@ -127,6 +127,10 @@ PLAY_ENV = {
     # inherit via dict(); reference keeps the exact path (no PLAY_ENV).
     # Guest-affecting: the three play-family keys re-mint.
     'PS2X_HLE_POOLS_LOW': '1',
+    # F4 (appsec-fix-1): lab gate runs with the dev gate open so diagnostic
+    # file knobs keep working; det keys are unaffected (no diag knob in this
+    # env changes guest state).
+    'PS2X_DEV': '1',
 }
 
 # FH1: the full-120 branch profile (PS2X_PROFILE stays play: the runtime has
