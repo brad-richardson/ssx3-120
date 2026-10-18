@@ -16,7 +16,7 @@
   "vendor": {
     "armsx2": {
       "repo": "https://github.com/brad-richardson/armsx2.git",
-      "pin": "afad5a04c2668a10e12adadaa51d54c46f832236"
+      "pin": "e8ed655ec66eeba12ae3029cc26b45927964b476"
     },
     "plutovg": "v1.1.0",
     "plutosvg": "v0.0.7",

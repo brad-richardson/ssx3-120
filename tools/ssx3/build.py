@@ -484,13 +484,260 @@ def mac(a):
     # play builds keep it off. Separate dirs so flavors never mix.
     build_dir = a.work / ('runner-build-det' if a.det else 'runner-build')
     configure(ENGINE, build_dir, '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
-        '-DPS2X_VU0_RECOMP_DIR=', '-DPS2X_BUILD_RECOMP=' + extra, '-DPS2X_BUILD_ANALYZER=' + extra,
+        '-DPS2X_VU0_RECOMP_DIR=' + resolve_vu0_stage(a),
+        '-DPS2X_BUILD_RECOMP=' + extra, '-DPS2X_BUILD_ANALYZER=' + extra,
         '-DPS2X_BUILD_TEST=' + extra, '-DPS2X_ENABLE_DEBUG_UI=OFF', '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
         '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF', '-DPS2X_ENABLE_DIAG_TAPS=OFF',
         '-DPS2X_ENABLE_DIAG_WATCH=OFF', '-DPS2X_ENABLE_TS2_DIAG=OFF',
         '-DPS2X_ENABLE_DET_HASH_TAP=' + det, '-DPS2X_GAME_PCH=ON')
     run('cmake', '--build', build_dir, '--parallel', a.jobs,
         '--target', 'ps2EntryRunner', *(['ps2x_tests'] if a.suite else []))
+
+
+# --- VU0 images (build-parity-fix-1 D03). User-disc VU0 recomp stage, the
+# same idea as the OM1 step: generated from the user's ELF, never shipped.
+# The engine compiles <stage>/vu0e_*.cpp into ps2EntryRunner when the build
+# points PS2X_VU0_RECOMP_DIR at it (ps2xRuntime/CMakeLists.txt VR3 block);
+# an empty dir builds interpreter-only, and with VU0 recomp enabled but no
+# images the runtime falls back to the interpreter per program
+# (lookupRecompProgram returns nullptr on a registry miss and run() issues
+# the pair through issuePair<false>; no fail, no crash). Generate once with
+# `build.py vu0 --work <DIR>` (needs prepare + mac + mac-libs outputs), or pass --vu0-stage
+# explicitly. Without a stage the builds keep today's interpreter behavior
+# with one printed line, so no existing flow breaks.
+VU0_IMAGE_GLOB = 'vu0e_*.cpp'
+
+
+def validate_vu0_stage(path):
+    """Fail clearly when the user's VU0 image stage is incomplete."""
+    stage = Path(path)
+    if not stage.is_dir():
+        raise ValueError('--vu0-stage must be a directory holding your locally generated '
+                         'VU0 images (got ' + str(path) + '); see tools/ssx3/README.md')
+    images = sorted(stage.glob(VU0_IMAGE_GLOB))
+    if not images:
+        raise ValueError('--vu0-stage holds no ' + VU0_IMAGE_GLOB + ' images: ' + str(stage))
+    for image in images:
+        try:
+            text = image.read_text()
+        except OSError:
+            raise ValueError('--vu0-stage image unreadable: ' + str(image))
+        # VBK1 emitter contract: pair + group + guarded-group tables.
+        if 'VU0RecompImage<' not in text or 'kGroupPairs' not in text:
+            raise ValueError('--vu0-stage image is not a guarded-group VU0 image: ' + str(image))
+    return stage
+
+
+def vu0_stage_file_hashes(stage):
+    """SHA-256 of every vu0e_ image under the stage. None on read failure."""
+    hashes = {}
+    try:
+        entries = sorted(Path(stage).glob(VU0_IMAGE_GLOB))
+    except OSError:
+        return None
+    if not entries:
+        return None
+    for p in entries:
+        if not p.is_file():
+            return None
+        try:
+            hashes[p.name] = sha(p)
+        except OSError:
+            return None
+    return hashes
+
+
+def vu0_receipt_path(work):
+    return Path(work) / 'vu0-stage.json'
+
+
+def vu0_current(work):
+    """Resume predicate: the default work/vu0-stage matches the ELF that
+    generated it (receipt) and still satisfies the validate contract."""
+    try:
+        receipt = json.loads(vu0_receipt_path(work).read_text())
+    except (OSError, ValueError):
+        return False
+    try:
+        elf_sha = sha(Path(work) / 'SLUS_207.72')
+    except OSError:
+        return False
+    if receipt.get('elf_sha256') != elf_sha:
+        return False
+    stage = Path(work) / 'vu0-stage'
+    try:
+        validate_vu0_stage(stage)
+    except ValueError:
+        return False
+    want_out = receipt.get('outputs_sha256')
+    if not isinstance(want_out, dict):
+        return False
+    have_out = vu0_stage_file_hashes(stage)
+    if have_out is None or have_out != want_out:
+        return False
+    return True
+
+
+def resolve_vu0_stage(a):
+    """VU0 image dir string for a build, or '' for interpreter-only.
+
+    Explicit --vu0-stage wins (validated). Otherwise the current default
+    work/vu0-stage when its receipt still matches (validated + resume log
+    line). Otherwise '' with one printed line: the build compiles zero VU0
+    images and runs the interpreter, exactly like before this lane.
+    """
+    explicit = getattr(a, 'vu0_stage', None)
+    if explicit:
+        return str(validate_vu0_stage(explicit))
+    work = a.work
+    if vu0_current(work):
+        print('  VU0 images current ' + str(work / 'vu0-stage'))
+        return str(work / 'vu0-stage')
+    print('  no VU0 image stage in ' + str(work) + '; building interpreter-only '
+          '(run the vu0 step from your disc to stage one)')
+    return ''
+
+
+@contextmanager
+def vu0_stage_lock(work):
+    """Serialize stage generation per work dir (same shape as om1_stage_lock:
+    the lock file holds the holder's pid; a present lock fails loud). Remove
+    the lock file if the holder process is gone."""
+    lock = Path(work) / 'vu0-stage.lock'
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            holder = lock.read_text().strip()
+        except OSError:
+            holder = '?'
+        raise ValueError('vu0 generation is already running in ' + str(work) +
+                         ' (lock held by pid ' + holder + '); remove ' + str(lock) +
+                         ' if that process is gone')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(str(os.getpid()))
+        yield
+    finally:
+        try:
+            lock.unlink()
+        except OSError:
+            pass
+
+
+def publish_vu0_stage(work, new, receipt_data):
+    """Atomically publish a verified temp stage (same shape as OM1 R6: the
+    receipt lands first via temp file + os.replace, then the old stage is
+    removed and the temp dir renamed into place)."""
+    receipt = vu0_receipt_path(work)
+    tmp = receipt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(receipt_data))
+    os.replace(tmp, receipt)
+    stage = Path(work) / 'vu0-stage'
+    if stage.is_symlink() or stage.exists():
+        stage.unlink() if stage.is_symlink() else shutil.rmtree(stage)
+    os.rename(new, stage)
+    return stage
+
+
+def vu0(a):
+    """vu0 step (Mac-only): capture the game's VU0 microprograms into
+    work/vu0-stage via the engine's PS2X_VU0_RECOMP_DUMP emitter, the same
+    idea as the OM1 step (generated from the user's ELF, never shipped).
+
+    Boots the local Mac runner (work/runner-build from the mac step, GE1 and
+    microVU libraries from mac-libs) on the user's slim image with the dump
+    dir set; the emitter writes
+    vu0e_<xxh64>.cpp per encountered program. Stops early once images land
+    (bounded wait); validates, publishes atomically and writes the receipt
+    (ELF SHA + output hashes + engine pin) that vu0_current gates on.
+    Resume: a current stage prints one line and is left alone.
+    """
+    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
+        raise ValueError('the vu0 step needs a Mac (Apple silicon runner boot); on other '
+                         'hosts pass --vu0-stage explicitly')
+    try:
+        inputs = json.loads((a.work / 'inputs.json').read_text())
+    except (OSError, ValueError):
+        raise ValueError('vu0 needs prepare outputs in this work directory (run prepare first)')
+    try:
+        elf_sha = sha(a.work / 'SLUS_207.72')
+    except OSError:
+        raise ValueError('vu0 needs work/SLUS_207.72: run prepare with --ssx3-iso first')
+    if elf_sha != ELF_SHA:
+        raise ValueError('vu0: SLUS_207.72 sha ' + elf_sha[:12] + ' is not the supported disc revision')
+    if vu0_current(a.work):
+        print('  VU0 images current ' + str(a.work / 'vu0-stage'))
+        return a.work / 'vu0-stage'
+    runner = a.work / 'runner-build/ps2xRuntime/ps2EntryRunner'
+    if not runner.is_file():
+        raise ValueError('vu0 needs the Mac runner: run the mac step in this work directory first')
+    ge1_lib = a.work / 'libs-build/ge1-adapter/libge1_gs.dylib'
+    microvu_lib = a.work / 'libs-build/libmv2_microvu.dylib'
+    resources = a.work / 'resources'
+    if not ge1_lib.is_file() or not microvu_lib.is_file() or not resources.is_dir():
+        raise ValueError('vu0 needs the Mac GE1/microVU libraries: run mac-libs in this work directory first')
+    slim = Path(inputs['slim_iso'])
+    if not slim.is_file() or sha(slim) != inputs['slim_sha256']:
+        raise ValueError('slim image changed since prepare; use a fresh --work directory')
+    with vu0_stage_lock(a.work):
+        try:
+            vu0_receipt_path(a.work).unlink()
+        except OSError:
+            pass
+        new = a.work / 'vu0-stage.new'
+        if new.is_symlink() or new.exists():
+            new.unlink() if new.is_symlink() else shutil.rmtree(new)
+        new.mkdir(parents=True)
+        mc = a.work / 'vu0-mc0'
+        mc.mkdir(exist_ok=True)
+        (a.work / 'gs-data').mkdir(exist_ok=True)
+        # The play boot env (same game path the play() helper boots): the
+        # minimal env stalls in early SIF init and never uploads VU0 code.
+        # VU0_RECOMP stays 0 so capture runs the exact interpreter path;
+        # the dump side-channel still fires (dumpDir set).
+        env = os.environ.copy()
+        env.update({'PS2X_CD_IMAGE': str(slim), 'PS2X_MC_ROOT': str(mc),
+            'PS2X_SKIP_MOVIE': '1', 'PS2X_GS_BACKEND': 'external',
+            'PS2X_GS_EXTERNAL_LIBRARY': str(ge1_lib),
+            'PS2X_MICROVU_LIB': str(microvu_lib),
+            'PS2X_VU1_ENGINE': 'microvu', 'PS2X_MTVU': '1', 'PS2X_VU0_RECOMP': '0',
+            'GE1_RENDERER': 'metal', 'GE1_GS_RESOURCES_DIR': str(resources),
+            'GE1_GS_DATA_DIR': str(a.work / 'gs-data'),
+            'PS2X_VU0_RECOMP_DUMP': str(new)})
+        # The VU0 program uploads during early boot; stop soon after images
+        # land instead of playing the game. Bounded well under the 600 s
+        # boot cap; a missing display or a hung boot fails loud.
+        print('+ dump boot ' + str(runner) + ' (PS2X_VU0_RECOMP_DUMP=' + str(new) + ')')
+        proc = subprocess.Popen([str(runner), str(a.work / 'SLUS_207.72')],
+                                env=env, cwd=str(a.work),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic() + 300
+            while time.monotonic() < deadline:
+                if sorted(new.glob(VU0_IMAGE_GLOB)):
+                    break
+                if proc.poll() is not None:
+                    break
+                time.sleep(5)
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+        validate_vu0_stage(new)
+        output_hashes = vu0_stage_file_hashes(new)
+        if output_hashes is None:
+            raise ValueError('vu0: cannot hash the generated stage under ' + str(new))
+        engine_head = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
+                                              text=True).strip()
+        stage = publish_vu0_stage(a.work, new, {
+            'elf_sha256': elf_sha, 'engine': engine_head,
+            'outputs_sha256': output_hashes})
+    print('  VU0 images generated ' + str(stage))
+    return stage
 
 
 SIGNING_KEYSTORE = 'ssx3-signing.keystore'
@@ -701,7 +948,7 @@ def android(a):
         '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
-        '-Pps2xVu0RecompDir=',
+        '-Pps2xVu0RecompDir=' + resolve_vu0_stage(a),
         '-Pps2xGamePch=ON',
         '-Pps2xPgoData=' + pgo_data, '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
         '-Pps2xAppId=' + a.app_id,
@@ -943,6 +1190,15 @@ def pin_android_deps(deps_root):
     return resolved
 
 
+# D01: Android GE1 vendor = the shipped pin (the same tree as the iOS
+# GE1_VENDOR_PIN below): blend-constant re-emission, explicit-LINEAR AHB
+# import, font/word prescale and the icon-row/default-on commits. microVU
+# stays no-LTO (android_libs builds the shared tree with LTO_PCSX2_CORE=OFF).
+ANDROID_GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
+ANDROID_GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
+ANDROID_GE1_VENDOR_SHORT = 'e8ed655ec6'
+
+
 def android_libs(a):
     ensure_android_toolchain(a)
     bundle = support_bundle(a)
@@ -954,8 +1210,11 @@ def android_libs(a):
     if not a.ndk or not (a.ndk / 'build/cmake/android.toolchain.cmake').is_file():
         raise ValueError('android-libs requires --ndk (NDK 28.2.13676358)')
     vendor = a.work / 'android-assembly/vendor-pcsx2'
-    source('https://github.com/brad-richardson/armsx2.git',
-           'afad5a04c2668a10e12adadaa51d54c46f832236', vendor)
+    # D01: the shipped GE1 pin (ANDROID_GE1_VENDOR_PIN, same tree the iOS
+    # build uses): blend-constant re-emission, explicit-LINEAR AHB import,
+    # font/word prescale and the icon-row/default-on commits. microVU stays
+    # no-LTO (LTO_PCSX2_CORE=OFF below covers the shared GE1+microVU build).
+    source(ANDROID_GE1_VENDOR_REPO, ANDROID_GE1_VENDOR_PIN, vendor)
     prefix = a.work / 'android-deps'
     prefix.mkdir(exist_ok=True)
     env = os.environ.copy()
@@ -2101,6 +2360,7 @@ def ios(a):
             '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
             '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
             '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(om1_lib),
+            '-DPS2X_VU0_RECOMP_DIR=' + resolve_vu0_stage(a),
             '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
             '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
             '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
@@ -2500,7 +2760,7 @@ def android_onecmd(a):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs'])
+    p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'vu0'])
     p.add_argument('--work', type=Path, help='external private output directory')
     p.add_argument('--target', choices=['prepare', 'android', 'mac', 'ios'], default='android', help='doctor prerequisite set')
     p.add_argument('--tools-only', action='store_true', help='prepare the native generator without reading a disc')
@@ -2522,6 +2782,7 @@ def main():
     p.add_argument('--device', help='iOS device UDID for ios install (default: the single connected device)')
     p.add_argument('--bundle-id', help='iOS bundle id (default: com.ssx3recomp.<team>)')
     p.add_argument('--om1-stage', type=Path, help='offline VU1 stage directory override (default: generated from your disc into work/om1-stage; ios app only)')
+    p.add_argument('--vu0-stage', type=Path, help='VU0 image directory override (default: work/vu0-stage from the vu0 step; android/ios/mac builds)')
     p.add_argument('--dry-run', action='store_true', help='check and list install disc payload without touching a device')
     p.add_argument('--jnilibs', type=Path, help='own source-built Android JNI libraries')
     p.add_argument('--prebuilt', action='store_true', help='opt in to verified prebuilt Android support libraries (default: build them from source)')
@@ -2583,7 +2844,7 @@ def main():
     a.work.mkdir(parents=True, exist_ok=True)
     {'prepare': prepare, 'mac': mac, 'android': android, 'mac-libs': libs, 'run': play,
      'android-libs': android_libs, 'stage': stage, 'install': install,
-     'ios-libs': ios_libs, 'ios': ios}[a.step](a)
+     'ios-libs': ios_libs, 'ios': ios, 'vu0': vu0}[a.step](a)
 
 
 if __name__ == '__main__':

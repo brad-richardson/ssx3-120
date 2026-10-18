@@ -236,7 +236,9 @@ Android presets are [ps2x.env](../../presets/ps2x.env) and
 [full120.env](../../presets/full120.env), derived from Adreno play-device tuning
 with every private path removed and the SET2 settings overlay on
 (`PS2X_SETTINGS_OVERLAY=1`). The public preset selects the driver by Vulkan
-GPU vendor and uses interpreted VU0 (`PS2X_VU0_RECOMP=0`). Reported RAM at
+GPU vendor and runs interpreted VU0 until you stage images (an empty
+`PS2X_VU0_RECOMP_DIR` compiles zero images and the runtime falls back to the
+interpreter per program; see below). Reported RAM at
 or above 5 GiB uses panel-native rendering on a 1080p panel, otherwise 2×,
 with display-size export and CAS. Lower RAM uses 1× and 1:1 export with no
 CAS; Android scales that output to the panel. The in-game Resolution setting
@@ -288,15 +290,19 @@ saves.** Do not distribute generated code or apps containing it.
 
 ## Optional local optimization and iOS
 
-VU0 images: run your own baseline runner with `PS2X_VU0_RECOMP_DUMP`
-pointing to an existing private directory. The runtime emitter directly writes
-`vu0e_<hash>.cpp` when it encounters the program; no pre-existing image is
-needed. Supply that directory through CMake `PS2X_VU0_RECOMP_DIR` or Gradle
-`ps2xVu0RecompDir` and rebuild, then use `PS2X_VU0_RECOMP=1`. If you already
-have your own raw 4 KiB microprogram image, the public `vu1_fixture_gen
---image <image.bin> <output-dir>` can re-emit it without another boot. These
-outputs are game-derived and stay private. The baseline command above
-builds with interpreted VU0; it does not take another user's VU images.
+VU0 images: run `build.py vu0 --work <DIR>` (Mac-only) after prepare plus
+the mac and mac-libs steps. It boots your local runner with `PS2X_VU0_RECOMP_DUMP` set, so
+the runtime emitter writes `vu0e_<hash>.cpp` per encountered program into
+the private `work/vu0-stage` (receipt-gated resume; never in the repo), then
+stops. The android, ios and mac builds pick that stage up automatically
+(`--vu0-stage` overrides it); without a stage they build interpreter-only
+with one printed line. Or run your own baseline runner manually with
+`PS2X_VU0_RECOMP_DUMP` pointing to an existing private directory and pass it
+with `--vu0-stage`. If you already have your own raw 4 KiB microprogram
+image, the public `vu1_fixture_gen --image <image.bin> <output-dir>` can
+re-emit it without another boot. These outputs are game-derived and stay
+private. A build without a stage runs interpreted VU0; it does not take
+another user's VU images.
 
 Android PGO: `tools/ssx3/pgo/android/` ships a bundled profile (PB58,
 gzip-compressed; see `MANIFEST.json` for the trained fork/codegen and SHA).

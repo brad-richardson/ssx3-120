@@ -14,7 +14,7 @@ reviewable diffs on top).
 | `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
-| Vendor `brad-richardson/armsx2` | `afad5a04c2668a10e12adadaa51d54c46f832236` | renderer/VU source; support-archive identity in `deps.lock.json` |
+| Vendor `brad-richardson/armsx2` | `e8ed655ec66eeba12ae3029cc26b45927964b476` | renderer/VU source; support-archive identity in `deps.lock.json` |
 | Turnip (optional Vulkan driver) | StevenMXZ Gen8 V37 community zip (`tools/ssx3/turnip.json`) | archive + driver + notices hashes in `deps.lock.json`; double-SHA pin is the integrity check (unattested third-party build; see trust note in `tools/ssx3/README.md`) |
 
 ## Path remaps (rename-only, bytes preserved)
@@ -58,8 +58,11 @@ reviewable diffs on top).
   `tests/test_turnip_driver.py` verbatim. Product edits re-applied:
   `apps/android` APK path, engine-relative `prebuilt-releases.json`
   link, `prebuilt.ENGINE` test retarget, signed-off play-policy preset
-  tail. Vendor armsx2 stays `afad5a04` (the engine at the new pin still
-  pins it in `build.py`/`prebuilt.py`).
+  tail. Vendor armsx2 stayed `afad5a04` at split time (the engine at the
+  new pin still pins it in `build.py`/`prebuilt.py`); build-parity-fix-1
+  moves the product Android recipe and `deps.lock.json` to the shipped
+  `e8ed655ec6` (same tree as the iOS `GE1_VENDOR_PIN`), keeping microVU
+  no-LTO.
 
 ## Bundled PGO profiles (pgo-public-1)
 
