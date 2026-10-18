@@ -71,10 +71,18 @@
     }
   },
   "tricky_tools": {
+    "policy": "tk-toolchain-1 (Brad 10-18): Tricky audio is OPTIONAL and uses only locally installed tools (explicit argv > SSX3_TRICKY_* env > PATH plus Homebrew/apt prefixes), each gated by a minimum-version and capability probe in tools/ssx3/tricky/tool_paths.py. Nothing is downloaded or pinned; a machine without them builds everything except Tricky audio.",
+    "ffmpeg": {
+      "min_version": "6.0",
+      "capability": "lavfi sine source through ebur128 + volumedetect + aresample (the exact filters the audio phases use)",
+      "install": "macOS: brew install ffmpeg; Linux: apt install ffmpeg",
+      "license": "local build's own licence (GPL builds fine for GPL-3.0 repo build-time use); build-time subprocess use only, never linked or shipped"
+    },
     "vgmstream": {
-      "repo": "https://github.com/vgmstream/vgmstream.git",
-      "pin": "1abc049db00beca137c8e43f797ccdc5093cf94a",
-      "purpose": "Tricky MicroTalk speech decode only (build_tricky.py --vgmstream; EA-XA is lane-ported Python); CLI-only build, optional codecs OFF",
+      "min_version": "r1900",
+      "capability": "smoke decode of one real SCHl stream from the Tricky disc during the preflight",
+      "install": "macOS: brew install vgmstream; Linux: apt install vgmstream (some distros lack it: build the CLI from https://github.com/vgmstream/vgmstream)",
+      "purpose": "Tricky MicroTalk speech decode only (build_tricky.py --vgmstream; EA-XA is lane-ported Python)",
       "license": "COPYING: permissive ISC-style (use/copy/modify/distribute with notice); build-time tool, not shipped",
       "note": "tk-build-1: May-2026 decode commit (master @ 2026-05-20; avoids post-May EA-SCHl changes). Residual arch drift: ARM64/Mac builds of this commit decode MicroTalk takes byte-identical to the lane toolchain (brew r2117 May 19 2026), but the x86_64 gate build (Ubuntu clang 18 vs Mac clang 23) drifts +-6 LSB on ~2% of samples, so container speech composites cannot byte-match PB70 (see REPORT 2.3 gap); binary never enters the repo or APK"
     }

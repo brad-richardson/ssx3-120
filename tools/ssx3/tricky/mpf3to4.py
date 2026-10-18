@@ -698,11 +698,13 @@ def cmd_convert(v3_path, mus_path, out_path, offsets_tsv=None,
     # verify 4: PCM smoke (segment 0 decodes from the same bytes)
     import subprocess
     import tempfile
+    sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import tool_paths as _tp
     seg0 = mus[p["samples"][0][0]:p["samples"][1][0]]
     seg0_path = _os.path.join(tempfile.mkdtemp(prefix="mus1-"), "seg0.sch")
     open(seg0_path, "wb").write(seg0)
     r = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i",
+        [str(_tp.ffmpeg_path()), "-hide_banner", "-loglevel", "error", "-i",
          seg0_path, "-ac", "2", "-ar", "44100",
          "-f", "s16le", "-"], capture_output=True)
     if r.returncode == 0:

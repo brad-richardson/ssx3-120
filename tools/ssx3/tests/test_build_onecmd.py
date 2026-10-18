@@ -48,7 +48,9 @@ class WrapperTest(unittest.TestCase):
         text = WRAPPER.read_text()
         self.assertTrue(os.access(WRAPPER, os.X_OK))
         self.assertTrue(text.startswith('#!/bin/sh'))
-        self.assertIn('exec uv run --script', text)
+        self.assertIn('exec uv run --locked --script', text)
+        self.assertIn('UV_PYTHON_PREFERENCE', text)
+        self.assertIn('only-managed', text)
         self.assertIn('tools/ssx3/build.py', text)
         self.assertIn('https://astral.sh/uv/install.sh', text)
         probe = subprocess.run(['sh', '-n', str(WRAPPER)], capture_output=True)
@@ -60,6 +62,7 @@ class WrapperTest(unittest.TestCase):
         self.assertIn('requires-python', head)
         self.assertIn('numpy', head)
         self.assertIn('Pillow', head)
+        self.assertNotIn('imageio-ffmpeg', head)
 
     @unittest.skipUnless((ROOT / 'Makefile').is_file(), 'product Makefile')
     def test_makefile_targets_delegate_to_the_wrapper(self):

@@ -2,6 +2,7 @@ new_path	origin	old_path	sha256	bytes	status
 .github/workflows/product-checks.yml	authored:ci	-	18aee96604aaea3bb3527865269e901ceab298c8f9112744ea9bf6791efeae97	2742	new
 .gitignore	authored:hygiene	-	39e9ef752d52f193bc1fc8784ce3e9bba7654ee7f5b0bdef1a8e061c5376d6eb	319	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
+.python-version	authored:tk-toolchain-1	-	845c494b4a7e1a741db19fd42eda239d3ee03b65f08276008943349a3055c9cc	8	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
 LICENSE	fork@f7a96f23	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c71fd3712bdb44a	34903	verbatim
 Makefile	authored:builder-ux-1	-	1b67dee2592a0341ace8da647e69eb3962136886c2c4fcdecf5df13f293d432c	1276	new
@@ -122,6 +123,7 @@ tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.p
 tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	d4647f70eef0e68bf2ed306afbcb4a2836b0bcfd3a11549763da2715b51c95c3	24791	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
 tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	3faa5e2bb91ceb99059005c1f936832564e1f3d900873a29029bad8655d19798	159067	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
+tools/ssx3/build.py.lock	authored:tk-toolchain-1	-	da63d38c6e2aa2dcdad4473445f246b9df04ab6709ecb53799233e238e468bf1	11292	new
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
 tools/ssx3/knobs.tsv	fork@b9bf530a	tools/ssx3/knobs.tsv	c84fb700dc1057a71764d112030e9b8694b7a8d376ce353426fe09a468f9015b	7528	verbatim
@@ -146,6 +148,7 @@ tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	c46f97fe50e3c7c981329
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
 tools/ssx3/tests/test_vu0_stage.py	authored:build-parity-fix-1	-	5ce8350d633b9e5cbef49c87de24d870d88113dbe7759414d7912a70a2aaf1e1	19719	new
 tools/ssx3/tests/test_tricky_step.py	authored:tk-build-1	-	ebbbe328dc36f027dbc46accaaeda887fa1bbd1aa11b6a1402a8c457892be41a	24155	new
+tools/ssx3/tests/test_tricky_toolchain.py	authored:tk-toolchain-1	-	3b973546b84c17a03c24e5cf9cf6942f79a4210dafb706d046884776372f65bb	17561	new
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim

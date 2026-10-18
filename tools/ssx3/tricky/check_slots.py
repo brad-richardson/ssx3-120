@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""tk25b_check_slots.py <orig.dat> <built.dat> <built.dat.decisions.tsv> <receipts-prefix>
+"""tk25b_check_slots.py <orig.dat> <built.dat> <built.dat.decisions.tsv> <receipts-prefix> [--ffmpeg <exe>]
 Acceptance: output size == input size; SCHl offset list identical; unreplaced
-slots byte-identical (cmp per range); every replaced slot decodes with ffmpeg.
+slots byte-identical (cmp per range); every replaced slot decodes with the
+pinned ffmpeg (decode-to-null proves it; the old ffprobe codec-name probe
+added nothing once the bytes decode).
 Appends rows to <receipts-prefix>-slots-built.tsv (created with header if missing):
 target, slot, source, seconds, bytes_used, slot_bytes.
 """
 import os, re, struct, subprocess, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tool_paths  # noqa: E402
 
 def schl_offsets(dat):
     return [m.start() for m in re.finditer(b"SCHl", dat)]
@@ -15,7 +20,14 @@ def slot_ranges(dat):
     return [(p, (pos[i + 1] if i + 1 < len(pos) else len(dat)) - p) for i, p in enumerate(pos)]
 
 def main():
-    orig_p, built_p, dec_p, prefix = sys.argv[1:5]
+    args = sys.argv[1:]
+    ffmpeg = None
+    if '--ffmpeg' in args:
+        i = args.index('--ffmpeg')
+        ffmpeg = args.pop(i + 1)
+        args.pop(i)
+    orig_p, built_p, dec_p, prefix = args[:4]
+    ffmpeg = str(tool_paths.ffmpeg_path(ffmpeg))
     orig = open(orig_p, "rb").read()
     built = open(built_p, "rb").read()
     assert len(built) == len(orig), (len(built), len(orig))
@@ -46,16 +58,17 @@ def main():
             else:
                 assert ob != nb, f"slot {i} marked replaced but identical"
                 assert used <= size
-                # trimmed stream must decode with ffmpeg
+                # trimmed stream must decode with the pinned ffmpeg (into
+                # the per-invocation scratch dir beside the receipt prefix,
+                # never a predictable global path)
                 e = nb.index(b"SCEl")
                 esz = struct.unpack("<I", nb[e + 4:e + 8])[0]
-                tmp = f"/tmp/tk25b_check_{i}.ea"
+                tmp = f"{prefix}-check-{i}.ea"
                 open(tmp, "wb").write(nb[:e + esz])
-                r = subprocess.run(["ffprobe", "-hide_banner", "-v", "error",
-                                    "-show_entries", "stream=codec_name",
-                                    "-of", "default=noprint_wrappers=1", tmp],
+                r = subprocess.run([ffmpeg, "-hide_banner", "-v", "error",
+                                    "-i", tmp, "-f", "null", "-"],
                                    capture_output=True, text=True)
-                assert "adpcm_ea_r1" in r.stdout, (i, r.stdout, r.stderr[-300:])
+                assert r.returncode == 0, (i, r.stdout, r.stderr[-300:])
                 os.remove(tmp)
                 n_rep += 1
             f.write(f"{target}\t{i}\t{src}\t{sec:.3f}\t{used}\t{total}\n")

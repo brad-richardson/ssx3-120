@@ -10,6 +10,12 @@ import json
 import os
 import re
 import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import tool_paths  # noqa: E402
 
 CACHE_PATH = None  # set via init_cache() before measuring
 
@@ -50,7 +56,8 @@ def measure_lufs(path):
     c = _load()
     if key in c:
         return c[key]
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "info", "-i", path,
+    ffmpeg = str(tool_paths.ffmpeg_path())
+    r = subprocess.run([ffmpeg, "-hide_banner", "-v", "info", "-i", path,
                         "-af", "ebur128", "-f", "null", "-"],
                        capture_output=True, text=True)
     m = re.search(r"Integrated loudness:\s*\n\s*I:\s+(-?\d+(?:\.\d+)?)\s+LUFS", r.stderr)
@@ -67,7 +74,8 @@ def measure_peak_db(path):
     c = _load()
     if key in c:
         return c[key]
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "info", "-i", path,
+    ffmpeg = str(tool_paths.ffmpeg_path())
+    r = subprocess.run([ffmpeg, "-hide_banner", "-v", "info", "-i", path,
                         "-af", "volumedetect", "-f", "null", "-"],
                        capture_output=True, text=True)
     m = re.search(r"max_volume:\s+(-?\d+(?:\.\d+)?)\s+dB", r.stderr)
@@ -78,7 +86,8 @@ def measure_peak_db(path):
     return v
 
 def apply_gain_db(src, gain_db, dst):
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-y",
+    ffmpeg = str(tool_paths.ffmpeg_path())
+    r = subprocess.run([ffmpeg, "-hide_banner", "-v", "error", "-y",
                         "-i", src, "-af", f"volume={gain_db:.2f}dB", dst],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-500:]

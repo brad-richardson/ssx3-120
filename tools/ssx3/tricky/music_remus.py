@@ -20,14 +20,15 @@ from multiprocessing import Pool
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import speech_eaxa as eaxa
+import tool_paths
 from mpf3to4 import parse_v3
 
 S_BLOCK = 2128
 
 
 def decode(pcm_path, rate):
-    c = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", pcm_path,
-         "-ac", "2", "-ar", str(rate), "-f", "s16le", "-"]
+    c = [str(tool_paths.ffmpeg_path()), "-hide_banner", "-loglevel", "error",
+         "-i", pcm_path, "-ac", "2", "-ar", str(rate), "-f", "s16le", "-"]
     r = subprocess.run(c, capture_output=True)
     assert r.returncode == 0, r.stderr[:200]
     raw = r.stdout
@@ -73,8 +74,11 @@ def seg_scratch(out_p, tmpdir=None):
 
 def enc_one(args):
     (i, segfile, template, rate_src) = args
-    # resample 44.1k -> 32k stereo (swr; this ffmpeg has no soxr), pad to %28
-    c = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", segfile,
+    # resample 44.1k -> 32k stereo (swr; the pinned ffmpeg has no soxr),
+    # pad to %28. The exe resolves per call from the environment so Pool
+    # workers (spawn or fork) all use the driver's pinned binary.
+    c = [str(tool_paths.ffmpeg_path()), "-hide_banner", "-loglevel", "error",
+         "-i", segfile,
          "-ac", "2", "-ar", "32000", "-af", "aresample=32000",
          "-f", "s16le", "-"]
     r = subprocess.run(c, capture_output=True)
@@ -110,6 +114,11 @@ def main():
             jobs = int(v)
         elif k == "tmpdir":
             tmpdir = v
+        elif k == "ffmpeg":
+            # Probe the exe for this invocation (and its Pool workers, via
+            # the environment); fail fast on a bad path, not mid-encode.
+            tool_paths.probe_ffmpeg(v)
+            os.environ[tool_paths.FFMPEG_ENV] = v
         else:
             raise SystemExit("unknown arg " + kv)
     mus = open(mus_p, "rb").read()

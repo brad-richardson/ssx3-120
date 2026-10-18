@@ -227,6 +227,18 @@ python3 tools/ssx3/build.py install --dry-run --work /path/to/private-build   # 
 validates the disc and lists the planned payload without building. With no
 Tricky layer the app boots stock SSX 3 only.
 
+The Tricky step needs only uv plus local audio tools for Tricky audio
+(optional): a local `ffmpeg` (>= 6.0) and `vgmstream-cli` (r1900+),
+each found via explicit flags, `SSX3_TRICKY_*` env, PATH or the usual
+Homebrew/apt prefixes and gated by a version + capability probe
+(`tools/ssx3/tricky/tool_paths.py`; install lines: macOS
+`brew install ffmpeg vgmstream`, Linux `apt install ffmpeg vgmstream`).
+`--tricky-audio on|off|auto` (default auto) runs the speech / music /
+song / music-inf phases when both probe clean and skips them with one
+clear message otherwise; the off layout stages no audio aliases, so the
+runtime falls back to SSX 3 audio on Tricky courses (same as the iOS
+no-pool path). Worlds, HUD, menus and gems build without ffmpeg.
+
 **Optional: prebuilt libraries.** Pass `--prebuilt` to reuse a verified
 prebuilt support release instead of compiling the support libraries. It only
 applies when a release matches your checkout (see

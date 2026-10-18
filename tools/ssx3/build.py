@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
-# dependencies = ["numpy", "Pillow"]
+# requires-python = ">=3.12,<3.13"
+# dependencies = ["numpy==2.5.4", "Pillow==13.0.0"]
 # ///
 """Local SSX 3 preparation. Never downloads or publishes game data.
 
 Run directly (`python3 tools/ssx3/build.py ...`) or with only `uv`
-installed (`./build ...`, which execs `uv run --script` on this file).
-The inline metadata above lets uv provision Python plus the font-pack
-dependencies (numpy/Pillow, used by the remaster_font subprocess).
+installed (`./build ...`, which execs `uv run --locked --script` on this
+file). The inline metadata above pins the exact interpreter range and
+dependency versions; the committed `build.py.lock` next to this file
+freezes their hashes per platform, so every host provisions identical
+bytes. The lock is refreshed with
+`uv lock --script tools/ssx3/build.py` whenever the pins change.
+numpy/Pillow serve the remaster_font subprocess. Tricky audio needs
+local ffmpeg + vgmstream (optional, probed, never fetched).
 """
 import argparse
 import gzip
 import hashlib
+import importlib.util
 import json
 import os
 from contextlib import contextmanager
@@ -2944,6 +2950,22 @@ def tricky_inputs_path(work):
     return Path(work) / 'tricky_inputs.json'
 
 
+_TRICKY_TOOLS = None
+
+
+def tricky_tools():
+    """tools/ssx3/tricky/tool_paths.py loaded by path (pinned tool
+    resolution shared with the driver, without making tricky/ a package)."""
+    global _TRICKY_TOOLS
+    if _TRICKY_TOOLS is None:
+        spec = importlib.util.spec_from_file_location(
+            'tricky_tool_paths',
+            Path(__file__).resolve().parent / 'tricky' / 'tool_paths.py')
+        _TRICKY_TOOLS = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_TRICKY_TOOLS)
+    return _TRICKY_TOOLS
+
+
 def tricky_current(work, iso):
     """Whether <work>/tricky/ is current for this Tricky disc.
 
@@ -2964,6 +2986,21 @@ def tricky_current(work, iso):
         return False
     if Path(iso).stat().st_size != record.get('tricky_iso_bytes'):
         raise ValueError('work dir built from a different Tricky disc; use a fresh --work directory')
+    # F06 (toolchain half): a resolved-toolchain or pin change invalidates
+    # the skip. The driver writes its exact pins + tool identity to
+    # <work>/tricky/tools.json; anything else (or a missing receipt) means
+    # "not current" rather than a silent stale reuse.
+    tools_receipt = Path(work) / 'tricky' / 'tools.json'
+    try:
+        receipt = json.loads(tools_receipt.read_text())
+    except (OSError, ValueError):
+        return False
+    if receipt.get('pins') != record.get('pins'):
+        return False
+    if receipt.get('toolchain') != record.get('toolchain'):
+        return False
+    if receipt.get('ssx3', {}).get('sha256') != record.get('ssx3_iso_sha256'):
+        return False
     tricky = Path(work) / 'tricky'
     for relative, entry in record.get('outputs', {}).items():
         candidate = tricky / relative
@@ -2978,8 +3015,12 @@ def tricky_current(work, iso):
     return True
 
 
-def record_tricky_inputs(work, iso, identity, argv):
-    """Write tricky_inputs.json beside inputs.json (double-read output SHAs)."""
+def record_tricky_inputs(work, iso, identity, argv, ssx3):
+    """Write tricky_inputs.json beside inputs.json (double-read output SHAs).
+
+    Copies the driver's tools.json pins + tool identity + SSX3 identity
+    into the record so the skip-check can refuse stale reuse (F06).
+    """
     tricky = Path(work) / 'tricky'
     outputs = {}
     for candidate in sorted(tricky.rglob('*')):
@@ -2988,12 +3029,19 @@ def record_tricky_inputs(work, iso, identity, argv):
             outputs[relative] = {'sha256': sha2(candidate),
                                  'bytes': candidate.stat().st_size}
     try:
+        receipt = json.loads((tricky / 'tools.json').read_text())
+    except (OSError, ValueError):
+        raise ValueError('tricky driver left no tools.json; refusing to record')
+    try:
         repo_commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
                                               text=True).strip()
     except (OSError, subprocess.CalledProcessError):
         repo_commit = 'unknown'
     record = {'tricky_iso': str(iso), 'tricky_iso_sha256': identity['sha256'],
               'tricky_iso_bytes': identity['bytes'], 'tricky_serial': identity['serial'],
+              'ssx3_iso': str(ssx3['path']), 'ssx3_iso_sha256': ssx3['sha256'],
+              'ssx3_iso_bytes': ssx3['bytes'],
+              'pins': receipt.get('pins'), 'toolchain': receipt.get('toolchain'),
               'driver': {'path': str(TRICKY_DRIVER.relative_to(ROOT))
                          if TRICKY_DRIVER.is_relative_to(ROOT) else str(TRICKY_DRIVER),
                          'argv': list(map(str, argv)), 'repo_commit': repo_commit},
@@ -3016,6 +3064,15 @@ def build_tricky(a, iso):
     identity = tricky_disc_identity(iso)
     print('Tricky disc: %s %s (%d bytes, SHA-256 %s...).' % (
         identity['serial'], identity['region'], identity['bytes'], identity['sha256'][:16]))
+    inputs = json.loads((Path(a.work) / 'inputs.json').read_text())
+    # F13: the SSX3 ISO may have moved or changed since prepare; re-hash
+    # it here instead of trusting the old record's path.
+    ssx3 = Path(inputs['iso'])
+    if not ssx3.is_file() or sha(ssx3) != inputs.get('iso_sha256'):
+        raise ValueError('SSX3 ISO changed since prepare ('
+                         + str(ssx3) + '); re-run prepare in a fresh --work directory')
+    ssx3_ident = {'path': str(ssx3), 'sha256': inputs['iso_sha256'],
+                  'bytes': ssx3.stat().st_size}
     if tricky_current(a.work, iso):
         print('tricky: outputs current for this disc, skipping')
         return tricky_inputs_path(a.work)
@@ -3023,17 +3080,28 @@ def build_tricky(a, iso):
     if tricky.exists():
         raise ValueError('refusing existing tricky dir; remove ' + str(tricky) +
                          ' or choose a fresh --work directory')
-    inputs = json.loads((Path(a.work) / 'inputs.json').read_text())
+    # Audio tools are optional local installs resolved by the driver
+    # (probe-only, no downloads, so this stays after the skip-check and
+    # needs no wrapper resolution). Forward the requested audio mode.
+    audio_req = getattr(a, 'tricky_audio', None) or 'auto'
+    if audio_req not in ('on', 'off', 'auto'):
+        raise ValueError("--tricky-audio must be on|off|auto: %r" % (audio_req,))
     # Port-owned orchestration driver (tk-port-1/tk-port-2): it reads the
     # user's own discs and writes the <work>/tricky/ device layout (plus any
     # intermediates); this step only validates, invokes and records.
     # Proposed contract: build_tricky.py --tricky-iso <iso> --ssx3-iso <iso>
-    # --work <work>/tricky [--jobs N].
+    # --work <work>/tricky [--jobs N] [--tricky-audio on|off|auto].
     argv = [sys.executable, str(TRICKY_DRIVER), '--tricky-iso', str(iso),
-            '--ssx3-iso', str(inputs['iso']), '--work', str(tricky),
-            '--jobs', str(a.jobs)]
+            '--ssx3-iso', str(ssx3), '--work', str(tricky),
+            '--jobs', str(a.jobs), '--tricky-audio', audio_req]
+    tools = tricky_tools()
+    for flag, attr, env in (('--vgmstream', 'vgmstream', tools.VGMSTREAM_ENV),
+                            ('--ffmpeg', 'ffmpeg', tools.FFMPEG_ENV)):
+        val = getattr(a, attr, None) or os.environ.get(env)
+        if val:
+            argv += [flag, str(val)]
     run(*argv)
-    record = record_tricky_inputs(a.work, iso, identity, argv)
+    record = record_tricky_inputs(a.work, iso, identity, argv, ssx3_ident)
     print('Tricky layer ready: %d files in %s.' % (len(record['outputs']), tricky))
     return tricky_inputs_path(a.work)
 
@@ -3243,6 +3311,9 @@ def main():
     p.add_argument('--suite', action='store_true', help='also build optional Mac development suite and its analyzer/recompiler fixtures')
     p.add_argument('--det', action='store_true', help='mac flavor with the VBlank det-hash tap (gate boots + tap unit tests; separate runner-build-det dir)')
     p.add_argument('--jobs', type=int, default=8)
+    p.add_argument('--tricky-audio', default='auto', choices=['on', 'off', 'auto'],
+                   help='tricky step audio phases (need local ffmpeg + vgmstream): '
+                        'on fails without them, off skips them, auto runs them when present')
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
     p.add_argument('--dev', action='store_true',
                    help='lab/dev build: keep get-task-allow (iOS), debuggable + shell-profileable (Android)')

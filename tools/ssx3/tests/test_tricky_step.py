@@ -91,12 +91,17 @@ def pin_disc(iso):
 
 STUB_DRIVER = '''#!/usr/bin/env python3
 import argparse
+import hashlib
+import json
 from pathlib import Path
 p = argparse.ArgumentParser()
 p.add_argument('--tricky-iso')
 p.add_argument('--ssx3-iso')
 p.add_argument('--work')
 p.add_argument('--jobs', default='8')
+p.add_argument('--vgmstream', default=None)
+p.add_argument('--ffmpeg', default=None)
+p.add_argument('--tricky-audio', default='auto')
 a = p.parse_args()
 work = Path(a.work)
 (work / 'tricky-ov/DATA/WORLDS').mkdir(parents=True, exist_ok=True)
@@ -110,6 +115,11 @@ for name in ('m-tricky.txt', 'tricky.env'):
         'alias = /DATA/AUDIO/SPEECH.BIG:/storage/emulated/0/Android/data/'
         'com.ssx3.recomp/files/speech-tricky-big\\n'
         'overlay = /storage/emulated/0/Android/data/com.ps2x.runner/files/tricky-ov\\n')
+ssx3 = Path(a.ssx3_iso)
+(work / 'tools.json').write_text(json.dumps(
+    {'pins': {}, 'toolchain': {'ffmpeg': {'sha256': 'stub'},
+                               'vgmstream': {'sha256': 'stub'}},
+     'ssx3': {'sha256': hashlib.sha256(ssx3.read_bytes()).hexdigest()}}))
 '''
 
 
@@ -123,7 +133,8 @@ def write_stub_driver(path):
 def tricky_args(work, **over):
     base = dict(work=work, jobs=2, app_id=build.PUBLIC_APP_ID,
                 skip_fonts=True, stock_dump=None, step='tricky', iso=None,
-                prebuilt=False)
+                prebuilt=False, ffmpeg='ffmpeg-pinned', vgmstream='vgm-pinned',
+                tricky_audio='auto')
     base.update(over)
     return types.SimpleNamespace(**base)
 
@@ -180,7 +191,8 @@ def prepared_work(tmp, iso_bytes=b'ssx3-iso'):
     ssx3 = Path(tmp) / 'SSX3.iso'
     ssx3.write_bytes(iso_bytes)
     (work / 'inputs.json').write_text(json.dumps(
-        {'iso': str(ssx3), 'slim_iso': str(work / 'SSX3-slim.iso')}))
+        {'iso': str(ssx3), 'iso_sha256': build.sha(ssx3),
+         'slim_iso': str(work / 'SSX3-slim.iso')}))
     return work, ssx3
 
 
@@ -221,7 +233,10 @@ class BuildTrickyTest(unittest.TestCase):
             with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
                  patch.object(build, 'TRICKY_DRIVER', driver):
                 self.assertFalse(build.tricky_current(work, iso))
-            subprocess.run([sys.executable, str(driver), '--work', str(work / 'tricky')],
+            ssx3 = json.loads((work / 'inputs.json').read_text())['iso']
+            subprocess.run([sys.executable, str(driver),
+                            '--tricky-iso', str(iso), '--ssx3-iso', ssx3,
+                            '--work', str(work / 'tricky')],
                            check=True)
             with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
                  patch.object(build, 'TRICKY_DRIVER', driver):

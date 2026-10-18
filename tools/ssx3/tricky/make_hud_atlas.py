@@ -17,8 +17,11 @@ import hashlib
 import json
 import os
 import struct
-import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                'shared'))
+from iso_extract import extract_member  # noqa: E402
 
 SSH_MD5 = {
     "HUDGAME.SSH": "86d12a2dff17d7dccda5a57be84c0183",
@@ -158,12 +161,12 @@ def orangize(src):
 def main():
     iso, outdir = sys.argv[1], sys.argv[2]
     os.makedirs(outdir, exist_ok=True)
-    tmp = os.path.join(outdir, "ssh")
-    os.makedirs(tmp, exist_ok=True)
-    # Read-only extract of the one HUD file we use.
-    subprocess.run(["bsdtar", "-xf", iso, "-C", tmp, "DATA/TEXTURES/HUDGAME.SSH"],
-                   check=True)
-    raw = open(os.path.join(tmp, "DATA/TEXTURES/HUDGAME.SSH"), "rb").read()
+    # Read-only extract of the one HUD file we use, through the in-repo
+    # ISO reader (the song phase extracts JUKEBOX.BIG the same way; no
+    # bsdtar on any host).
+    raw = extract_member(
+        iso, "DATA/TEXTURES/HUDGAME.SSH",
+        os.path.join(outdir, "ssh", "HUDGAME.SSH")).read_bytes()
     md5 = hashlib.md5(raw).hexdigest()
     assert md5 == SSH_MD5["HUDGAME.SSH"], md5
     tex = {}

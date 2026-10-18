@@ -24,6 +24,7 @@ import wave
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
+import tool_paths  # noqa: E402
 from speech_eaxa import encode_blocks, packetize, assemble, TooLong  # noqa: E402
 from speech_loud import (measure_lufs, measure_peak_db, apply_gain_db,  # noqa: E402
                          init_cache)
@@ -65,7 +66,8 @@ def load_resampled(stem, channels):
     tmp = os.path.join(WORK25B, "built", f"rs-{stem}-{channels}ch.wav")
     if not os.path.exists(tmp):
         os.makedirs(os.path.dirname(tmp), exist_ok=True)
-        r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-y",
+        r = subprocess.run([str(tool_paths.ffmpeg_path()), "-hide_banner",
+                            "-v", "error", "-y",
                             "-i", src, "-ar", "22050", "-ac", str(channels), tmp],
                            capture_output=True, text=True)
         assert r.returncode == 0, r.stderr[-500:]
@@ -84,7 +86,8 @@ def decode_slot_to_wav(slot_bytes, channels, dst):
     with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
         f.write(slot_bytes)
         tmp = f.name
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-y",
+    r = subprocess.run([str(tool_paths.ffmpeg_path()), "-hide_banner",
+                        "-v", "error", "-y",
                         "-i", tmp, "-ac", str(channels), "-ar", "22050", dst],
                        capture_output=True, text=True)
     os.unlink(tmp)

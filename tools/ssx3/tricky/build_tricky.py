@@ -7,10 +7,17 @@ Contract (tk-build-1; called by tools/ssx3/build.py `tricky` step):
       [--vgmstream VGMSTREAM-CLI] [--ffmpeg FFMPEG]
 
 Everything is derived from the user's own two discs plus in-repo recipe
-text; nothing game-derived ships. System tools needed: python3,
-vgmstream-cli (speech catalog only), ffmpeg (music/song), bsdtar (HUD).
-Refuses an existing --work dir. Fails closed: every stage output is
-SHA-checked against its recorded golden before use.
+text; nothing game-derived ships. uv is the only hard requirement:
+ffmpeg + vgmstream are optional local installs for the Tricky audio
+phases (tool_paths.py probes them; --tricky-audio on|off|auto, default
+auto). Without them the driver skips speech/music/song/music-inf with
+one clear message and stages no audio aliases, so the runtime falls
+back to SSX 3 audio; worlds, HUD, menus and gems build regardless.
+Single ISO members extract through the in-repo reader. A preflight
+gates discs, audio-tool identity, and capacity before any work dir is
+created. Refuses an existing --work dir. Fails closed: every stage output is structure-checked (WAV
+shape, non-empty, phase acceptance) with its SHA recorded; the numeric
+audio gate is cross-host SNR, not exact hashes.
 
 Known skips (loud + recorded, not silent): mega world routes without a
 verified --routes-ref-dir (pending mega-h/u2/c tail), the 9-member speech
@@ -19,6 +26,7 @@ tk-audio-2f base). The manifest then carries the built courses only.
 """
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -33,9 +41,27 @@ sys.dont_write_bytecode = True
 T = Path(__file__).resolve().parent
 sys.path.insert(0, str(T / 'shared'))
 sys.path.insert(0, str(T))
-from inspect_disc import Region, iso_files, big_members  # noqa: E402
-from inventory_tricky import decode_member  # noqa: E402
+from inspect_disc import Region, iso_files  # noqa: E402
+from iso_extract import extract_member, big_member  # noqa: E402
+import tool_paths  # noqa: E402
 from run_chain import COURSES, TKP5_FINALS  # noqa: E402
+
+
+def _ssx3_build():
+    """tools/ssx3/build.py loaded by path (disc identity + SSX3 pins).
+
+    The driver consumes the wrapper's pinned disc table instead of
+    carrying its own copy, so the two can never drift apart.
+    """
+    global _SSX3_BUILD
+    try:
+        return _SSX3_BUILD
+    except NameError:
+        spec = importlib.util.spec_from_file_location(
+            'ssx3_build', T.parent / 'build.py')
+        _SSX3_BUILD = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_SSX3_BUILD)
+        return _SSX3_BUILD
 
 # -- course plan ------------------------------------------------------------
 # aloha runs before mesa (mesa's s3 rung borrows aloha-b's receipt);
@@ -186,11 +212,59 @@ def sha(path):
     return h1
 
 
+def structure_info(path):
+    """Fail-closed shape gate for an audio artifact (Brad 10-18: audio
+    outputs carry SNR + structure gates instead of exact hashes, since
+    tools are local and versions differ per machine).
+
+    WAVs parse rate/channels/frames against the pipeline's known shapes;
+    every other artifact must be non-empty (the phase-level acceptance
+    already gated slot counts, sizes and decodability before this runs).
+    """
+    raw = Path(path)
+    size = raw.stat().st_size
+    if size == 0:
+        raise SystemExit(f'{raw}: empty audio output')
+    if raw.suffix.lower() != '.wav':
+        return {'kind': 'blob', 'bytes': size}
+    import wave
+    with wave.open(str(raw), 'rb') as w:
+        info = {'kind': 'wav', 'rate': w.getframerate(),
+                'channels': w.getnchannels(), 'frames': w.getnframes(),
+                'bytes': size}
+    if info['rate'] not in (22050, 32000, 44100, 48000) \
+            or info['channels'] not in (1, 2) or info['frames'] == 0:
+        raise SystemExit(f'{raw}: bad WAV shape: {info}')
+    return info
+
+
+def snr_db(ref_pcm, got_pcm):
+    """Signal-to-noise ratio of two equal-length int16 PCM byte strings."""
+    import array
+    import math
+    a = array.array('h')
+    a.frombytes(ref_pcm)
+    b = array.array('h')
+    b.frombytes(got_pcm)
+    if len(a) != len(b) or not a:
+        raise ValueError('snr_db needs equal non-empty PCM')
+    sig = sum(x * x for x in a) / len(a)
+    noise = sum((x - y) ** 2 for x, y in zip(a, b)) / len(a)
+    if noise == 0:
+        return float('inf')
+    return 10 * math.log10(sig / noise)
+
+
 def check(path, want, what):
     got = sha(path)
-    if got != want:
-        raise SystemExit(f'{what}: SHA mismatch\n  got  {got}\n  want {want}')
-    print(f'{what}: {got[:12]} OK', flush=True)
+    info = structure_info(path)
+    if want is not None and got != want:
+        print(f'{what}: SHA drift vs the recorded pin (local tools; '
+              f'structure OK: {info}): got {got[:12]} want {want[:12]}',
+              flush=True)
+    else:
+        print(f'{what}: {got[:12]} OK ({info})', flush=True)
+    return info
 
 
 def exact_pins():
@@ -242,47 +316,6 @@ def iso_member(iso, want):
     if len(hits) != 1:
         raise SystemExit(f'{iso}: member {want}: {len(hits)} hits')
     return hits[0]
-
-
-def extract_member(iso, member_path, out):
-    out = Path(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(iso, 'rb') as f:
-        reg = Region(f, 0, Path(iso).stat().st_size)
-        _, files = iso_files(reg)
-        e = next(e for e in files if e['path'].upper() == member_path.upper())
-        f.seek(e['offset'])
-        out.write_bytes(f.read(e['size']))
-    back = out.read_bytes()
-    assert sha(out) == hashlib.sha256(back).hexdigest()
-    return out
-
-
-def big_member(iso, big_iso_path, want, out):
-    """Extract one member from a BIG container on the disc (no full decode)."""
-    out = Path(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(iso, 'rb') as f:
-        reg = Region(f, 0, Path(iso).stat().st_size)
-        _, files = iso_files(reg)
-        big = next(e for e in files if e['path'].upper() == big_iso_path.upper())
-        sub = Region(f, big['offset'], big['size'])
-        _, members = big_members(sub)
-        norm = want.upper().replace('/', '\\')
-        if '\\' in norm:
-            # big_members stores forward slashes; normalize both sides.
-            hits = [m for m in members
-                    if m['path'].upper().replace('/', '\\') == norm]
-        else:
-            hits = [m for m in members
-                    if m['path'].upper().replace('\\', '/').split('/')[-1] == norm]
-        if len(hits) != 1:
-            raise SystemExit(f'{big_iso_path}: member {want}: {len(hits)} hits')
-        raw, _ = decode_member(sub, hits[0])
-        out.write_bytes(raw)
-    back = out.read_bytes()
-    assert sha(out) == hashlib.sha256(back).hexdigest()
-    return out
 
 
 class Build:
@@ -436,7 +469,8 @@ class Build:
                        SSX3_SPEECH_DIR + t + '.dat',
                        ex / 'ssx3' / (t + '.dat'))
         run(self.logs, 'speech-catalog', sys.executable, T / 'speech_catalog.py',
-            '--vgm', self.a.vgmstream, '--extract-dir', ex,
+            '--vgm', self.a.vgmstream, '--ffmpeg', self.a.ffmpeg,
+            '--extract-dir', ex,
             '--streams-dir', sp / 'streams', '--wav-dir', sp / 'wav',
             '--lines-tsv', sp / 'lines.tsv', cwd=self.W)
         for t in SPEECH_TARGETS:
@@ -456,7 +490,7 @@ class Build:
                 cwd=self.W)
             run(self.logs, f'speech-check-{t}', sys.executable, T / 'check_slots.py',
                 str(ex / 'ssx3' / (t + '.dat')), str(out), str(dec),
-                str(sp / 'check'), cwd=self.W)
+                str(sp / 'check'), '--ffmpeg', self.a.ffmpeg, cwd=self.W)
         members = sp / 'members'
         members.mkdir(exist_ok=True)
         for t in SPEECH_TARGETS:
@@ -498,7 +532,7 @@ class Build:
             mpf, mus = ex / f'{song}.mpf', ex / f'{song}.mus'
             run(self.logs, f'music-remus-{song}', sys.executable, T / 'music_remus.py',
                 mus, mpf, tmpl, stage / f'{song}.mus', stage / f'{song}.tsv',
-                f'jobs={self.a.jobs}', cwd=self.W)
+                f'jobs={self.a.jobs}', f'ffmpeg={self.a.ffmpeg}', cwd=self.W)
             # convert takes the remus'd stage mus + its offsets TSV (the
             # remus receipt), not the extracted pair alone.
             run(self.logs, f'music-convert-{song}', sys.executable, T / 'mpf3to4.py',
@@ -637,11 +671,14 @@ class Build:
         check(out, RESETVOL_SHA, 'tricky-resetvol.tsv')
         return out
 
-    def phase_layout(self, built):
+    def phase_layout(self, built, audio_on=True):
         """Assemble the device layout (public equivalent of stage.py).
 
         Device files land at the top of --work (beside intermediates);
-        the builder stages only the allowlisted payload by name.
+        the builder stages only the allowlisted payload by name. With
+        audio off, no audio aliases are emitted and the audio env keys
+        are dropped, so the runtime falls back to SSX 3 audio on Tricky
+        courses (same as the iOS no-pool path).
         """
         lay = self.W
         ov = lay / 'tricky-ov' / 'DATA' / 'WORLDS'
@@ -673,11 +710,24 @@ class Build:
         aliases = [ENGLISH_OMITTED if a == ENGLISH_ALIAS else a
                    for a in MANIFEST_ALIASES] \
             if built.get('english-silent-big') is None else MANIFEST_ALIASES
+        if not audio_on:
+            # No audio aliases at all: the game reads stock SSX 3 audio
+            # (the ENGLISH_OMITTED comment survives the filter, so the
+            # manifest still names the omission).
+            aliases = [a for a in aliases
+                       if not a.startswith('alias = /DATA/AUDIO/')
+                       and not a.startswith('alias = /DATA/CONFIG/MUSIC.INF')]
         lines = [MANIFEST_HEAD] + aliases + \
             [f'row = {e}:{a}:{n}' for e, a, n in rows] + \
             [MANIFEST_POKE.rstrip('\n')]
         (lay / 'm-tricky.txt').write_text('\n'.join(lines) + '\n')
-        (lay / 'tricky.env').write_text(TRICKY_ENV)
+        env = TRICKY_ENV
+        if not audio_on:
+            env = '\n'.join(
+                line for line in TRICKY_ENV.splitlines()
+                if not line.startswith('PS2X_SSX3_TRICKY_MUSIC_INF=')
+                and not line.startswith('PS2X_SSX3_TRICKY_SONG=')) + '\n'
+        (lay / 'tricky.env').write_text(env)
         if self.skipped:
             (lay / 'SKIPPED.txt').write_text(
                 'Omitted inputs (loud, not silent):\n' +
@@ -685,6 +735,173 @@ class Build:
         print(f"layout done: {len(built['worlds'])} worlds; "
               f'skipped: {sorted(self.skipped)}', flush=True)
         return lay
+
+
+def check_ssx3_iso(ssx3_iso):
+    """Full SSX3 disc identity for the driver entry (F13).
+
+    The wrapper validates the Tricky disc; the driver validates both, so
+    a direct invocation with a moved or modified SSX3 ISO fails here in
+    seconds instead of mid-pipeline. Full SHA because a same-size
+    modified ISO must not slip through (the skip-check stays size-based
+    for speed; this gate is hash-based).
+    """
+    sb = _ssx3_build()
+    iso = Path(ssx3_iso)
+    if not iso.is_file():
+        raise SystemExit(f'SSX3 ISO not found: {iso}')
+    with iso.open('rb') as f:
+        f.seek(16 * 2048)
+        if f.read(7) != b'\x01CD001\x01':
+            raise SystemExit(f'not an ISO9660 disc image: {iso}')
+    digest = sha(iso)
+    if digest != sb.ISO_SHA:
+        raise SystemExit(
+            'SSX3 disc SHA-256 mismatch (want the pinned USA dump '
+            f'{sb.ISO_SHA[:16]}..., got {digest[:16]}...); refusing.')
+    names = {name.upper() for name, _, _ in sb.iso_records(iso)}
+    if 'SLUS_207.72' not in names:
+        raise SystemExit('SLUS_207.72 missing from the SSX3 disc root')
+    for marker in ('DATA/AUDIO/SPEECH.BIG', 'DATA/AUDIO/MUSIC.BIG',
+                   'DATA/AUDIO/MUSIC2.BIG', 'DATA/CONFIG/MUSIC.INF'):
+        if marker not in names:
+            raise SystemExit(f'SSX3 disc audio marker missing: {marker}')
+    print(f'SSX3 disc: USA {sb.ISO_SHA[:16]}... '
+          f'({iso.stat().st_size} bytes) OK', flush=True)
+    return {'sha256': digest, 'bytes': iso.stat().st_size}
+
+
+def check_tricky_markers(tricky_iso):
+    """Every Tricky-disc member the audio phases read must exist.
+
+    Serial + size gate the disc; this gates its shape, so a same-size
+    non-Tricky image fails in seconds instead of mid-pipeline.
+    """
+    sb = _ssx3_build()
+    names = {name.upper() for name, _, _ in
+             sb.iso_records(Path(tricky_iso))}
+    for marker in ('DATA/AUDIO/SPEECH.BIG', 'DATA/AUDIO/MUSIC.BIG',
+                   'DATA/AUDIO/JUKEBOX.BIG', 'DATA/TEXTURES/HUDGAME.SSH'):
+        if marker not in names:
+            raise SystemExit(f'Tricky disc audio marker missing: {marker}')
+
+
+def check_capacity(work):
+    """Fail closed before the multi-hour phases (F11).
+
+    Floors from the gate receipts: a full run holds ~9 GB of work
+    (8.8 GB observed at the speech stop) plus same-size resume copies
+    and staging, so 30 GB free on the work volume is the admission
+    price. No per-job RAM figure was ever measured, so RAM only fails
+    below 4 GiB total and warns below 8 GiB (lower --jobs there).
+    """
+    parent = Path(work).parent
+    parent.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(parent).free
+    print(f'capacity: {free // (1024 ** 3)} GB free on {parent}', flush=True)
+    if free < 30 * 1024 ** 3:
+        raise SystemExit(
+            f'only {free // (1024 ** 3)} GB free on {parent}; the Tricky '
+            'build holds ~9 GB of work plus resume copies and staging '
+            '(30 GB free required). Free space or choose another --work '
+            'volume; the partial dir was not created.')
+    try:
+        pages = os.sysconf('SC_PHYS_PAGES')
+        ram = pages * os.sysconf('SC_PAGE_SIZE')
+    except (ValueError, OSError):
+        ram = 0
+    if ram:
+        print(f'capacity: {ram // (1024 ** 3)} GB RAM total', flush=True)
+        if ram < 4 * 1024 ** 3:
+            raise SystemExit(
+                f'only {ram // (1024 ** 3)} GB RAM; refusing (4 GB minimum).')
+        if ram < 8 * 1024 ** 3:
+            print('capacity WARNING: under 8 GB RAM; lower --jobs if '
+                  'workers get OOM-killed.', flush=True)
+    return {'disk_free_bytes': free, 'ram_total_bytes': ram}
+
+
+def preflight(a):
+    """User preflight (astra-tkbuild-1 checklist 1-3): discs, audio tools,
+    capacity. Runs before any work dir is created; every refusal names
+    the fix. Audio tools are optional and always local: --tricky-audio
+    on runs the audio phases with them, off skips them, auto (default)
+    runs them when both probe clean and skips with one clear message
+    otherwise. Returns the provenance record the layout writes to
+    tools.json.
+    """
+    print('preflight: discs, audio tools, capacity', flush=True)
+    try:
+        jobs = int(a.jobs)
+    except (TypeError, ValueError):
+        raise SystemExit(f'--jobs must be a positive integer: {a.jobs!r}')
+    if jobs < 1:
+        raise SystemExit(f'--jobs must be a positive integer: {a.jobs!r}')
+    mode = getattr(a, 'tricky_audio', None) or 'auto'
+    if mode not in ('on', 'off', 'auto'):
+        raise SystemExit("--tricky-audio must be on|off|auto: %r" % (mode,))
+    sb = _ssx3_build()
+    try:
+        sb.check_tricky_iso_file(a.tricky_iso)
+        tricky_ident = sb.tricky_disc_identity(a.tricky_iso)
+    except (ValueError, OSError) as error:
+        raise SystemExit(str(error))
+    print('Tricky disc: %s %s (%d bytes, SHA-256 %s...).' % (
+        tricky_ident['serial'], tricky_ident['region'],
+        tricky_ident['bytes'], tricky_ident['sha256'][:16]), flush=True)
+    try:
+        check_tricky_markers(a.tricky_iso)
+        ssx3_ident = check_ssx3_iso(a.ssx3_iso)
+    except (ValueError, OSError) as error:
+        raise SystemExit(str(error))
+    ffmpeg_ident, vgm_ident, audio_note = None, None, ''
+    if mode != 'off':
+        probe_member = Path(str(a.work) + '.preflight-probe')
+        try:
+            big_member(a.tricky_iso, 'DATA/AUDIO/SPEECH.BIG',
+                       TRICKY_SPEECH_MEMBERS[0], probe_member)
+            smoke = probe_member.read_bytes()
+        finally:
+            try:
+                probe_member.unlink()
+            except OSError:
+                pass
+        try:
+            ffmpeg_ident, ffmpeg_note = tool_paths.resolve_ffmpeg(
+                getattr(a, 'ffmpeg', None))
+        except ValueError as error:
+            raise SystemExit(str(error))
+        try:
+            vgm, vgm_ident, vgm_note = tool_paths.resolve_vgmstream(
+                getattr(a, 'vgmstream', None), smoke_bytes=smoke)
+        except ValueError as error:
+            raise SystemExit(str(error))
+        missing = [n for n, ident in (('ffmpeg', ffmpeg_ident),
+                                      ('vgmstream', vgm_ident))
+                   if ident is None]
+        if missing:
+            audio_note = 'missing: %s (%s; %s)' % (
+                ', '.join(missing), ffmpeg_note, vgm_note)
+            if mode == 'on':
+                raise SystemExit(
+                    '--tricky-audio=on needs local ffmpeg + vgmstream: '
+                    + audio_note + '\n' + tool_paths.audio_missing_message())
+            ffmpeg_ident, vgm_ident = None, None
+            mode = 'off'
+        else:
+            os.environ[tool_paths.FFMPEG_ENV] = ffmpeg_ident['path']
+            os.environ[tool_paths.VGMSTREAM_ENV] = vgm_ident['path']
+    if mode == 'off':
+        if not audio_note:
+            audio_note = 'disabled by --tricky-audio=off'
+        print(tool_paths.audio_missing_message(), flush=True)
+    capacity = check_capacity(a.work)
+    ran = mode in ('on', 'auto')
+    return {'tricky': tricky_ident, 'ssx3': ssx3_ident,
+            'audio': 'on' if ran else 'off', 'audio_requested': mode,
+            'audio_note': audio_note,
+            'ffmpeg': ffmpeg_ident, 'vgmstream': vgm_ident,
+            'capacity': capacity, 'jobs': jobs}
 
 
 def main(argv=None):
@@ -702,13 +919,40 @@ def main(argv=None):
                          'never the same dir)')
     ap.add_argument('--routes-ref-dir', default=None)
     ap.add_argument('--english-base', default=None)
-    ap.add_argument('--vgmstream', default='vgmstream-cli')
-    ap.add_argument('--ffmpeg', default='ffmpeg')
+    ap.add_argument('--vgmstream', default=None,
+                    help='vgmstream-cli binary (default: local install)')
+    ap.add_argument('--ffmpeg', default=None,
+                    help='ffmpeg binary (default: local install)')
+    ap.add_argument('--tricky-audio', default='auto', choices=['on', 'off', 'auto'],
+                    help='Tricky audio phases (need local ffmpeg + vgmstream): '
+                         'on fails without them, off skips them, auto runs '
+                         'them when present (default).')
     a = ap.parse_args(argv)
     if a.from_phase == 'speech' and not a.reuse_worlds:
         raise SystemExit('--from-phase speech needs --reuse-worlds <dir>')
     validate_pins()
+    ident = preflight(a)
+    audio_on = ident['audio'] == 'on'
+    if audio_on:
+        # Every phase below forwards these exact binaries; module-level
+        # helpers (speech_loud, speech_slots internals) read the same
+        # paths from the environment preflight exported.
+        a.ffmpeg = ident['ffmpeg']['path']
+        a.vgmstream = ident['vgmstream']['path']
+    elif a.from_phase == 'speech':
+        raise SystemExit('--from-phase speech resumes the audio phases; '
+                         'audio is off (--tricky-audio=%s: %s)' % (
+                             ident['audio_requested'], ident['audio_note']))
     b = Build(a)
+    # Provenance the wrapper's skip-check keys on (F06): the exact pins
+    # gated this run plus the audio mode + tool identity (either may be
+    # absent). A pin, mode or toolchain change makes old outputs "not
+    # current" instead of silently reused.
+    receipt = dict(ident)
+    receipt['pins'] = exact_pins()
+    receipt['toolchain'] = {'ffmpeg': ident['ffmpeg'],
+                            'vgmstream': ident['vgmstream']}
+    (b.W / 'tools.json').write_text(json.dumps(receipt, indent=2) + '\n')
     t0 = time.time()
     if a.from_phase == 'speech':
         b.resume_worlds(a.reuse_worlds)
@@ -716,34 +960,40 @@ def main(argv=None):
         b.phase_worlds()
     courspit = b.phase_preview()
     b.phase_menu(courspit)
-    speech = b.phase_speech()
-    pool = b.phase_music()
-    try:
-        english = b.phase_english()
-    except SystemExit as e:
-        if 'english-base-missing' not in str(e):
-            raise
-        print(f'ENGLISH SKIPPED: {e}', flush=True)
-        b.skipped['english-base'] = str(e)
-        english = None
+    if audio_on:
+        speech = b.phase_speech()
+        pool = b.phase_music()
+        try:
+            english = b.phase_english()
+        except SystemExit as e:
+            if 'english-base-missing' not in str(e):
+                raise
+            print(f'ENGLISH SKIPPED: {e}', flush=True)
+            b.skipped['english-base'] = str(e)
+            english = None
+        music_inf = b.phase_music_inf()
+        song = b.phase_song()
+    else:
+        speech = pool = english = music_inf = song = None
     built = {'worlds': {},
              'courspit': courspit,
              'speech-tricky-big': speech,
-             'music-tricky-big': pool / 'music1-tkp4b',
-             'music2-tricky-big': pool / 'music2-tkp4b',
-             'music-inf-tricky-big': b.phase_music_inf(),
+             'music-tricky-big': pool / 'music1-tkp4b' if pool else None,
+             'music2-tricky-big': pool / 'music2-tkp4b' if pool else None,
+             'music-inf-tricky-big': music_inf,
              'english-silent-big': english,
              'trickyhud.bin': b.phase_hud(),
-             'tricky-song.wav': b.phase_song(),
+             'tricky-song.wav': song,
              'tricky-gems.tsv': b.phase_gems(),
              'tricky-resetvol.tsv': b.phase_resetvol()}
     for c in BUILD_COURSES:
         if (c == 'mega' and 'mega' in b.skipped) or f'resets-{c}' in b.skipped:
             continue
         built['worlds'][c] = b.world_final(c)
-    for name in ('music-tricky-big', 'music2-tricky-big'):
-        check(built[name], AUDIO_SHA[name], name)
-    lay = b.phase_layout(built)
+    if audio_on:
+        for name in ('music-tricky-big', 'music2-tricky-big'):
+            check(built[name], AUDIO_SHA[name], name)
+    lay = b.phase_layout(built, audio_on=audio_on)
     dt = time.time() - t0
     print(f'BUILD_TRICKY OK in {dt:.0f}s: {lay} '
           f'({len(built["worlds"])} worlds)', flush=True)

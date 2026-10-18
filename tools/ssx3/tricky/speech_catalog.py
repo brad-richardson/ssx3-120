@@ -9,7 +9,8 @@ Writes <lines-tsv>: file, index, start, slot_bytes, samples, rate, channels,
 seconds. Tricky (MicroTalk) via vgmstream-cli; SSX3 (EA-XA R1) via ffmpeg.
 
 Usage:
-  speech_catalog.py --vgm <vgmstream-cli> --extract-dir <dir with tricky/ + ssx3/>
+  speech_catalog.py --vgm <vgmstream-cli> [--ffmpeg <ffmpeg>]
+      --extract-dir <dir with tricky/ + ssx3/>
       --streams-dir <dir> --wav-dir <dir> --lines-tsv <out>
 The extract dir must already hold the member .dat files (see README).
 """
@@ -19,6 +20,10 @@ import re
 import struct
 import subprocess
 import sys
+import wave
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tool_paths  # noqa: E402
 
 TRICKY = ["Wipeout.dat", "MS_Wipeout.dat", "Uber.dat", "Big_Air.dat", "MS_Big_Air.dat",
           "Tricky.dat", "Turbo.dat", "Boost_Icon.dat", "Bonus.dat"]
@@ -41,34 +46,33 @@ def streams_of(path):
 
 
 def wav_info(path):
-    r = subprocess.run(["ffprobe", "-hide_banner", "-v", "error",
-                        "-select_streams", "a:0",
-                        "-show_entries", "stream=sample_rate,channels,bits_per_sample",
-                        "-show_entries", "format=size", "-of", "default=noprint_wrappers=1", path],
-                       capture_output=True, text=True)
-    info = {}
-    for line in r.stdout.splitlines():
-        if "=" in line:
-            k, v = line.strip().split("=", 1)
-            info[k] = v
-    import wave
+    """Duration/shape from the WAV header itself (no ffprobe).
+
+    The decoded files are PCM WAVs written by vgmstream/ffmpeg, so the
+    header is authoritative; ffprobe-style probing added nothing beyond
+    it (the old ffprobe fields were overwritten by these same values).
+    """
+    import os as _os
     with wave.open(path, "rb") as w:
-        n = w.getnframes()
-        info["samples"] = n
-        info["sample_rate"] = w.getframerate()
-        info["channels"] = w.getnchannels()
-    return info
+        return {"samples": w.getnframes(),
+                "sample_rate": w.getframerate(),
+                "channels": w.getnchannels(),
+                "bits_per_sample": w.getsampwidth() * 8,
+                "size": _os.path.getsize(path)}
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--vgm", required=True, help="vgmstream-cli binary")
+    ap.add_argument("--ffmpeg", default=None,
+                    help="ffmpeg binary (default: pinned wheel binary)")
     ap.add_argument("--extract-dir", required=True,
                     help="dir with tricky/ and ssx3/ member .dat files")
     ap.add_argument("--streams-dir", required=True)
     ap.add_argument("--wav-dir", required=True)
     ap.add_argument("--lines-tsv", required=True)
     a = ap.parse_args()
+    ffmpeg = str(tool_paths.ffmpeg_path(a.ffmpeg))
     os.makedirs(a.streams_dir, exist_ok=True)
     rows = []
     # Tricky
@@ -106,7 +110,7 @@ def main():
             wp = os.path.join(a.wav_dir, "ssx3", stem + ".wav")
             open(sp, "wb").write(blob)
             os.makedirs(os.path.dirname(wp), exist_ok=True)
-            r = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-y",
+            r = subprocess.run([ffmpeg, "-hide_banner", "-v", "error", "-y",
                                 "-i", sp, wp], capture_output=True, text=True)
             if r.returncode != 0 or not os.path.exists(wp):
                 print(f"FAIL decode {fn} stream {i}: {r.stderr[-2000:]}")

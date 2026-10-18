@@ -19,4 +19,10 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 
-exec uv run --script "$here/tools/ssx3/build.py" "$@"
+# The pinned interpreter comes from uv's managed Pythons, never the host:
+# only-managed keeps a stray system Python from silently substituting for
+# the .python-version pin (override with UV_PYTHON_PREFERENCE if you must).
+# --locked runs off the committed build.py.lock instead of re-resolving.
+: "${UV_PYTHON_PREFERENCE:=only-managed}"
+export UV_PYTHON_PREFERENCE
+exec uv run --locked --script "$here/tools/ssx3/build.py" "$@"
