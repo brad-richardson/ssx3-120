@@ -517,6 +517,7 @@ class Build:
 
     def phase_gems(self):
         ge = self.W / 'gems'
+        ge.mkdir(parents=True, exist_ok=True)
         specs = []
         for arch, group in GEM_COURSES:
             c = arch.lower()

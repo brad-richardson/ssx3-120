@@ -723,8 +723,13 @@ class BuildTrickyDriverTest(unittest.TestCase):
                 calls.append((name, list(argv)))
                 if '--out' in argv:
                     o = Path(argv[argv.index('--out') + 1])
-                    o.parent.mkdir(parents=True, exist_ok=True)
-                    o.write_bytes(b'g')
+                    if name == 'bake-gems':
+                        # the real tool does not mkdir: the driver must
+                        # have created gems/ or this write fails.
+                        o.write_bytes(b'g')
+                    else:
+                        o.parent.mkdir(parents=True, exist_ok=True)
+                        o.write_bytes(b'g')
                 return Path(logdir) / f'{name}.log'
 
             with patch.object(driver, 'run', side_effect=fake_run):
