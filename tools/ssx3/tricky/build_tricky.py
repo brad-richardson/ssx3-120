@@ -1071,6 +1071,14 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.from_phase == 'speech' and not a.reuse_worlds:
         raise SystemExit('--from-phase speech needs --reuse-worlds <dir>')
+    if 'REFPACK_DECISIONS' not in os.environ:
+        shipped = T / 'data' / 'refpack-decisions.json'
+        if shipped.is_file():
+            os.environ['REFPACK_DECISIONS'] = str(shipped)
+            print(f'refpack decisions: shipped {shipped} '
+                  f'({shipped.stat().st_size} bytes; REFPACK_DECISIONS '
+                  f'overrides; misses fall back to search loudly)',
+                  flush=True)
     validate_pins()
     ident = preflight(a)
     audio_on = ident['audio'] == 'on'
