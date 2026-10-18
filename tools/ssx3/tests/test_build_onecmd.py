@@ -235,6 +235,7 @@ class OneCommandOrderTest(unittest.TestCase):
                               side_effect=lambda p: calls.append('iso') or iso.resolve()), \
                  patch.object(build, 'preflight_host_tools',
                               side_effect=lambda: calls.append('preflight') or True), \
+                 patch.object(build, 'check_capacity', return_value=None), \
                  patch.object(build, 'ensure_android_toolchain',
                               side_effect=lambda a: calls.append('toolchain') or setattr(a, 'ndk', work)), \
                  patch.object(build, 'doctor', side_effect=lambda a: calls.append('doctor')), \
