@@ -1326,5 +1326,254 @@ class ImportDispatchTest(unittest.TestCase):
             self.assertEqual(calls, ['prepare', 'tricky', 'android'])
 
 
+class ActivateTrickyEnvTest(unittest.TestCase):
+    DRIVER_ENV = ('# build_tricky.py: Tricky env layer (Tricky only; layered over ps2x.env).\n'
+                  'PS2X_CD_OVERLAY=/storage/emulated/0/Android/data/com.ssx3.recomp/files/tricky-ov\n'
+                  'PS2X_SSX3_COURSE_MANIFEST=/storage/emulated/0/Android/data/com.ssx3.recomp/files/m-tricky.txt\n'
+                  'PS2X_SSX3_COURSE_PICKER=1\n'
+                  'PS2X_SSX3_TRICKY_MENU=1\n'
+                  'PS2X_SSX3_TRICKY_HUD=1\n'
+                  'PS2X_SSX3_TRICKY_HUD_ART=/storage/emulated/0/Android/data/com.ssx3.recomp/files/trickyhud.bin\n'
+                  'PS2X_SSX3_TRICKY_MUSIC_INF=/storage/emulated/0/Android/data/com.ssx3.recomp/files/music-inf-tricky-big\n'
+                  'PS2X_SSX3_TRICKY_SONG=/storage/emulated/0/Android/data/com.ssx3.recomp/files/tricky-song.wav\n'
+                  'PS2X_SSX3_TRICKY_GEMS=1\n'
+                  'PS2X_SSX3_TRICKY_GEMS_TABLE=/storage/emulated/0/Android/data/com.ssx3.recomp/files/tricky-gems.tsv\n'
+                  'PS2X_SSX3_TRICKY_RESETVOL=1\n'
+                  'PS2X_SSX3_TRICKY_RESETVOL_TABLE=/storage/emulated/0/Android/data/com.ssx3.recomp/files/tricky-resetvol.tsv\n'
+                  'PS2X_SSX3_MEGA_LAPS=1\n'
+                  'PS2X_SSX3_TRICKY_DJ_GATE=1\n'
+                  'PS2X_SSX3_TRICKY_MC=1\n')
+
+    LAYER_KEYS = ('PS2X_CD_OVERLAY=', 'PS2X_SSX3_COURSE_MANIFEST=',
+                  'PS2X_SSX3_COURSE_PICKER=', 'PS2X_SSX3_TRICKY_MENU=',
+                  'PS2X_SSX3_TRICKY_HUD_ART=', 'PS2X_SSX3_TRICKY_MUSIC_INF=',
+                  'PS2X_SSX3_TRICKY_SONG=', 'PS2X_SSX3_TRICKY_GEMS_TABLE=',
+                  'PS2X_SSX3_TRICKY_RESETVOL_TABLE=', 'PS2X_SSX3_MEGA_LAPS=',
+                  'PS2X_SSX3_TRICKY_DJ_GATE=', 'PS2X_SSX3_TRICKY_MC=')
+
+    def test_merge_appends_layer_rows_with_picker_and_audio(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / 'ps2x.env'
+            base.write_text('PS2X_SOUND=1\n')
+            staged = Path(tmp) / 'tricky.env'
+            staged.write_text(self.DRIVER_ENV)
+            self.assertTrue(build.activate_tricky_env(base, staged))
+            text = base.read_text()
+            self.assertIn('PS2X_SOUND=1', text)
+            self.assertIn('PS2X_SSX3_COURSE_PICKER=1', text)
+            self.assertIn('PS2X_SSX3_TRICKY_MENU=1', text)
+            self.assertIn('PS2X_SSX3_TRICKY_SONG=', text)
+            self.assertIn('PS2X_SSX3_TRICKY_MUSIC_INF=', text)
+            self.assertIn('# Tricky layer', text)
+
+    def test_merge_audio_off_layer_has_no_audio_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / 'ps2x.env'
+            base.write_text('PS2X_SOUND=1\n')
+            staged = Path(tmp) / 'tricky.env'
+            staged.write_text(''.join(
+                line for line in self.DRIVER_ENV.splitlines(keepends=True)
+                if 'MUSIC_INF=' not in line and 'TRICKY_SONG=' not in line))
+            self.assertTrue(build.activate_tricky_env(base, staged))
+            text = base.read_text()
+            self.assertIn('PS2X_SSX3_COURSE_PICKER=1', text)
+            self.assertNotIn('TRICKY_SONG', text)
+            self.assertNotIn('TRICKY_MUSIC_INF', text)
+
+    def test_merge_without_layer_is_a_no_op(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / 'ps2x.env'
+            base.write_text('PS2X_SOUND=1\n')
+            self.assertFalse(build.activate_tricky_env(base, Path(tmp) / 'absent.env'))
+            self.assertEqual(base.read_text(), 'PS2X_SOUND=1\n')
+
+
+class StageActivateTest(unittest.TestCase):
+    def driver_layer(self, work):
+        """Replace the stub layer with driver-form content + fix the record."""
+        tricky = work / 'tricky'
+        (tricky / 'm-tricky.txt').write_text(
+            '# build_tricky.py: course rows for the built courses only.\n'
+            'mode = Tricky\n'
+            'alias = /DATA/AUDIO/SPEECH.BIG:/storage/emulated/0/Android/data/'
+            'com.ssx3.recomp/files/speech-tricky-big\n'
+            'row = 11:PIPE:Pipedream\n'
+            'poke = 0x47BDB0:data/ui/courspic.big:data/ui/courspit.big\n')
+        (tricky / 'tricky.env').write_text(ActivateTrickyEnvTest.DRIVER_ENV)
+        record = json.loads((work / 'tricky_inputs.json').read_text())
+        for name in ('m-tricky.txt', 'tricky.env'):
+            candidate = tricky / name
+            record['outputs'][name] = {'sha256': build.sha2(candidate),
+                                       'bytes': candidate.stat().st_size}
+        (work / 'tricky_inputs.json').write_text(json.dumps(record))
+
+    def test_stage_merges_tricky_env_with_picker_and_audio(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = staged_work(tmp)
+            self.driver_layer(work)
+            args = tricky_args(work, app_id='com.example.game', step='stage')
+            files = build.stage(args)
+            env = (files / 'ps2x.env').read_text()
+            for key in ActivateTrickyEnvTest.LAYER_KEYS:
+                self.assertIn(key, env)
+            self.assertIn('com.example.game', env)
+            self.assertNotIn('com.ssx3.recomp', env)
+
+    def test_stage_without_layer_has_no_tricky_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            (work / 'app-id.txt').write_text('com.example.game\n')
+            (work / 'android-resources').mkdir()
+            args = tricky_args(work, app_id='com.example.game', step='stage')
+            files = build.stage(args)
+            env = (files / 'ps2x.env').read_text()
+            for key in ActivateTrickyEnvTest.LAYER_KEYS:
+                self.assertNotIn(key, env)
+
+
+class StageIosTrickyTest(unittest.TestCase):
+    def ios_layer_source(self, tmp, iso_digest, audio='off'):
+        src = Path(tmp) / 'src'
+        src.mkdir()
+        manifest = ('# build_tricky.py: course rows for the built courses only.\n'
+                    'mode = Tricky\n'
+                    'alias = /DATA/AUDIO/SPEECH.BIG:/storage/emulated/0/Android/data/'
+                    'com.ssx3.recomp/files/speech-tricky-big\n'
+                    'row = 11:PIPE:Pipedream\n'
+                    'poke = 0x47BDB0:data/ui/courspic.big:data/ui/courspit.big\n')
+        env = ''.join(
+            line for line in ActivateTrickyEnvTest.DRIVER_ENV.splitlines(keepends=True)
+            if audio == 'on' or ('MUSIC_INF=' not in line and 'TRICKY_SONG=' not in line))
+        payloads = {'m-tricky.txt': manifest, 'tricky.env': env}
+        for name in build.TRICKY_DEVICE_FILES:
+            (src / name).write_text(payloads.get(name, name + '-device'))
+        (src / 'tricky-ov/DATA/WORLDS').mkdir(parents=True)
+        (src / 'tricky-ov/DATA/WORLDS/PIPE.BIG').write_bytes(b'pipe-world')
+        (src / 'tools.json').write_text(json.dumps({
+            'tricky': {'sha256': iso_digest}, 'ssx3': {'sha256': 's' * 64},
+            'audio': audio, 'pins': {}, 'toolchain': {'ffmpeg': None, 'vgmstream': None},
+            'converter_version': build.tricky_converter_version(), 'jobs': 12}))
+        return src
+
+    def import_ios_layer(self, tmp, audio='off'):
+        work, _ = prepared_work(tmp)
+        iso = Path(tmp) / 'tricky.iso'
+        make_tricky_iso(iso)
+        src = self.ios_layer_source(tmp, build.sha(iso), audio=audio)
+        args = types.SimpleNamespace(work=work, jobs=2, tricky_audio='auto',
+                                     ffmpeg='ffmpeg-pinned', vgmstream='vgm-pinned')
+        with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+            build.import_tricky(args, iso, src)
+        return work
+
+    def test_ios_stage_uses_bundle_paths_and_verifies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self.import_ios_layer(tmp)
+            app = Path(tmp) / 'app'
+            app.mkdir()
+            (app / 'ps2x.env').write_text('PS2X_SOUND=1\n')
+            args = types.SimpleNamespace(work=work)
+            staged, trees = build.stage_ios_tricky(args, app)
+            self.assertTrue((app / 'tricky/tricky-ov/DATA/WORLDS/PIPE.BIG').is_file())
+            manifest = (app / 'tricky/m-tricky.txt').read_text()
+            self.assertIn('alias = /DATA/AUDIO/SPEECH.BIG:speech-tricky-big', manifest)
+            self.assertNotIn('/storage/emulated', manifest)
+            env = (app / 'tricky/tricky.env').read_text()
+            self.assertIn('PS2X_CD_OVERLAY=${BUNDLE}/tricky/tricky-ov', env)
+            self.assertIn('PS2X_SSX3_COURSE_MANIFEST=${BUNDLE}/tricky/m-tricky.txt', env)
+            self.assertNotIn('/storage/emulated', env)
+            self.assertTrue(build.activate_tricky_env(app / 'ps2x.env',
+                                                      app / 'tricky/tricky.env'))
+            merged = (app / 'ps2x.env').read_text()
+            self.assertIn('PS2X_SSX3_COURSE_PICKER=1', merged)
+            self.assertIn('${BUNDLE}/tricky/', merged)
+            self.assertEqual([name for _, name in staged if name == 'm-tricky.txt'],
+                             ['m-tricky.txt'])
+            self.assertIn('tricky-ov', trees)
+            # Tampering with the built source fails closed.
+            (work / 'tricky/tricky-gems.tsv').write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'changed since build_tricky'):
+                build.stage_ios_tricky(args, app)
+
+    def test_ios_stage_without_layer_is_stock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            app = Path(tmp) / 'app'
+            app.mkdir()
+            args = types.SimpleNamespace(work=work)
+            self.assertEqual(build.stage_ios_tricky(args, app), ([], []))
+            self.assertFalse((app / 'tricky').exists())
+
+
+class CheckTrickyCliTest(unittest.TestCase):
+    def check(self, **over):
+        base = dict(step='android', from_dir=None, tricky_from=None, tricky_iso=None)
+        base.update(over)
+        failures = []
+        build.check_tricky_cli(types.SimpleNamespace(**base), failures.append)
+        return failures
+
+    def test_tricky_step_takes_from_not_tricky_from(self):
+        self.assertEqual(self.check(step='tricky'), [])
+        self.assertEqual(self.check(step='tricky', from_dir=Path('/x')), [])
+        self.assertTrue(self.check(step='tricky', tricky_from=Path('/x')))
+
+    def test_android_ios_take_tricky_from_not_from(self):
+        self.assertEqual(self.check(step='android', tricky_from=Path('/x'),
+                                    tricky_iso=Path('/i')), [])
+        self.assertEqual(self.check(step='ios', tricky_from=Path('/x'),
+                                    tricky_iso=Path('/i')), [])
+        self.assertTrue(self.check(step='android', from_dir=Path('/x')))
+        self.assertTrue(self.check(step='ios', from_dir=Path('/x')))
+        self.assertTrue(self.check(step='prepare', from_dir=Path('/x')))
+        self.assertTrue(self.check(step='prepare', tricky_from=Path('/x'),
+                                   tricky_iso=Path('/i')))
+
+    def test_tricky_from_needs_the_disc(self):
+        self.assertTrue(self.check(step='android', tricky_from=Path('/x')))
+
+
+class IosOneCommandTrickyTest(unittest.TestCase):
+    def onecmd_args(self, work, **over):
+        base = dict(work=work, ssx3_iso=None, tricky_iso=None, tricky_from=None,
+                    install=False, team='T' * 10, jobs=2, app_id=build.PUBLIC_APP_ID,
+                    tricky_audio='auto', dry_run=False)
+        base.update(over)
+        return types.SimpleNamespace(**base)
+
+    def run_onecmd(self, tmp, calls, **over):
+        work = Path(tmp) / 'work'
+        work.mkdir()
+        iso = Path(tmp) / 'SSX3.iso'
+        iso.write_bytes(b'ssx3')
+        tricky = Path(tmp) / 'tricky.iso'
+        tricky.write_bytes(b'tricky')
+        args = self.onecmd_args(work, ssx3_iso=iso, tricky_iso=tricky, **over)
+        with patch.object(build, 'check_team'), \
+             patch.object(build, 'doctor'), \
+             patch.object(build, 'validate_tricky_iso', return_value=tricky), \
+             patch.object(build, 'prepare_current', return_value=False), \
+             patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
+             patch.object(build, 'ios_libs_current', return_value=True), \
+             patch.object(build, 'import_tricky',
+                          side_effect=lambda a, i, s: calls.append('import')), \
+             patch.object(build, 'build_tricky',
+                          side_effect=lambda a, i: calls.append('tricky')), \
+             patch.object(build, 'ios', side_effect=lambda a: calls.append('ios')):
+            build.ios_onecmd(args)
+        return calls
+
+    def test_ios_tricky_iso_builds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.run_onecmd(tmp, []), ['prepare', 'tricky', 'ios'])
+
+    def test_ios_tricky_from_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / 'src'
+            src.mkdir()
+            self.assertEqual(self.run_onecmd(tmp, [], tricky_from=src),
+                             ['prepare', 'import', 'ios'])
+
+
 if __name__ == '__main__':
     unittest.main()

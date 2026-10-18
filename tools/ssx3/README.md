@@ -244,7 +244,12 @@ Reruns skip when the disc, converter and tools are unchanged: the
 whom and how long it took) and rebuilds on any disc, pin, converter,
 audio-mode or toolchain change. A finished driver workdir can be
 imported instead of rebuilt (`build.py tricky --from <dir>`,
-`./build android --tricky-from <dir>`).
+`./build android --tricky-from <dir>`). When a layer was built, `stage`
+(Android) and `ios` (bundle `tricky/`) stage it and merge the staged
+`tricky.env` rows into the launched base env, so the normal 60/120
+entrypoints activate the requested layer (picker on; Tricky audio on
+when the layer built audio). No `--tricky-iso` means stock SSX 3 with
+no Tricky rows.
 
 **Optional: prebuilt libraries.** Pass `--prebuilt` to reuse a verified
 prebuilt support release instead of compiling the support libraries. It only

@@ -2599,6 +2599,75 @@ def stage_ios_presets(app):
     return staged
 
 
+def stage_ios_tricky(a, app):
+    """Stage the built Tricky layer into the iOS app bundle (product path).
+
+    Record-driven like stage_tricky (direct `ios` step and onecmd alike):
+    copies TRICKY_DEVICE_FILES present + the tricky-ov tree under
+    app/tricky/, rewriting the baked Android files-dir prefix to bundle
+    paths (manifest-relative aliases in m-tricky.txt, ${BUNDLE}/tricky in
+    tricky.env, matching the shipped iOS layout). Fails closed: refuses
+    when a text payload has no device prefix to rewrite, and re-verifies
+    every staged byte against tricky_inputs.json. Returns
+    (staged, trees); ([], []) when no layer was built (stock SSX 3 only).
+    """
+    record = tricky_record(a.work)
+    if record is None:
+        return [], []
+    verify_tricky_outputs(a.work, record)
+    tricky = Path(a.work) / 'tricky'
+    dest = Path(app) / 'tricky'
+    android_prefix = '/storage/emulated/0/Android/data/' + PUBLIC_APP_ID + '/files/'
+    staged, trees = [], []
+    for name in TRICKY_DEVICE_FILES:
+        source = tricky / name
+        if not source.is_file():
+            continue
+        text = None
+        if name in TRICKY_ID_REWRITES:
+            text = source.read_text()
+            if name == 'm-tricky.txt':
+                rewritten = text.replace(android_prefix, '')
+            else:
+                rewritten = text.replace(android_prefix, '${BUNDLE}/tricky/')
+            if rewritten == text:
+                raise ValueError('iOS Tricky stage: no device prefix to rewrite in ' + name)
+            text = rewritten
+        target = dest / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if text is not None:
+            target.write_text(text)
+        else:
+            shutil.copy2(source, target)
+        staged.append((target, name))
+    for name in TRICKY_DEVICE_TREES:
+        source = tricky / name
+        if not source.is_dir():
+            continue
+        target = dest / name
+        if target.is_dir():
+            shutil.rmtree(target)
+        shutil.copytree(source, target)
+        trees.append(name)
+    # Re-verify the staged bytes (rewritten text payloads legitimately
+    # differ by path; everything else must match the record exactly).
+    for target, name in staged:
+        if name in TRICKY_ID_REWRITES:
+            continue
+        expected = record['outputs'].get(name)
+        if expected is None or sha2(target) != expected['sha256']:
+            raise ValueError('staged iOS Tricky file mismatch: ' + name)
+    for name in trees:
+        for candidate in sorted((dest / name).rglob('*')):
+            if not candidate.is_file():
+                continue
+            relative = (name + '/' + candidate.relative_to(dest / name).as_posix())
+            expected = record['outputs'].get(relative)
+            if expected is None or sha2(candidate) != expected['sha256']:
+                raise ValueError('staged iOS Tricky file mismatch: ' + relative)
+    return staged, trees
+
+
 def ios_release_flags(pgo_data):
     """iOS app Release flags (D04 apple-a15 tuning plus optional PGO use)."""
     base = '-O3 -DNDEBUG -mcpu=' + IOS_MCPU
@@ -2630,6 +2699,11 @@ def ios(a):
               + str(a.work / 'ios-libs'))
         print('  stage into ' + str(a.work / 'ios-stage') + ' (SLUS_207.72, slim ISO, '
               'presets/ios.env->ps2x.env, presets/full120-ios.env->full120.env, Settings.bundle, MoltenVK.framework)')
+        record = tricky_record(a.work)
+        if getattr(a, 'tricky_iso', None) or record is not None:
+            print('  tricky layer ' + ('present (staged under bundle tricky/)'
+                                      if record is not None else
+                                      'absent (stock SSX 3 only; pass --tricky-iso to build it)'))
         if getattr(a, 'install', False):
             print('  install with xcrun devicectl to ' + str(getattr(a, 'device', None) or 'the connected device'))
         return
@@ -2725,6 +2799,12 @@ def ios(a):
                  and not line.startswith('GE1_TEX_PRELOAD=')]
         lines += ['GE1_TEX_REPLACE=${BUNDLE}/font-pack', 'GE1_TEX_PRELOAD=1']
         env_file.write_text('\n'.join(lines) + '\n')
+    # Tricky layer (astra-config-audit-1 item 6): stage the built layer
+    # into the bundle and merge its env rows into the bundle base env,
+    # so the normal launch (which reads only bundle ps2x.env) activates
+    # the explicitly requested layer. No layer: stock SSX 3 only.
+    stage_ios_tricky(a, app)
+    activate_tricky_env(app / 'ps2x.env', app / 'tricky' / 'tricky.env')
     # P2: the Metal TFX selector coverage ships inside the bundle; the
     # staged ps2x.env points GE1_TFX_PREWARM at it. The file is written
     # and verified BEFORE the knob can take effect (the knob without its
@@ -2801,6 +2881,10 @@ def ios_onecmd(a):
         print('prepare: outputs current for this disc, skipping')
     else:
         prepare(a)
+    if getattr(a, 'tricky_from', None):
+        import_tricky(a, a.tricky_iso, a.tricky_from)
+    elif a.tricky_iso:
+        build_tricky(a, a.tricky_iso)
     if ios_libs_current(a.work):
         print('ios-libs: staged libraries current, skipping')
     else:
@@ -2853,6 +2937,11 @@ def stage(a):
     device = '/storage/emulated/0/Android/data/' + a.app_id + '/files'
     stage_fonts(a, inputs, files, device)
     tricky_staged, tricky_trees = stage_tricky(a, files)
+    # Layer activation (astra-config-audit-1 item 6): the staged tricky.env
+    # is never loaded by the normal entrypoints (they layer only the base
+    # env), so merge its rows into the staged base. Stock (no layer) is
+    # untouched: no Tricky rows, no picker.
+    activate_tricky_env(files / 'ps2x.env', files / 'tricky.env')
     apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     print('Staged device layout in ' + str(files))
     if a.step != 'stage':
@@ -3962,6 +4051,29 @@ def tricky_device_sources(files, record):
     return staged, trees
 
 
+def activate_tricky_env(env_path, staged_env):
+    """Append a staged tricky.env's rows to the staged base env (layer activation).
+
+    The normal entrypoints layer only the base env (Android files/ps2x.env,
+    iOS bundle ps2x.env); the staged tricky.env is otherwise never loaded.
+    Appends the non-blank staged rows (keys the layer itself requires:
+    picker/menu always, audio rows only when the layer built audio).
+    No-op when no staged layer exists, so stock stays stock. Returns True
+    when rows were appended.
+    """
+    staged = Path(staged_env)
+    if not staged.is_file():
+        return False
+    rows = [line for line in staged.read_text().splitlines() if line.strip()]
+    if not rows:
+        return False
+    with open(env_path, 'a') as out:
+        out.write('# Tricky layer (staged tricky.env rows follow).\n')
+        for row in rows:
+            out.write(row + '\n')
+    return True
+
+
 def stage_tricky(a, files):
     """Copy the built Tricky layer into the staged device layout (APK path).
 
@@ -4086,6 +4198,28 @@ def android_onecmd(a):
         install(a)
 
 
+def check_tricky_cli(a, fail):
+    """Step/flag consistency for the tricky import flags (testable).
+
+    main() calls this with p.error; unit tests pass a stub. `fail`
+    raises (SystemExit) on misuse.
+    """
+    from_dir = getattr(a, 'from_dir', None)
+    tricky_from = getattr(a, 'tricky_from', None)
+    if a.step == 'tricky' and tricky_from:
+        fail('--tricky-from is only valid with the android/ios steps; the tricky step takes --from')
+    if a.step == 'android' and from_dir:
+        fail('--from is only valid with the tricky step; the android/ios steps take --tricky-from')
+    if a.step == 'ios' and from_dir:
+        fail('--from is only valid with the tricky step; the android/ios steps take --tricky-from')
+    if from_dir and a.step != 'tricky':
+        fail('--from is only valid with the tricky step')
+    if tricky_from and a.step not in ('android', 'ios'):
+        fail('--tricky-from is only valid with the android/ios steps')
+    if tricky_from and not getattr(a, 'tricky_iso', None):
+        fail('--tricky-from needs --tricky-iso for the disc check')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'tricky', 'vu0'])
@@ -4100,7 +4234,7 @@ def main():
     p.add_argument('--from', dest='from_dir', type=Path,
                    help='tricky step: import the device outputs from a finished driver workdir instead of rebuilding')
     p.add_argument('--tricky-from', dest='tricky_from', type=Path,
-                   help='android step: import the Tricky device outputs from a finished driver workdir instead of rebuilding')
+                   help='android/ios steps: import the Tricky device outputs from a finished driver workdir instead of rebuilding')
     p.add_argument('--install', action='store_true',
                    help='with android --ssx3-iso: install to a connected device after the build')
     p.add_argument('--accept-android-licenses', action='store_true',
@@ -4192,16 +4326,7 @@ def main():
         p.error('tricky requires --iso (the Tricky disc)')
     if a.step == 'tricky' and a.tricky_iso:
         p.error('--tricky-iso is only valid with the android step; the tricky step takes --iso')
-    if a.step == 'tricky' and a.tricky_from:
-        p.error('--tricky-from is only valid with the android step; the tricky step takes --from')
-    if a.step == 'android' and a.from_dir:
-        p.error('--from is only valid with the tricky step; the android step takes --tricky-from')
-    if a.from_dir and a.step != 'tricky':
-        p.error('--from is only valid with the tricky step')
-    if a.tricky_from and a.step != 'android':
-        p.error('--tricky-from is only valid with the android step')
-    if a.tricky_from and not a.tricky_iso:
-        p.error('--tricky-from needs --tricky-iso for the disc check')
+    check_tricky_cli(a, p.error)
     if a.step == 'tricky' and a.dry_run:
         tricky_dry_run(a)
         return
