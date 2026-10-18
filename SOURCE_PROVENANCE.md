@@ -6,11 +6,11 @@ for the composition. Per-file bytes, origins and sizes: `SOURCE_MANIFEST.tsv`
 (`status=verbatim` for all 96 snapshot files; composition edits follow as
 reviewable diffs on top).
 
-## Pinned sources (frozen 2026-10-16, engine bumped s120-pin-1)
+## Pinned sources (frozen 2026-10-18, engine bumped engine-pin-1)
 
 | Source | Pin | Content |
 | --- | --- | --- |
-| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `5235b114…73a8` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
+| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `b9bf530a…acbf` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
 | `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
@@ -63,6 +63,16 @@ reviewable diffs on top).
   moves the product Android recipe and `deps.lock.json` to the shipped
   `e8ed655ec6` (same tree as the iOS `GE1_VENDOR_PIN`), keeping microVU
   no-LTO.
+- engine-pin-1 (engine `5235b114` → `b9bf530a`, trains 41–49): re-synced
+  `knobs.tsv` (achievements `PS2X_ACHIEVEMENTS`/`PS2X_ACH_SET` removed per
+  `872cb4ed`, netsync rows re-owned `netsync-spike-1` → `online-v0-1`,
+  `PS2X_MENU_BUTTON` added), `prebuilt.py`/`test_prebuilt.py` (rcheevos
+  archive and contract entries removed per `872cb4ed`; stale runtime
+  `ps2_ssx3_vis_native` entries removed after the `fd7a974d` move to the
+  game module), `presets/ps2x.env`/`presets/ios.env` (achievements comments
+  removed); contract `f7aec344…` in `deps.lock.json`. Product `ENGINE`
+  retarget and play-policy preset tail preserved. Vendor armsx2 stays
+  `e8ed655ec6`.
 
 ## Bundled PGO profiles (pgo-public-1)
 
