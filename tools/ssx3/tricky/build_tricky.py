@@ -544,9 +544,12 @@ class Build:
                 f'gems-345 without GC-resets courses; sidecar {got[:12]}'
         else:
             check(sidecar, GEMS_345_SHA, 'gems-345')
+        # donor_inventory's --out is a directory of per-course binaries;
+        # gem_step reads the JSON receipt as its donor bindings.
+        bindings = ge / 'donor-receipt.json'
         run(self.logs, 'donor-inventory', sys.executable, T / 'donor_inventory.py',
             '--iso', self.a.tricky_iso, '--out', ge / 'donor-bindings',
-            '--receipt', ge / 'donor-receipt.json', cwd=self.W)
+            '--receipt', bindings, cwd=self.W)
         worlds = ge / 'worlds'
         worlds.mkdir(parents=True, exist_ok=True)
         for c in ('pipe', 'alaska', 'untrack'):
@@ -556,7 +559,7 @@ class Build:
         out = ge / 'gems-483.tsv'
         run(self.logs, 'gem-step', sys.executable, T / 'gem_step.py',
             '--worlds', worlds, '--iso', self.a.ssx3_iso,
-            '--donor', self.W / 'donor', '--donor-bindings', ge / 'donor-bindings',
+            '--donor', self.W / 'donor', '--donor-bindings', bindings,
             '--sidecar', sidecar, '--work', ge / 'work52',
             '--out', out, '--receipt', ge / 'gems-483-receipt.json',
             '--alaska-scenery', self.W / 'w-alaska-b' / 'scenery.json',

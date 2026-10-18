@@ -742,6 +742,10 @@ class BuildTrickyDriverTest(unittest.TestCase):
             self.assertTrue(any('effects/elys.json' in s for s in courses))
             self.assertFalse(any('merquer.json' in s or 'elysium.json' in s
                                  for s in courses))
+            gem_argv = [a for n, a in calls if n == 'gem-step'][0]
+            db = gem_argv[gem_argv.index('--donor-bindings') + 1]
+            self.assertTrue(str(db).endswith('donor-receipt.json'),
+                            f'gem-step must read the JSON receipt, not the bindings dir: {db}')
 
     def test_hud_atlas_reads_the_tricky_iso(self):
         with tempfile.TemporaryDirectory() as tmp:
