@@ -48,7 +48,7 @@ docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe
 docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
 docs/symbols.md	authored:symbols-map-1	-	f8333c6de5d364295b5140658c3148740493e430e367fbc946d232c294532e99	2409	new
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
-games/ssx3/ssx3-symbols.tsv	authored:symbols-map-1	-	756ce732e405d5b2a88e90f2553eaf15e2aaa5a2738a8f8ff574c43b3578f2fa	378959	new
+games/ssx3/ssx3-symbols.tsv	authored:symbols-map-1	-	41b74b9f5d3f92291710541b4f068ed1dad7bb515c668918ec2d0809eb1d4d6d	380768	new
 games/ssx3/ssx3.toml	fork@f7a96f23	games/ssx3/ssx3.toml	929c6997f11bc319a91fe3a232f3ec962ed2ae4bea28b15eddc65c77930819d0	57910	composition:public-fix-1-scrubbed-lab-pointer
 infra/README.md	infra-staged	public-infra/README.md	4c6576cd748e47fc6781dc60aa6bd2cc50ccd8e68739eeb69feb3cae14bf2d78	4465	verbatim
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	5cf8c8b5aa4603ff9e4374e3f1ce6792944f690c0e7a39b5bc3ec49c1da9bd15	1339	verbatim
