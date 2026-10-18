@@ -621,26 +621,27 @@ COURSES = {
         stem_terrain='MEGA',
         # NOTE: no race_aip: TK18 build+race use the lap-patched donor aip.
         resets_pbd=False,
-        # TK18 mega-b (checkpoint, superseded branch): TK16 make_scenery16 +
-        # rails16 with the TK18 drop list. The FINAL path skips mega-b:
-        # mega2-r -> mega-h = scenery23 on the race world with TK21 extras
-        # (--drop-instances data/mega-d-drop.txt, --no-collision-file
-        # data/mega-d-nocollide.txt, --pose 292:5/57:5, --boost-json
-        # data/boost-all-g.json) + TK23 extras (--solidify-file
-        # data/fence-solidify.txt, --slab 20, --split-hull 163:750,
-        # --boost-json data/boost-tk23.json), oracle 261ed4ef; then terrain23
-        # mega-u2 (TK23c recipe: --mips 4 --prune --prune-orphans
-        # --exact-bounds --mips-only data/mega-line-tex15.txt
-        # --offline-tex-max 64, no compact-ids), oracle 969158da; then TK26
-        # mega-c re-terrain (--mips 4 ... --mips-only <MISSING
-        # mega-line-tex20> --offline-tex-max 64), oracle 3c97fa33.
-        # mega-h/u2/c rungs pending (need tk21/tk23 scenery/terrain wiring).
-        scenery_tool='tk16/make_scenery16.py',
-        scenery_extra=['--drop-instances', '{data}/mega-drop.txt'],
-        # No rails at this rung (TK18: Megaplex has no rails); 1bae15bf is
-        # the scenery output. Rails arrive with TK21's mega-g.
-        rails_tool=None,
-        oracle_b='1bae15bf7868b9b6d8364576d2aa3bf4b85a884010d64cfe44db850b0fc617c2',
+        # mega-h (final scenery, tk-mega-1 step 4): TK23 scenery23 on the
+        # race world with TK21 extras (--drop-instances mega-d-drop.txt,
+        # --no-collision-file mega-d-nocollide.txt, --pose 292:5/57:5,
+        # --boost-json boost-tk23.json) + TK23 extras (--solidify-file
+        # fence-solidify.txt, --slab 20, --split-hull 163:750), then TK21
+        # rails with a stock-DSS2 template (rails_template_group) extracted
+        # from the host BAM. Oracle 261ed4ef.
+        # (TK18 mega-b checkpoint superseded: tk16 + mega-drop.txt gave
+        # 1bae15bf; the final path skips it. Terrain TK26 step 5.)
+        scenery_tool='tk23/make_scenery23.py',
+        scenery_extra=['--drop-instances', '{data}/mega-d-drop.txt',
+                       '--no-collision-file', '{data}/mega-d-nocollide.txt',
+                       '--pose', '292:5', '--pose', '57:5',
+                       '--boost-json', '{data}/boost-tk23.json',
+                       '--solidify-file', '{data}/fence-solidify.txt',
+                       '--slab', '20', '--split-hull', '163:750'],
+        # DBC2 carries no rail-class spline to template: the template is
+        # extracted from stock group rails_template_group (tk-mega-1 step 3).
+        rails_tool='tk21/make_rails21.py',
+        rails_template_group=115,
+        oracle_h='261ed4ef724d540b0bc1f5d4efa72283081cbf59c20f69d7d6fa61092df6f537',
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
         floor_group=94,
         oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
@@ -652,9 +653,8 @@ COURSES = {
         oracle_fix=None,
         preview_loc=None,
         # tk-routes-2: Megaplex tube w94 slot-2 binding (boost --rid 94
-        # --program 34 --slot 2). Mega s5 is unwired (pending mega-h/u2/c
-        # tail), so the routes base is the recorded TKP5-final reference,
-        # input-SHA-gated before use.
+        # --program 34 --slot 2). Until the mega-h/u2/c tail lands the
+        # chain-built s5 base, rung_routes records a skip (no reference).
         routes_group=94,
         routes_args=['boost', '--rid', '94', '--program', '34', '--slot', '2'],
         oracle_routes='0d0677c46d04fc99c735db84543d2fb344fcc17faf653db9d5fa5c6318f524bc',
@@ -865,12 +865,24 @@ class Chain:
         # the tools keep the lane path when the 7th positional is absent).
         tmpdir = self.W / 'tmp'
         tmpdir.mkdir(parents=True, exist_ok=True)
-        run('rails', sys.executable, self.T / r['rails_tool'],
-            sc, bdir / 'experiment.json',
-            ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
-            stem, out, str(tmpdir), cwd=self.W, log=self.log(c, 'rails'))
+        rails_cmd = [sys.executable, self.T / r['rails_tool'],
+                     sc, bdir / 'experiment.json',
+                     ddir / f"{r['donor']}-ps2.nbd",
+                     ddir / f"{r['donor']}-ps2.gsf",
+                     stem, out, str(tmpdir)]
+        if r.get('rails_template_group') is not None:
+            tmpl = w / 'rail-template.json'
+            run('rail-template', sys.executable, self.T / 'tk21' / 'rail_template.py',
+                self.a.host_bam, tmpl,
+                '--group', str(r['rails_template_group']),
+                '--tmp', str(w / 'tmp-template'),
+                cwd=self.W, log=self.log(c, 'rail-template'))
+            rails_cmd += ['--template', str(tmpl)]
+        run('rails', *rails_cmd, cwd=self.W, log=self.log(c, 'rails'))
         if r.get('oracle_b'):
             check(out, r['oracle_b'], f'{c} -b')
+        if r.get('oracle_h'):
+            check(out, r['oracle_h'], f'{c} -h')
         if r.get('oracle_f'):
             check(out, r['oracle_f'], f'{c} -f')
         return out

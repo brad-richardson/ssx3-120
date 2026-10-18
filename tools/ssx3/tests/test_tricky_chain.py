@@ -415,6 +415,14 @@ class MegaGatesTest(unittest.TestCase):
         for key, want in self.ORACLES.items():
             self.assertEqual(recipe.get(key), want, key)
 
+    def test_mega_h_wiring(self):
+        recipe = run_chain.COURSES['mega']
+        self.assertEqual(recipe.get('scenery_tool'), 'tk23/make_scenery23.py')
+        self.assertEqual(recipe.get('rails_tool'), 'tk21/make_rails21.py')
+        self.assertEqual(recipe.get('rails_template_group'), 115)
+        self.assertEqual(recipe.get('oracle_h'),
+                         '261ed4ef724d540b0bc1f5d4efa72283081cbf59c20f69d7d6fa61092df6f537')
+
     def test_anim_dump_curves_and_value(self):
         mod = load('tk_anim_dump', TRICKY / 'tk21' / 'anim_dump.py')
         self.assertTrue(callable(mod.curves))
