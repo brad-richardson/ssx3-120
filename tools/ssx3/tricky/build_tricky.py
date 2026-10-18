@@ -64,7 +64,13 @@ AUDIO_SHA = {'speech-tricky-big': 'ed417ac3ff2c19c38fadfaadfeba0b5ff695402ab3356
 GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13'
 HUD_ATLAS_SHA = 'a7ccacd07b9982bbc34e48aab463e4e0e652b284a442ea7ff91068e163b8'
 RESETVOL_SHA = '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'
-SPEECH7_SHA = '07dcb666f9e20a1791f16dec7eb57bb27677c9069a0346e3d927b62a2e7c0877'
+# Oracle change (orch 10-18): play == public, so the public pipeline is the
+# reference — adopt OUR composite 4106bce5 (speech_eaxa.py from the pinned
+# decisions). PB70's 07dcb666 came from the lost TK43b builders and cannot
+# be the spec. Diff analysis: REPORT §16 (c) — sparse per-block
+# encoder-predictor divergence on 8 members; the 3 Arcade_Uber stereo
+# slots differ wholesale (decoded WAVs exported for Brad: uber-speech/).
+SPEECH7_SHA = '4106bce540f32c14231c814b5b588424aec1f08ca85e242c7dd5e01c909e1999'
 SPEECH_TARGETS = ['Arcade_Uber', 'Big_Air_Amateur_mac', 'Big_Air_Expert_mac',
                   'Big_Air_Pro_mac', 'Wipeout_Amateur_mac', 'Wipeout_Expert_mac',
                   'Wipeout_Pro_mac', 'Arcade_Power_Ups', 'Arcade_Icons']
