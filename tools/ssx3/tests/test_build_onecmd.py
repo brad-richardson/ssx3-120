@@ -226,7 +226,11 @@ class OneCommandOrderTest(unittest.TestCase):
             make_iso(iso)
             args = onecmd_args(work, ssx3_iso=iso, install=install)
             calls = []
-            with patch.object(build, 'ensure_android_toolchain',
+            with patch.object(build, 'validate_ssx3_iso',
+                              side_effect=lambda p: calls.append('iso') or iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools',
+                              side_effect=lambda: calls.append('preflight') or True), \
+                 patch.object(build, 'ensure_android_toolchain',
                               side_effect=lambda a: calls.append('toolchain') or setattr(a, 'ndk', work)), \
                  patch.object(build, 'doctor', side_effect=lambda a: calls.append('doctor')), \
                  patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
@@ -240,24 +244,27 @@ class OneCommandOrderTest(unittest.TestCase):
 
     def test_fresh_work_runs_every_step_in_order(self):
         calls, args = self.run_onecmd(False)
-        self.assertEqual(calls, ['toolchain', 'doctor', 'prepare', 'android-libs', 'android'])
+        # F12: disc identity + host preflight precede any toolchain download.
+        self.assertEqual(calls, ['iso', 'preflight', 'toolchain', 'doctor', 'prepare', 'android-libs', 'android'])
         self.assertEqual(args.iso, args.ssx3_iso.resolve())
         self.assertEqual(args.jnilibs, args.work / 'jniLibs')
 
     def test_current_outputs_skip_to_android(self):
         calls, _ = self.run_onecmd(True)
-        self.assertEqual(calls, ['toolchain', 'doctor', 'android'])
+        self.assertEqual(calls, ['iso', 'preflight', 'toolchain', 'doctor', 'android'])
 
     def test_install_flag_runs_install_last(self):
         calls, _ = self.run_onecmd(True, install=True)
-        self.assertEqual(calls, ['toolchain', 'doctor', 'android', 'install'])
+        self.assertEqual(calls, ['iso', 'preflight', 'toolchain', 'doctor', 'android', 'install'])
 
     def test_prebuilt_leaves_bundle_selection_to_android(self):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp) / 'work'
             work.mkdir()
             args = onecmd_args(work, ssx3_iso=Path(tmp) / 'x.iso', prebuilt=True)
-            with patch.object(build, 'ensure_android_toolchain'), \
+            with patch.object(build, 'validate_ssx3_iso', return_value=Path(tmp) / 'x.iso'), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
                  patch.object(build, 'prepare'), \
                  patch.object(build, 'android_libs'), \
@@ -293,6 +300,38 @@ class DryRunGateTest(unittest.TestCase):
     def test_documented_first_command_is_one_command_dry_run(self):
         text = (ROOT / 'docs/agent-setup.md').read_text()
         self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
+
+
+class IsoPreflightTest(unittest.TestCase):
+    """F12: disc identity and host tools precede any toolchain download."""
+
+    def test_missing_iso_names_the_fix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ValueError, 'SSX 3 ISO not found.*ssx3-inputs'):
+                build.validate_ssx3_iso(Path(tmp) / 'nope.iso')
+
+    def test_non_iso_file_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            iso = Path(tmp) / 'fake.iso'
+            make_iso(iso, magic=False)
+            with self.assertRaisesRegex(ValueError, 'not an ISO9660'):
+                build.validate_ssx3_iso(iso)
+
+    def test_wrong_disc_fails_before_any_download(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            iso = Path(tmp) / 'other.iso'
+            make_iso(iso)
+            with self.assertRaisesRegex(ValueError, 'unsupported disc SHA256.*SLUS-207.72'):
+                build.validate_ssx3_iso(iso)
+
+    def test_preflight_passes_on_this_host(self):
+        self.assertTrue(build.preflight_host_tools())
+
+    def test_preflight_names_missing_tools(self):
+        with patch.object(build, 'probe', return_value=(False, 'missing')), \
+             patch.object(build, 'compiler', side_effect=ValueError('no compiler')):
+            with self.assertRaisesRegex(ValueError, 'host preflight: missing.*git.*install with'):
+                build.preflight_host_tools()
 
 
 class DeviceFlagTest(unittest.TestCase):
@@ -334,7 +373,9 @@ class WorkDirCreationTest(unittest.TestCase):
             iso = Path(tmp) / 'SSX3.iso'
             make_iso(iso)
             args = onecmd_args(work, ssx3_iso=iso)
-            with patch.object(build, 'ensure_android_toolchain'), \
+            with patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
                  patch.object(build, 'prepare'), \
                  patch.object(build, 'android_libs'), \
@@ -354,7 +395,9 @@ class WorkDirCreationTest(unittest.TestCase):
                                device=None, install=False, dry_run=True)
             def fake_doctor(a):
                 created_before_doctor['work_existed'] = work.is_dir()
-            with patch.object(build, 'doctor', side_effect=fake_doctor), \
+            with patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'doctor', side_effect=fake_doctor), \
                  patch.object(build, 'ios') as ios_step:
                 build.ios_onecmd(args)
             self.assertTrue(created_before_doctor.get('work_existed'), 'WORK must exist when doctor runs')

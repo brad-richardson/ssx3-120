@@ -2664,7 +2664,11 @@ def ios_onecmd(a):
         raise ValueError('--work must be outside the source checkout')
     check_team(a)
     a.target = 'ios'
-    a.iso = a.ssx3_iso.resolve()
+    if not a.ssx3_iso:
+        raise ValueError('ios one-command needs --ssx3-iso <your-USA-disc>')
+    # F12: disc identity and native host tools before any download.
+    a.iso = validate_ssx3_iso(a.ssx3_iso)
+    preflight_host_tools()
     # F03: create WORK before any step writes into it (fresh iOS one-command
     # setups failed when prepare wrote SLUS_207.72 under a missing parent).
     a.work.mkdir(parents=True, exist_ok=True)
@@ -3002,6 +3006,58 @@ def validate_tricky_iso(path):
     if not tricky_supported():
         raise ValueError(TRICKY_LATER % (str(iso), iso.stat().st_size))
     return iso
+
+
+def validate_ssx3_iso(path):
+    """F12: cheap-to-full --ssx3-iso validation before any toolchain download.
+
+    Missing files and non-ISO9660 inputs fail with the fix (previously a
+    raw FileNotFoundError from sha()); a hash mismatch names the wanted
+    USA pressing instead of the generic rejection arriving only after the
+    JDK/SDK download in prepare().
+    """
+    iso = Path(path)
+    if not iso.is_file():
+        raise ValueError('SSX 3 ISO not found: ' + str(iso) +
+                         ' (--ssx3-iso must point at your USA disc image; '
+                         'see docs/ssx3-inputs.md)')
+    with iso.open('rb') as f:
+        f.seek(16 * SECTOR)
+        if f.read(7) != b'\x01CD001\x01':
+            raise ValueError('not an ISO9660 disc image: ' + str(iso))
+    if sha(iso) != ISO_SHA:
+        raise ValueError('unsupported disc SHA256 (want the SSX 3 USA '
+                         'SLUS-207.72 pressing; other regions/pressings are '
+                         'refused); see docs/ssx3-inputs.md')
+    return iso.resolve()
+
+
+def preflight_host_tools():
+    """F12: native host-tool check before any toolchain download.
+
+    Covers the tools doctor() checks that need no JDK/SDK/NDK and no disc
+    (git, CMake, Ninja, pkg-config, host compiler, make, bison, flex).
+    Raises naming the install line; the full doctor still runs after the
+    toolchain resolves and validates the fetched pieces too.
+    """
+    system = platform.system()
+    packages = ('sudo apt-get update && sudo apt-get install -y python3 git cmake '
+                'ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip '
+                'make autoconf automake libtool bison flex openjdk-17-jdk') if system == 'Linux' else (
+                'brew install cmake ninja llvm python pkg-config autoconf automake libtool bison')
+    missing = []
+    for tool in ('git', 'cmake', 'ninja', 'pkg-config', 'make', 'bison', 'flex'):
+        ok, _ = probe([tool, '--version'])
+        if not ok:
+            missing.append(tool)
+    try:
+        compiler()
+    except ValueError:
+        missing.append('host compiler (clang)')
+    if missing:
+        raise ValueError('host preflight: missing ' + ', '.join(missing) +
+                         '; install with: ' + packages)
+    return True
 
 
 def prepare_current(work):
@@ -3391,9 +3447,13 @@ def android_onecmd(a):
         raise ValueError('--work must be outside the source checkout')
     # F03: create WORK before any step writes into it.
     a.work.mkdir(parents=True, exist_ok=True)
+    if not a.ssx3_iso:
+        raise ValueError('android one-command needs --ssx3-iso <your-USA-disc>')
+    # F12: disc identity and native host tools before any JDK/SDK download.
+    a.iso = validate_ssx3_iso(a.ssx3_iso)
+    preflight_host_tools()
     ensure_android_toolchain(a)
     a.target = 'android'
-    a.iso = a.ssx3_iso.resolve()
     doctor(a)
     if prepare_current(a.work):
         print('prepare: outputs current for this disc, skipping')
