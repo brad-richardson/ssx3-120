@@ -57,11 +57,15 @@ transforms, output hashes, renderer/microVU/resource hashes and toolchain
 (`prepare` writes `inputs.json` for the game side; `deps.lock.json` pins the
 rest).
 
-PGO is optional: Android's `ps2xPgoData` defaults empty and
-`ps2xPgoGenerate` defaults OFF
-([properties](../apps/android/app/build.gradle#L17)). The private iOS staging helper
-also supports `--no-pgo`. A no-PGO clean-input build has not been independently
-validated here. Do not reuse a profile trained against different generated code.
+PGO is optional with bundled profiles: `tools/ssx3/pgo/android/` (PB58)
+and `tools/ssx3/pgo/ios/` (IPB30) ship gzip-compressed `.profdata` plus
+`MANIFEST.json` provenance. `build.py android`/`ios` apply the bundled profile
+(`-Pps2xPgoData` / Xcode `-fprofile-use`) only when the user's
+`codegen/register_functions.cpp` SHA matches the trained register SHA;
+otherwise they print one line and build without PGO. `--no-pgo` always skips;
+`--pgo-profile` uses your own file. `ps2xPgoGenerate` defaults OFF
+([properties](../apps/android/app/build.gradle#L17)). Do not reuse a profile
+trained against different generated code.
 
 ## Licences and source records
 

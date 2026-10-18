@@ -61,6 +61,21 @@ reviewable diffs on top).
   tail. Vendor armsx2 stays `afad5a04` (the engine at the new pin still
   pins it in `build.py`/`prebuilt.py`).
 
+## Bundled PGO profiles (pgo-public-1)
+
+`tools/ssx3/pgo/android/` (PB58) and `tools/ssx3/pgo/ios/` (IPB30) hold
+gzip-compressed LLVM indexed profiles (`.profdata.gz`, ~1.7/1.6 MB; 32 MB
+uncompressed) plus `MANIFEST.json` provenance. Both were trained against fork
+`84b9ece9` and codegen register `ad96edb6…` (SPR1 ABI-v2); the manifests record
+the uncompressed SHA256, trained fork/routes and the register SHA the builder
+gates on. Profiles contain IR function names, hashes and counters only (for
+example `_Z21sub_…_0x…`, `ps2_mtvu`, `ps2_snd_spu` symbols); they carry no ISO,
+ELF, game source or save bytes. The builder decompresses the profile into the
+user's private `--work` dir, verifies the SHA, and applies it only when the
+user's `codegen/register_functions.cpp` SHA matches the trained register SHA;
+otherwise it prints one line and builds without PGO (`--no-pgo` always skips;
+`--pgo-profile` overrides with the user's own file).
+
 ## Lobby source (vendored, lobby-src-1)
 
 The `ssx3-lobby` matchmaker/relay server is vendored here as the source of

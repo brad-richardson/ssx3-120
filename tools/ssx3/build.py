@@ -11,6 +11,7 @@ The inline metadata above lets uv provision Python plus the font-pack
 dependencies (numpy/Pillow, used by the remaster_font subprocess).
 """
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -534,6 +535,77 @@ def next_version_code(work):
     return code
 
 
+# PGO (pgo-public-1): bundled indexed profiles with a codegen freshness gate.
+# Profiles hold function names, hashes and counters only; no game bytes.
+# They are stored compressed in tools/ssx3/pgo/<platform>/ and decompressed
+# into the user's private work dir on use (never inside the checkout).
+PGO_DIR = ROOT / 'tools/ssx3/pgo'
+
+
+def pgo_manifest(platform):
+    """Load the bundled profile manifest for android/ios (None when absent)."""
+    manifest = PGO_DIR / platform / 'MANIFEST.json'
+    if not manifest.is_file():
+        return None
+    try:
+        return json.loads(manifest.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def codegen_register_sha(work):
+    """SHA256 of the user's generated register_functions.cpp (None when absent)."""
+    candidate = work / 'codegen' / 'register_functions.cpp'
+    if not candidate.is_file():
+        return None
+    return sha(candidate)
+
+
+def resolve_pgo(work, platform, explicit=None, disabled=False):
+    """Resolve a .profdata path for platform, or '' for a no-PGO build.
+
+    Freshness gate: the bundled profile applies only when the user's codegen
+    register SHA matches the profile's trained register SHA. Otherwise the
+    builder prints one clear line and builds without PGO.
+    """
+    if disabled:
+        print('PGO disabled by --no-pgo; building without PGO.')
+        return ''
+    if explicit:
+        profile = Path(explicit).expanduser().resolve()
+        if not profile.is_file():
+            raise ValueError('missing --pgo-profile file: ' + str(explicit))
+        print('PGO profile applied (explicit --pgo-profile): ' + str(profile))
+        return str(profile)
+    manifest = pgo_manifest(platform)
+    archive = PGO_DIR / platform / 'profile.profdata.gz'
+    if manifest is None or not archive.is_file():
+        print('PGO profile missing for ' + platform + '; building without PGO.')
+        return ''
+    expected_register = manifest.get('trained_codegen_register_sha256')
+    actual_register = codegen_register_sha(work)
+    if not expected_register or not actual_register:
+        print('PGO profile freshness unknown (no codegen register SHA); building without PGO.')
+        return ''
+    if actual_register != expected_register:
+        print('PGO profile stale for this codegen (register ' + actual_register[:12]
+              + ' != trained ' + str(expected_register)[:12] + '); building without PGO.')
+        return ''
+    dest = work / ('pgo-' + platform + '.profdata')
+    want = manifest.get('profile_sha256')
+    if dest.is_file() and want and sha(dest) == want:
+        print('PGO profile applied (' + platform + ', ' + str(dest) + ').')
+        return str(dest)
+    with gzip.open(archive, 'rb') as src, dest.open('wb') as out:
+        shutil.copyfileobj(src, out)
+    if want and sha(dest) != want:
+        dest.unlink(missing_ok=True)
+        print('PGO profile SHA mismatch after decompress; building without PGO.')
+        return ''
+    print('PGO profile applied (' + platform + ', ' + str(dest) + ').')
+    return str(dest)
+
+
 def android(a):
     ensure_android_toolchain(a)
     bundle = support_bundle(a)
@@ -606,13 +678,15 @@ def android(a):
             print('Turnip unavailable (' + str(e) + '); continuing with system Vulkan.', file=sys.stderr)
     print('Signing with local keystore ' + str(keystore) + ' (versionCode ' + str(version_code) + ').')
     print('Back up your keystore; a different key forces an uninstall, which wipes saves.')
+    pgo_data = resolve_pgo(a.work, 'android', explicit=getattr(a, 'pgo_profile', None),
+                           disabled=getattr(a, 'no_pgo', False))
     run('bash', ROOT / 'apps/android/gradlew', '-p', ROOT / 'apps/android', 'assembleRelease',
         '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
         '-Pps2xVu0RecompDir=',
         '-Pps2xGamePch=ON',
-        '-Pps2xPgoData=', '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
+        '-Pps2xPgoData=' + pgo_data, '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
         '-Pps2xAppId=' + a.app_id,
         '-Pps2xPrebuiltDir=' + (str(bundle) if bundle else ''),
         '-Pps2xJobs=' + str(a.jobs),
@@ -1940,10 +2014,17 @@ def ios(a):
         raise ValueError('ios-libs predates the OM1 archive set; re-run ios-libs')
     if not ge1_build.is_dir() or not vendor.is_dir() or not om1_lib.is_dir():
         raise ValueError('ios-libs build directory is gone; re-run ios-libs')
+    pgo_data = resolve_pgo(a.work, 'ios', explicit=getattr(a, 'pgo_profile', None),
+                           disabled=getattr(a, 'no_pgo', False))
+    pgo_flags = []
+    if pgo_data:
+        pgo_flags = ['-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -fprofile-use=' + pgo_data,
+                     '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -fprofile-use=' + pgo_data,
+                     '-DCMAKE_EXE_LINKER_FLAGS_RELEASE=-fprofile-use=' + pgo_data]
     build_dir = a.work / 'ios-app-build'
     run('cmake', '-S', ENGINE, '-B', build_dir, '-G', 'Xcode',
         '-DCMAKE_TOOLCHAIN_FILE=' + str(ROOT / 'tools/ssx3/ios/toolchain.cmake'),
-        '-DCMAKE_CONFIGURATION_TYPES=Release',
+        '-DCMAKE_CONFIGURATION_TYPES=Release', *pgo_flags,
         '-DPS2X_BUILD_RECOMP=OFF', '-DPS2X_BUILD_ANALYZER=OFF',
         '-DPS2X_BUILD_TEST=OFF', '-DPS2X_BUILD_STUDIO=OFF',
         '-DPS2X_ENABLE_SCCACHE=OFF', '-DPS2X_ENABLE_AGRESSIVE_LOGS=OFF',
@@ -2371,6 +2452,8 @@ def main():
     p.add_argument('--stock-dump', type=Path, help='own texture dump holding the four stock font atlases (play builds the font pack from it)')
     p.add_argument('--skip-fonts', action='store_true', help='skip the default raster-edge font pack build in play')
     p.add_argument('--ndk', type=Path, help='local Android NDK 28.2.13676358')
+    p.add_argument('--pgo-profile', type=Path, help='explicit .profdata for android/ios PGO-use (default: bundled tools/ssx3/pgo/<platform> when fresh for your codegen)')
+    p.add_argument('--no-pgo', action='store_true', help='build without PGO even when a fresh bundled profile exists')
     p.add_argument('--suite', action='store_true', help='also build optional Mac development suite and its analyzer/recompiler fixtures')
     p.add_argument('--det', action='store_true', help='mac flavor with the VBlank det-hash tap (gate boots + tap unit tests; separate runner-build-det dir)')
     p.add_argument('--jobs', type=int, default=8)

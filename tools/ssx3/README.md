@@ -298,14 +298,19 @@ have your own raw 4 KiB microprogram image, the public `vu1_fixture_gen
 outputs are game-derived and stay private. The baseline command above
 builds with interpreted VU0; it does not take another user's VU images.
 
-Android PGO: use Gradle `-Pps2xPgoGenerate=ON
--Pps2xPgoHelperDir=/path/to/this/tools/ssx3/pgo`, play with your own disc and
-save, pull your own raw profile, and merge with **the matching NDK's**
-`llvm-profdata merge -o profile.profdata <raw files>`. Rebuild without the GEN
-flag, passing `-Pps2xPgoData=/absolute/path/profile.profdata`. Profiles include
-translated guest-function identities and counts; keep them private and
-regenerate after guest-code changes. The helper only flushes every 30 seconds.
-PGO is optional; no profile is bundled or fetched.
+Android PGO: `tools/ssx3/pgo/android/` ships a bundled profile (PB58,
+gzip-compressed; see `MANIFEST.json` for the trained fork/codegen and SHA).
+`android` applies it via Gradle `-Pps2xPgoData` only when your
+`codegen/register_functions.cpp` SHA matches the trained register SHA;
+otherwise it prints one line and builds without PGO. `--no-pgo` always skips;
+`--pgo-profile /path/profile.profdata` uses your own file instead. iOS works
+the same via `tools/ssx3/pgo/ios/` (IPB30) and Xcode `-fprofile-use`. Bundled
+profiles hold translated guest-function identities and counts only (no game
+bytes); regenerate your own after guest-code changes with Gradle
+`-Pps2xPgoGenerate=ON -Pps2xPgoHelperDir=/path/to/this/tools/ssx3/pgo`, play
+with your own disc and save, pull your own raw profile, and merge with **the
+matching NDK's** `llvm-profdata merge -o profile.profdata <raw files>`. The
+helper only flushes every 30 seconds. PGO is optional.
 
 [iOS base preset](../../presets/ios.env) and [full120 layer](../../presets/full120-ios.env)
 export settings without a personal host/card path or automatic pad route.
@@ -329,9 +334,11 @@ new host selector tuples while running. The format is defined by
 is configuration, separate from the forbidden offline VU recordings.
 
 No ISO, ELF, BIOS, generated EE/VU source, offline recording, texture/font pack,
-converted course/audio, memory card, capture, PGO profile or compiled app is
-included here. Source pins, identity hashes, configuration and build recipes
-can be shared; game-derived outputs and personal keys/settings stay local.
+converted course/audio, memory card, capture, personal PGO profile or compiled
+app is included here (the bundled `pgo/` profiles hold function
+names/counters only, no game bytes). Source pins, identity hashes,
+configuration and build recipes can be shared; game-derived outputs and
+personal keys/settings stay local.
 Preserve dependency licences from their source checkouts.
 
 ### Android prebuilt support libraries
