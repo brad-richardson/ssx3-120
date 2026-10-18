@@ -68,6 +68,24 @@ def _ssx3_build():
 # mega runs last (its routes rung needs the reference input).
 BUILD_COURSES = ['pipe', 'untrack', 'snow', 'gari', 'aloha',
                  'mesa', 'merq', 'elys', 'alaska', 'mega']
+
+
+# Pool submit weights: measured bradflix r13 world-leg walls (s), longest
+# first — r13 queued mesa (aloha-gated) last and it started at ~81 min.
+# Weights: gari 3236, merq 2714, aloha 2397, elys 1987, snow 1953,
+# alaska 1132, untrack 674, pipe 390, mega 260 (skip-with-record).
+# Scheduling only: the serial path keeps BUILD_COURSES order, outputs are
+# identical either way (courses are disjoint; Part B proved 1-vs-2
+# worker byte equality). [tk-speed-1]
+SUBMIT_WEIGHTS = {'gari': 3236, 'merq': 2714, 'aloha': 2397,
+                  'elys': 1987, 'snow': 1953, 'alaska': 1132,
+                  'untrack': 674, 'pipe': 390, 'mega': 260}
+
+
+def course_submit_order():
+    """Pool submit order, longest first (mesa excluded: aloha-gated)."""
+    return sorted((c for c in BUILD_COURSES if c != 'mesa'),
+                  key=lambda c: -SUBMIT_WEIGHTS.get(c, 0))
 # World finals, imported from the driver's recorded pins (never
 # transcribed): routes finals from the course recipes, s5 finals from the
 # TKP5 table (mega excluded: it never reaches s5). Oracle note (orch
@@ -490,7 +508,9 @@ class Build:
         # mesa's s3 borrows aloha-b's receipt, so mesa starts after aloha
         # finishes; every other pair is disjoint (per-course donor, build,
         # iso, w-*, log paths; shared tmp/ uses per-course filenames).
-        order = [c for c in BUILD_COURSES if c != 'mesa']
+        # Longest-first submit (course_submit_order) keeps all workers
+        # busy; mesa is appended at aloha completion.
+        order = course_submit_order()
         from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
         pending, done = {}, {}
         with ThreadPoolExecutor(max_workers=workers,
