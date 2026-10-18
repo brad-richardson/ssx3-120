@@ -8,6 +8,7 @@ with no Tricky layer, stage/install behave exactly as before.
 import importlib.util
 import io
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -746,6 +747,12 @@ class BuildTrickyDriverTest(unittest.TestCase):
             db = gem_argv[gem_argv.index('--donor-bindings') + 1]
             self.assertTrue(str(db).endswith('donor-receipt.json'),
                             f'gem-step must read the JSON receipt, not the bindings dir: {db}')
+            # listdir, not exists(): this Mac's APFS is case-insensitive
+            # but the gate container is not; the entry name must match.
+            entries = os.listdir(work / 'gems' / 'worlds')
+            for c in ('PIPE', 'ALASKA', 'UNTRACK'):
+                self.assertIn(f'{c}.BIG', entries,
+                              f'gem-step reads uppercase {c}.BIG from --worlds')
 
     def test_hud_atlas_reads_the_tricky_iso(self):
         with tempfile.TemporaryDirectory() as tmp:

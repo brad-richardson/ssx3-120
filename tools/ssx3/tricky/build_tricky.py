@@ -553,9 +553,9 @@ class Build:
         worlds = ge / 'worlds'
         worlds.mkdir(parents=True, exist_ok=True)
         for c in ('pipe', 'alaska', 'untrack'):
-            # gem_step materializes <course>.BIG (lowercase) composites.
+            # gem_step reads PIPE.BIG/ALASKA.BIG/UNTRACK.BIG (uppercase).
             shutil.copy2(self.W / f'w-{c}-s5' / f'{c.upper()}.BIG',
-                         worlds / f'{c}.BIG')
+                         worlds / f'{c.upper()}.BIG')
         out = ge / 'gems-483.tsv'
         run(self.logs, 'gem-step', sys.executable, T / 'gem_step.py',
             '--worlds', worlds, '--iso', self.a.ssx3_iso,
