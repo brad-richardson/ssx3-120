@@ -45,8 +45,8 @@ says. Do not improvise toolchains, flags, or signing.
 ## Android (host: macOS Apple silicon, Linux; target: Android arm64)
 
 ```sh
-./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
-./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses --install
+./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses
+./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses --install
 ```
 
 The JDK and Android SDK/NDK download automatically (pinned, SHA-checked)
@@ -58,7 +58,7 @@ unless `--no-auto-download` is passed — then set `JAVA_HOME`,
 `--serial` is Android-only — the builder rejects the swapped combination.
 WSL2: attach the phone to Ubuntu first (`usbipd`), otherwise `adb devices`
 is empty and the doctor says so before anything builds. Keep 25 GB free
-under `--work` (README budgets); the builder preflights this.
+under the work directory (`~/ssx3-work` unless `--work` is given; README budgets); the builder preflights this.
 
 ## iOS (host: macOS Apple silicon with Xcode; target: iPhone/iPad)
 
@@ -72,12 +72,12 @@ stage is generated from your disc into `work/om1-stage` by the builder
 (`--om1-stage` overrides it; Mac-only generation).
 
 ```sh
-./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work
-./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work
-./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work --install
+./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10>
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10>
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --install
 ```
 
-The dry run needs no prepared outputs. Keep 20 GB free under `--work`.
+The dry run needs no prepared outputs. Keep 20 GB free under the work directory (`~/ssx3-work` by default).
 
 What each run does: `doctor` (Xcode, CMake, signing identity, device),
 `prepare` (ISO validation + codegen), `ios-libs` (GE1 renderer, OM1

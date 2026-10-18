@@ -27,8 +27,13 @@ every one and prints the exact install line when something is missing:
 ```sh
 git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git ssx3-120
 cd ssx3-120
-./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
+./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses
 ```
+
+Everything the build makes goes in `~/ssx3-work` (pass `--work <dir>` to
+use another folder outside this checkout). Plan on ~25 GB. It holds your
+APK and your app signing key: keep it, and back up the key, because a
+different key forces an uninstall, which wipes saves.
 
 That one command runs doctor → prepare → android-libs → android in order
 and resumes (prepare and android-libs are skipped when their outputs are
@@ -82,7 +87,7 @@ your Apple Development team id; the offline-VU1 stage is generated
 from your disc into `work/om1-stage` by the builder:
 
 ```sh
-./build ios --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --team <TEAM10>
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10>
 ```
 
 Add `--install` to push to the connected device (plain install; saves

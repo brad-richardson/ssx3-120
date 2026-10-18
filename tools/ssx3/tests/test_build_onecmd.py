@@ -448,7 +448,7 @@ class DryRunGateTest(unittest.TestCase):
 
     def test_documented_first_command_is_one_command_dry_run(self):
         text = (ROOT / 'docs/agent-setup.md').read_text()
-        self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
+        self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10>', text)
 
 
 class ResumePinsTest(unittest.TestCase):
@@ -757,6 +757,28 @@ class WorkDirCreationTest(unittest.TestCase):
             self.assertTrue(work.is_dir())
             ios_step.assert_called_once()
 
+
+    def test_android_onecmd_defaults_work_to_home_ssx3_work(self):
+        """The documented one-command omits --work; it lands in ~/ssx3-work."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            make_iso(iso)
+            args = onecmd_args(None, ssx3_iso=iso)
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'ensure_android_toolchain'), \
+                 patch.object(build, 'doctor'), \
+                 patch.object(build, 'prepare'), \
+                 patch.object(build, 'android_libs'), \
+                 patch.object(build, 'android'), \
+                 patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=True):
+                build.android_onecmd(args)
+            self.assertEqual(args.work, (home / 'ssx3-work').resolve())
+            self.assertTrue((home / 'ssx3-work').is_dir())
 
 class AdbResolutionTest(unittest.TestCase):
     """F01: install shells the selected SDK's adb, and the doctor checks it."""
