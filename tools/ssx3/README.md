@@ -239,6 +239,13 @@ clear message otherwise; the off layout stages no audio aliases, so the
 runtime falls back to SSX 3 audio on Tricky courses (same as the iOS
 no-pool path). Worlds, HUD, menus and gems build without ffmpeg.
 
+Reruns skip when the disc, converter and tools are unchanged: the
+`tricky` step reuses a current layer (printing when it was built, by
+whom and how long it took) and rebuilds on any disc, pin, converter,
+audio-mode or toolchain change. A finished driver workdir can be
+imported instead of rebuilt (`build.py tricky --from <dir>`,
+`./build android --tricky-from <dir>`).
+
 **Optional: prebuilt libraries.** Pass `--prebuilt` to reuse a verified
 prebuilt support release instead of compiling the support libraries. It only
 applies when a release matches your checkout (see

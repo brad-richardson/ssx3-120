@@ -419,6 +419,15 @@ class Build:
         self.W.mkdir(parents=True)
         self.logs = self.W / 'logs'
         self.skipped = {}
+        self.course_walls = {}
+        self.phase_walls = {}
+
+    def timed(self, name, func, *args, **kwargs):
+        """Run one phase, recording its wall time (tricky-manifest-1)."""
+        t0 = time.time()
+        out = func(*args, **kwargs)
+        self.phase_walls[name] = time.time() - t0
+        return out
 
     def world_final_rel(self, c):
         """Planned final relpath + golden: routes-final else s5-final."""
@@ -447,6 +456,7 @@ class Build:
 
     def run_one_course(self, c, host_bam):
         """Run one course chain; replicate the serial skip contract."""
+        t0 = time.time()
         try:
             run(self.logs, f'world-{c}', *self.world_argv(c, host_bam),
                 cwd=self.W)
@@ -467,6 +477,7 @@ class Build:
                 return ('skip', 'mega',
                         'no verified routes base (skip-with-record; see '
                         f'{self.logs}/world-mega.log)')
+        self.course_walls[c] = time.time() - t0
         return ('ok', c, '')
 
     def phase_worlds(self):
@@ -1183,32 +1194,34 @@ def main(argv=None):
     # Provenance the wrapper's skip-check keys on (F06): the exact pins
     # gated this run plus the audio mode + tool identity (either may be
     # absent). A pin, mode or toolchain change makes old outputs "not
-    # current" instead of silently reused.
+    # current" instead of silently reused. The converter version pins
+    # the repo code + data the conversion read (tricky-manifest-1 G1).
     receipt = dict(ident)
     receipt['pins'] = exact_pins()
     receipt['toolchain'] = {'ffmpeg': ident['ffmpeg'],
                             'vgmstream': ident['vgmstream']}
+    receipt['converter_version'] = _ssx3_build().tricky_converter_version()
     (b.W / 'tools.json').write_text(json.dumps(receipt, indent=2) + '\n')
     t0 = time.time()
     if a.from_phase == 'speech':
-        b.resume_worlds(a.reuse_worlds)
+        b.timed('worlds', b.resume_worlds, a.reuse_worlds)
     else:
-        b.phase_worlds()
-    courspit = b.phase_preview()
-    b.phase_menu(courspit)
+        b.timed('worlds', b.phase_worlds)
+    courspit = b.timed('preview', b.phase_preview)
+    b.timed('menu', b.phase_menu, courspit)
     if audio_on:
-        speech = b.phase_speech()
-        pool = b.phase_music()
+        speech = b.timed('speech', b.phase_speech)
+        pool = b.timed('music', b.phase_music)
         try:
-            english = b.phase_english()
+            english = b.timed('english', b.phase_english)
         except SystemExit as e:
             if 'english-base-missing' not in str(e):
                 raise
             print(f'ENGLISH SKIPPED: {e}', flush=True)
             b.skipped['english-base'] = str(e)
             english = None
-        music_inf = b.phase_music_inf()
-        song = b.phase_song()
+        music_inf = b.timed('music-inf', b.phase_music_inf)
+        song = b.timed('song', b.phase_song)
     else:
         speech = pool = english = music_inf = song = None
     built = {'worlds': {},
@@ -1218,10 +1231,10 @@ def main(argv=None):
              'music2-tricky-big': pool / 'music2-tkp4b' if pool else None,
              'music-inf-tricky-big': music_inf,
              'english-silent-big': english,
-             'trickyhud.bin': b.phase_hud(),
+             'trickyhud.bin': b.timed('hud', b.phase_hud),
              'tricky-song.wav': song,
-             'tricky-gems.tsv': b.phase_gems(),
-             'tricky-resetvol.tsv': b.phase_resetvol()}
+             'tricky-gems.tsv': b.timed('gems', b.phase_gems),
+             'tricky-resetvol.tsv': b.timed('resetvol', b.phase_resetvol)}
     for c in BUILD_COURSES:
         if (c == 'mega' and 'mega' in b.skipped) or f'resets-{c}' in b.skipped:
             continue
@@ -1229,8 +1242,12 @@ def main(argv=None):
     if audio_on:
         for name in ('music-tricky-big', 'music2-tricky-big'):
             check(built[name], AUDIO_SHA[name], name)
-    lay = b.phase_layout(built, audio_on=audio_on)
+    lay = b.timed('layout', b.phase_layout, built, audio_on=audio_on)
     dt = time.time() - t0
+    receipt['wall_seconds'] = dt
+    receipt['course_walls'] = dict(b.course_walls)
+    receipt['phase_walls'] = dict(b.phase_walls)
+    (b.W / 'tools.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(f'BUILD_TRICKY OK in {dt:.0f}s: {lay} '
           f'({len(built["worlds"])} worlds)', flush=True)
 

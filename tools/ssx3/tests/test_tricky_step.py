@@ -120,8 +120,8 @@ for name in ('m-tricky.txt', 'tricky.env'):
         'overlay = /storage/emulated/0/Android/data/com.ps2x.runner/files/tricky-ov\\n')
 ssx3 = Path(a.ssx3_iso)
 (work / 'tools.json').write_text(json.dumps(
-    {'pins': {}, 'toolchain': {'ffmpeg': {'sha256': 'stub'},
-                               'vgmstream': {'sha256': 'stub'}},
+    {'pins': {}, 'toolchain': {'ffmpeg': None, 'vgmstream': None},
+     'audio': 'off',
      'ssx3': {'sha256': hashlib.sha256(ssx3.read_bytes()).hexdigest()}}))
 '''
 
@@ -247,7 +247,7 @@ class BuildTrickyTest(unittest.TestCase):
                 out = io.StringIO()
                 with redirect_stdout(out):
                     build.build_tricky(args, iso)
-                self.assertIn('skipping', out.getvalue())
+                self.assertIn('reusing outputs built', out.getvalue())
 
     def test_empty_record_is_not_current(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1000,6 +1000,330 @@ class BuildTrickyDriverTest(unittest.TestCase):
     def test_current_pins_validate(self):
         # F01: every exact-equality pin in the tree is a full 64-hex SHA.
         self.assertTrue(driver.validate_pins())
+
+
+class ConverterVersionTest(unittest.TestCase):
+    def fake_root(self, tmp):
+        root = Path(tmp) / 'root'
+        tricky = root / 'tools' / 'ssx3' / 'tricky'
+        (tricky / 'tests').mkdir(parents=True)
+        (tricky / '__pycache__').mkdir(parents=True)
+        (tricky / 'a.py').write_text('print(1)\n')
+        (tricky / 'data.tsv').write_text('a\tb\n')
+        (tricky / 'tests' / 'b.py').write_text('test\n')
+        (tricky / '__pycache__' / 'c.pyc').write_bytes(b'\x00')
+        (root / 'tools' / 'ssx3' / 'build.py').write_text('build\n')
+        return root
+
+    def test_table_includes_code_and_data_but_not_tests_or_pycache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            table = dict(build.tricky_converter_table(self.fake_root(tmp)))
+            self.assertIn('tools/ssx3/tricky/a.py', table)
+            self.assertIn('tools/ssx3/tricky/data.tsv', table)
+            self.assertIn('tools/ssx3/build.py', table)
+            self.assertNotIn('tools/ssx3/tricky/tests/b.py', table)
+            self.assertFalse([k for k in table if '__pycache__' in k])
+            for digest in table.values():
+                self.assertRegex(digest, r'^[0-9a-f]{64}$')
+
+    def test_table_is_sorted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            table = build.tricky_converter_table(self.fake_root(tmp))
+            self.assertEqual([r for r, _ in table], sorted(r for r, _ in table))
+
+    def test_version_stable_and_edit_sensitive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.fake_root(tmp)
+            before = build.tricky_converter_version(root)
+            self.assertRegex(before, r'^[0-9a-f]{64}$')
+            self.assertEqual(before, build.tricky_converter_version(root))
+            (root / 'tools' / 'ssx3' / 'tricky' / 'a.py').write_text('print(2)\n')
+            edited = build.tricky_converter_version(root)
+            self.assertNotEqual(before, edited)
+            (root / 'tools' / 'ssx3' / 'tricky' / 'tests' / 'b.py').write_text('changed\n')
+            self.assertEqual(edited, build.tricky_converter_version(root))
+
+    def test_live_tree_hashes(self):
+        table = build.tricky_converter_table()
+        self.assertTrue(table)
+        rels = [r for r, _ in table]
+        self.assertEqual(rels, sorted(rels))
+        self.assertIn('tools/ssx3/build.py', rels)
+        self.assertTrue(any(r.startswith('tools/ssx3/tricky/') for r in rels))
+        self.assertFalse([r for r in rels if '/tests/' in r or '__pycache__' in r])
+        self.assertRegex(build.tricky_converter_version(), r'^[0-9a-f]{64}$')
+
+
+class SkipKeysTest(unittest.TestCase):
+    def fresh_run(self, tmp):
+        return BuildTrickyTest().run_step(tmp)[:2]
+
+    def toolchain(self, version='v1', digest='a' * 64):
+        return {'ffmpeg': {'path': '/x/ffmpeg', 'version': version,
+                           'sha256': digest},
+                'vgmstream': None}
+
+    def test_reuse_line_and_manifest_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = self.fresh_run(tmp)
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            for key in ('builder_version', 'converter_version', 'host',
+                        'jobs', 'wall_seconds', 'audio', 'pins', 'toolchain'):
+                self.assertIn(key, record, key)
+            self.assertEqual(set(record['host']), {'system', 'arch', 'cpus'})
+            self.assertRegex(record['builder_version'], r'^[0-9a-f]{40}(-dirty)?$')
+            line = build.tricky_reuse_line(record)
+            self.assertRegex(
+                line, r'^tricky: reusing outputs built \S+ by [0-9a-f]{12} '
+                      r'\(converter [0-9a-f]{12}, \S+ min\)$')
+            self.assertIn(record['converter_version'][:12], line)
+
+    def test_converter_miss_prints_old_and_new(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, iso = self.fresh_run(tmp)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+                 patch.object(build, 'tricky_converter_version',
+                              return_value='0' * 64):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    current = build.tricky_current(work, iso, audio_on=False,
+                                                   toolchain=self.toolchain())
+                self.assertFalse(current)
+                record = json.loads((work / 'tricky_inputs.json').read_text())
+                self.assertIn('tricky: converter changed since %s (%s -> %s), rebuilding' % (
+                    record['created_utc'], record['converter_version'][:12],
+                    '0' * 12), out.getvalue())
+
+    def test_pins_miss(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, iso = self.fresh_run(tmp)
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            record['pins'] = {'changed': True}
+            (work / 'tricky_inputs.json').write_text(json.dumps(record))
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                self.assertFalse(build.tricky_current(work, iso, audio_on=False,
+                                                      toolchain=self.toolchain()))
+
+    def test_audio_mode_miss(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, iso = self.fresh_run(tmp)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    current = build.tricky_current(work, iso, audio_on=True,
+                                                   toolchain=self.toolchain())
+                self.assertFalse(current)
+                self.assertIn('audio mode changed', out.getvalue())
+
+    def test_toolchain_miss_and_audio_off_ignores_tools(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, iso = self.fresh_run(tmp)
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            record['audio'] = 'on'
+            record['toolchain'] = self.toolchain(version='v1')
+            (work / 'tricky_inputs.json').write_text(json.dumps(record))
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    changed = build.tricky_current(
+                        work, iso, audio_on=True,
+                        toolchain=self.toolchain(version='v2', digest='b' * 64))
+                self.assertFalse(changed)
+                self.assertIn('toolchain changed (ffmpeg)', out.getvalue())
+                same = build.tricky_current(work, iso, audio_on=True,
+                                            toolchain=self.toolchain(version='v1'))
+                self.assertTrue(same)
+                # With audio off the tools are ignored.
+                ignored = build.tricky_current(
+                    work, iso, audio_on=False,
+                    toolchain=self.toolchain(version='v2', digest='b' * 64))
+                self.assertFalse(ignored)  # audio mode differs (on vs off)
+            record['audio'] = 'off'
+            record['toolchain'] = self.toolchain(version='v1')
+            (work / 'tricky_inputs.json').write_text(json.dumps(record))
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                self.assertTrue(build.tricky_current(
+                    work, iso, audio_on=False,
+                    toolchain=self.toolchain(version='v9', digest='c' * 64)))
+
+    def test_toolchain_key_ignores_path(self):
+        self.assertEqual(
+            build.tricky_toolchain_key({'path': '/a', 'version': 'v',
+                                        'sha256': 's', 'extra': 1}),
+            build.tricky_toolchain_key({'path': '/b', 'version': 'v',
+                                        'sha256': 's'}))
+        self.assertIsNone(build.tricky_toolchain_key(None))
+
+
+class ImportTrickyTest(unittest.TestCase):
+    def source_dir(self, tmp, iso_digest, audio='off', converter=None,
+                   wall_seconds=456.0):
+        src = Path(tmp) / 'src'
+        src.mkdir()
+        for name in build.TRICKY_DEVICE_FILES:
+            (src / name).write_bytes(name.encode() + b'-device')
+        (src / 'tricky-ov/DATA/WORLDS').mkdir(parents=True)
+        (src / 'tricky-ov/DATA/WORLDS/GARI.BIG').write_bytes(b'gari-world')
+        for name in ('build-gari', 'donor', 'w-pipe-s5', 'logs', 'effects'):
+            (src / name).mkdir()
+            (src / name / 'intermediate.bin').write_bytes(b'x' * 100)
+        (src / 'tools.json').write_text(json.dumps({
+            'tricky': {'sha256': iso_digest}, 'ssx3': {'sha256': 's' * 64},
+            'audio': audio, 'pins': {'p': 1},
+            'toolchain': {'ffmpeg': None, 'vgmstream': None},
+            'converter_version': converter, 'jobs': 12,
+            'wall_seconds': wall_seconds,
+            'course_walls': {'pipe': 10.0}, 'phase_walls': {'menu': 1.0}}))
+        return src
+
+    def import_args(self, work, **over):
+        base = dict(work=work, jobs=2, app_id=build.PUBLIC_APP_ID,
+                    tricky_audio='auto', ffmpeg='ffmpeg-pinned',
+                    vgmstream='vgm-pinned')
+        base.update(over)
+        return types.SimpleNamespace(**base)
+
+    def test_accept_copies_only_device_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, ssx3 = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = self.source_dir(tmp, build.sha(iso),
+                                  converter=build.tricky_converter_version())
+            args = self.import_args(work)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    result = build.import_tricky(args, iso, src)
+                self.assertIn('imported', out.getvalue())
+            self.assertEqual(Path(result), work / 'tricky_inputs.json')
+            dest = work / 'tricky'
+            for name in build.TRICKY_DEVICE_FILES:
+                self.assertTrue((dest / name).is_file(), name)
+            self.assertTrue((dest / 'tricky-ov/DATA/WORLDS/GARI.BIG').is_file())
+            for name in ('build-gari', 'donor', 'w-pipe-s5', 'logs', 'effects'):
+                self.assertFalse((dest / name).exists(), name)
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            self.assertEqual(record['converter_version'],
+                             build.tricky_converter_version())
+            self.assertEqual(record['audio'], 'off')
+            self.assertEqual(record['jobs'], 2)
+            self.assertEqual(record['wall_seconds'], 456.0)
+            self.assertEqual(record['course_walls'], {'pipe': 10.0})
+            self.assertEqual(record['phase_walls'], {'menu': 1.0})
+            self.assertEqual(set(record['host']), {'system', 'arch', 'cpus'})
+            self.assertRegex(record['builder_version'], r'^[0-9a-f]{40}(-dirty)?$')
+            # The imported layer verifies and skips.
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                self.assertTrue(build.tricky_current(
+                    work, iso, audio_on=False,
+                    toolchain={'ffmpeg': None, 'vgmstream': None}))
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    build.build_tricky(self.import_args(work), iso)
+                self.assertIn('reusing outputs built', out.getvalue())
+
+    def test_refuse_disc_mismatch_names_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = self.source_dir(tmp, '0' * 64,
+                                  converter=build.tricky_converter_version())
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                with self.assertRaisesRegex(ValueError,
+                                            r'tools\.json:tricky\.sha256'):
+                    build.import_tricky(self.import_args(work), iso, src)
+
+    def test_refuse_converter_mismatch_names_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = self.source_dir(tmp, build.sha(iso), converter='0' * 64)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                with self.assertRaisesRegex(ValueError,
+                                            r'tools\.json:converter_version'):
+                    build.import_tricky(self.import_args(work), iso, src)
+
+    def test_refuse_audio_mismatch_names_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = self.source_dir(tmp, build.sha(iso), audio='on',
+                                  converter=build.tricky_converter_version())
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                with self.assertRaisesRegex(ValueError, r'tools\.json:audio'):
+                    build.import_tricky(self.import_args(work), iso, src)
+
+    def test_refuse_missing_receipt_and_existing_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                with self.assertRaisesRegex(ValueError, 'no tools.json'):
+                    build.import_tricky(self.import_args(work), iso,
+                                        Path(tmp) / 'absent')
+            src = self.source_dir(tmp, build.sha(iso),
+                                  converter=build.tricky_converter_version())
+            (work / 'tricky').mkdir()
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                with self.assertRaisesRegex(ValueError, 'existing tricky dir'):
+                    build.import_tricky(self.import_args(work), iso, src)
+
+
+class ImportDispatchTest(unittest.TestCase):
+    def test_android_tricky_from_imports_instead_of_building(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            iso.write_bytes(b'ssx3')
+            tricky = Path(tmp) / 'tricky.iso'
+            tricky.write_bytes(b'tricky')
+            src = Path(tmp) / 'src'
+            src.mkdir()
+            args = tricky_args(work, ssx3_iso=iso, tricky_iso=tricky,
+                               install=False, tricky_from=src)
+            calls = []
+            with patch.object(build, 'ensure_android_toolchain'), \
+                 patch.object(build, 'doctor'), \
+                 patch.object(build, 'validate_tricky_iso', return_value=tricky), \
+                 patch.object(build, 'prepare_current', return_value=False), \
+                 patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
+                 patch.object(build, 'android_libs_current', return_value=True), \
+                 patch.object(build, 'import_tricky',
+                              side_effect=lambda a, i, s: calls.append('import')), \
+                 patch.object(build, 'build_tricky',
+                              side_effect=AssertionError('must not rebuild')), \
+                 patch.object(build, 'android', side_effect=lambda a: calls.append('android')):
+                build.android_onecmd(args)
+            self.assertEqual(calls, ['prepare', 'import', 'android'])
+
+    def test_android_without_tricky_from_builds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            iso.write_bytes(b'ssx3')
+            tricky = Path(tmp) / 'tricky.iso'
+            tricky.write_bytes(b'tricky')
+            args = tricky_args(work, ssx3_iso=iso, tricky_iso=tricky,
+                               install=False)
+            calls = []
+            with patch.object(build, 'ensure_android_toolchain'), \
+                 patch.object(build, 'doctor'), \
+                 patch.object(build, 'validate_tricky_iso', return_value=tricky), \
+                 patch.object(build, 'prepare_current', return_value=False), \
+                 patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
+                 patch.object(build, 'android_libs_current', return_value=True), \
+                 patch.object(build, 'build_tricky',
+                              side_effect=lambda a, i: calls.append('tricky')), \
+                 patch.object(build, 'android', side_effect=lambda a: calls.append('android')):
+                build.android_onecmd(args)
+            self.assertEqual(calls, ['prepare', 'tricky', 'android'])
 
 
 if __name__ == '__main__':

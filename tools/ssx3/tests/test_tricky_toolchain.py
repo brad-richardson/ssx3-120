@@ -521,6 +521,10 @@ class PreflightTest(unittest.TestCase):
                     driver.check_capacity(Path(tmp) / 'w')
 
     def test_toolchain_or_pin_change_breaks_the_skip(self):
+        def toolchain(version='v1', digest='a' * 64):
+            return {'ffmpeg': {'version': version, 'sha256': digest},
+                    'vgmstream': None}
+
         with tempfile.TemporaryDirectory() as tmp:
             iso = Path(tmp) / 'tricky.iso'
             iso.write_bytes(b'x' * 100)
@@ -533,22 +537,46 @@ class PreflightTest(unittest.TestCase):
             payload = tricky / 'speech-tricky-big'
             payload.write_bytes(b'data')
             receipt = {'pins': {'a': 'b'},
-                       'toolchain': {'ffmpeg': {'sha256': 'f'}},
-                       'ssx3': {'sha256': 's' * 64}}
+                       'toolchain': toolchain(),
+                       'ssx3': {'sha256': 's' * 64},
+                       'audio': 'on'}
             (tricky / 'tools.json').write_text(json.dumps(receipt))
             record = {'tricky_iso_sha256': digest,
                       'tricky_iso_bytes': iso.stat().st_size,
+                      'created_utc': '2026-10-18T00:00:00Z',
                       'outputs': {'speech-tricky-big':
                                   {'sha256': build.sha2(payload)}},
                       'pins': dict(receipt['pins']),
-                      'toolchain': dict(receipt['toolchain']),
+                      'toolchain': toolchain(),
+                      'audio': 'on',
+                      'converter_version': build.tricky_converter_version(),
                       'ssx3_iso_sha256': 's' * 64}
             (work / 'tricky_inputs.json').write_text(json.dumps(record))
             with patch.dict(build.TRICKY_DISCS, table, clear=True):
-                self.assertTrue(build.tricky_current(work, iso))
+                self.assertTrue(build.tricky_current(
+                    work, iso, audio_on=True, toolchain=toolchain()))
+                # A pin change breaks the skip.
                 record['pins'] = {'a': 'CHANGED'}
                 (work / 'tricky_inputs.json').write_text(json.dumps(record))
-                self.assertFalse(build.tricky_current(work, iso))
+                self.assertFalse(build.tricky_current(
+                    work, iso, audio_on=True, toolchain=toolchain()))
+                # A toolchain change breaks the skip; audio-off ignores it.
+                record['pins'] = {'a': 'b'}
+                record['toolchain'] = toolchain(version='v2', digest='b' * 64)
+                (work / 'tricky_inputs.json').write_text(json.dumps(record))
+                self.assertFalse(build.tricky_current(
+                    work, iso, audio_on=True, toolchain=toolchain()))
+                record['audio'] = 'off'
+                (work / 'tricky_inputs.json').write_text(json.dumps(record))
+                self.assertTrue(build.tricky_current(
+                    work, iso, audio_on=False, toolchain=toolchain()))
+                # A converter change breaks the skip.
+                record['audio'] = 'on'
+                record['toolchain'] = toolchain()
+                record['converter_version'] = '0' * 64
+                (work / 'tricky_inputs.json').write_text(json.dumps(record))
+                self.assertFalse(build.tricky_current(
+                    work, iso, audio_on=True, toolchain=toolchain()))
 
 
 if __name__ == '__main__':

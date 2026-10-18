@@ -3510,13 +3510,112 @@ def tricky_tools():
     return _TRICKY_TOOLS
 
 
-def tricky_current(work, iso):
+# Other repo paths the driver imports besides tools/ssx3/tricky/**: the
+# driver reads the pinned disc table from this wrapper via _ssx3_build
+# (tools/ssx3/build.py), so the wrapper file itself is a converter input.
+TRICKY_CONVERTER_EXTRA = ('tools/ssx3/build.py',)
+
+
+def tricky_converter_table(root=ROOT):
+    """Sorted (relpath, content-SHA) converter inputs (tricky-manifest-1).
+
+    Every file the conversion reads from the repo: tools/ssx3/tricky/**
+    (code + data, excluding tests/ and __pycache__) plus
+    TRICKY_CONVERTER_EXTRA (repo paths the driver imports).
+    """
+    root = Path(root)
+    tricky = root / 'tools' / 'ssx3' / 'tricky'
+    candidates = []
+    for candidate in sorted(tricky.rglob('*')):
+        if not candidate.is_file():
+            continue
+        relparts = candidate.relative_to(tricky).parts
+        if 'tests' in relparts or '__pycache__' in relparts:
+            continue
+        if candidate.suffix == '.pyc':
+            continue
+        candidates.append(candidate.relative_to(root).as_posix())
+    candidates.extend(TRICKY_CONVERTER_EXTRA)
+    table = []
+    for rel in sorted(candidates):
+        table.append((rel, hashlib.sha256((root / rel).read_bytes()).hexdigest()))
+    return table
+
+
+def tricky_converter_version(root=ROOT):
+    """SHA-256 over the sorted converter-input table (tricky-manifest-1)."""
+    h = hashlib.sha256()
+    for rel, digest in tricky_converter_table(root):
+        h.update((rel + '\0' + digest + '\n').encode())
+    return h.hexdigest()
+
+
+def tricky_current_toolchain(a=None):
+    """Toolchain the current host resolves (tricky-manifest-1).
+
+    Same probe the driver uses (tool_paths resolution, no downloads);
+    vgmstream without the disc smoke (the smoke bytes are disc-derived,
+    the version + binary SHA is the tool identity). Returns
+    {'ffmpeg': ident-or-None, 'vgmstream': ident-or-None}.
+    """
+    tools = tricky_tools()
+    explicit_ff = getattr(a, 'ffmpeg', None) if a is not None else None
+    explicit_vg = getattr(a, 'vgmstream', None) if a is not None else None
+    try:
+        ffmpeg_ident, _ = tools.resolve_ffmpeg(explicit_ff or None)
+    except ValueError:
+        ffmpeg_ident = None
+    try:
+        _, vgm_ident, _ = tools.resolve_vgmstream(explicit_vg or None)
+    except ValueError:
+        vgm_ident = None
+    return {'ffmpeg': ffmpeg_ident, 'vgmstream': vgm_ident}
+
+
+def tricky_toolchain_key(ident):
+    """Content identity of one tool (version + binary SHA, not the path)."""
+    if ident is None:
+        return None
+    return {'version': ident.get('version'), 'sha256': ident.get('sha256')}
+
+
+def tricky_resolve_audio(a):
+    """Resolved audio mode for this host (tricky-manifest-1).
+
+    'off' when requested off or when either local tool is unusable;
+    'on' fails closed like the driver when requested on without tools.
+    No downloads; no disc smoke (the driver smoke-gates too, so a
+    smoke-only failure resolves 'on' here and misses the skip once,
+    then converges on the rebuilt 'off' record).
+    """
+    req = getattr(a, 'tricky_audio', None) or 'auto'
+    if req not in ('on', 'off', 'auto'):
+        raise ValueError("--tricky-audio must be on|off|auto: %r" % (req,))
+    if req == 'off':
+        return 'off'
+    toolchain = tricky_current_toolchain(a)
+    if toolchain['ffmpeg'] is not None and toolchain['vgmstream'] is not None:
+        return 'on'
+    if req == 'on':
+        tools = tricky_tools()
+        raise ValueError('--tricky-audio=on needs local ffmpeg + vgmstream: '
+                         + tools.audio_missing_message())
+    return 'off'
+
+
+def tricky_current(work, iso, audio_on=None, toolchain=None):
     """Whether <work>/tricky/ is current for this Tricky disc.
 
     The 2.9 GB image is not re-hashed: the recorded SHA must be a pinned
     key, the image size must match it, and every recorded output must be
     present with a matching double-read SHA. A size mismatch refuses like
     prepare's different-disc refusal.
+
+    Skip keys (tricky-manifest-1): disc, pins, converter version, audio
+    mode and toolchain. audio_on/toolchain are the current host's
+    resolved values (None = that check is skipped, preserving the legacy
+    receipt-vs-record toolchain comparison). With audio off the tools
+    are ignored. A converter miss prints the reason with both versions.
     """
     record_file = tricky_inputs_path(work)
     try:
@@ -3530,10 +3629,25 @@ def tricky_current(work, iso):
         return False
     if Path(iso).stat().st_size != record.get('tricky_iso_bytes'):
         raise ValueError('work dir built from a different Tricky disc; use a fresh --work directory')
-    # F06 (toolchain half): a resolved-toolchain or pin change invalidates
-    # the skip. The driver writes its exact pins + tool identity to
-    # <work>/tricky/tools.json; anything else (or a missing receipt) means
-    # "not current" rather than a silent stale reuse.
+    current_converter = tricky_converter_version()
+    if record.get('converter_version') != current_converter:
+        old = (record.get('converter_version') or 'missing')[:12]
+        print('tricky: converter changed since %s (%s -> %s), rebuilding' % (
+            record.get('created_utc'), old, current_converter[:12]))
+        return False
+    if audio_on is not None:
+        want_audio = 'on' if audio_on else 'off'
+        if record.get('audio') != want_audio:
+            print('tricky: audio mode changed (recorded %s, now %s), rebuilding' % (
+                record.get('audio'), want_audio))
+            return False
+    # F06 (toolchain half): the skip compares the RECORD's toolchain
+    # identity with the toolchain the CURRENT host resolves (same probe
+    # the driver uses, no downloads). Comparing the record against the
+    # receipt could never fire: the same run wrote both (G2). With
+    # audio off the tools are ignored.
+    effective_audio = ('on' if audio_on else 'off') if audio_on is not None \
+        else record.get('audio')
     tools_receipt = Path(work) / 'tricky' / 'tools.json'
     try:
         receipt = json.loads(tools_receipt.read_text())
@@ -3541,9 +3655,16 @@ def tricky_current(work, iso):
         return False
     if receipt.get('pins') != record.get('pins'):
         return False
-    if receipt.get('toolchain') != record.get('toolchain'):
-        return False
     if receipt.get('ssx3', {}).get('sha256') != record.get('ssx3_iso_sha256'):
+        return False
+    if toolchain is not None:
+        if effective_audio != 'off':
+            for name in ('ffmpeg', 'vgmstream'):
+                if tricky_toolchain_key(record.get('toolchain', {}).get(name)) != \
+                        tricky_toolchain_key((toolchain or {}).get(name)):
+                    print('tricky: toolchain changed (%s), rebuilding' % name)
+                    return False
+    elif receipt.get('toolchain') != record.get('toolchain'):
         return False
     tricky = Path(work) / 'tricky'
     for relative, entry in record.get('outputs', {}).items():
@@ -3559,11 +3680,35 @@ def tricky_current(work, iso):
     return True
 
 
-def record_tricky_inputs(work, iso, identity, argv, ssx3):
+def tricky_builder_version():
+    """Repo commit + dirty flag (tricky-manifest-1 manifest field)."""
+    try:
+        commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return 'unknown'
+    try:
+        dirty = subprocess.check_output(['git', '-C', str(ROOT), 'status', '--porcelain'],
+                                        text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        dirty = ''
+    return commit + ('-dirty' if dirty else '')
+
+
+def tricky_host_info():
+    """Host identity for the manifest (os/arch/cpu count only)."""
+    return {'system': platform.system(), 'arch': platform.machine(),
+            'cpus': os.cpu_count() or 0}
+
+
+def record_tricky_inputs(work, iso, identity, argv, ssx3, wall_seconds=None):
     """Write tricky_inputs.json beside inputs.json (double-read output SHAs).
 
     Copies the driver's tools.json pins + tool identity + SSX3 identity
-    into the record so the skip-check can refuse stale reuse (F06).
+    into the record so the skip-check can refuse stale reuse (F06), plus
+    the tricky-manifest-1 fields: converter_version, builder_version,
+    host, jobs, wall_seconds and the driver's per-course wall table when
+    it has one.
     """
     tricky = Path(work) / 'tricky'
     outputs = {}
@@ -3581,11 +3726,20 @@ def record_tricky_inputs(work, iso, identity, argv, ssx3):
                                               text=True).strip()
     except (OSError, subprocess.CalledProcessError):
         repo_commit = 'unknown'
+    if wall_seconds is None:
+        wall_seconds = receipt.get('wall_seconds')
     record = {'tricky_iso': str(iso), 'tricky_iso_sha256': identity['sha256'],
               'tricky_iso_bytes': identity['bytes'], 'tricky_serial': identity['serial'],
               'ssx3_iso': str(ssx3['path']), 'ssx3_iso_sha256': ssx3['sha256'],
               'ssx3_iso_bytes': ssx3['bytes'],
               'pins': receipt.get('pins'), 'toolchain': receipt.get('toolchain'),
+              'audio': receipt.get('audio'),
+              'converter_version': tricky_converter_version(),
+              'builder_version': tricky_builder_version(),
+              'host': tricky_host_info(), 'jobs': receipt.get('jobs'),
+              'wall_seconds': wall_seconds,
+              'course_walls': receipt.get('course_walls'),
+              'phase_walls': receipt.get('phase_walls'),
               'driver': {'path': str(TRICKY_DRIVER.relative_to(ROOT))
                          if TRICKY_DRIVER.is_relative_to(ROOT) else str(TRICKY_DRIVER),
                          'argv': list(map(str, argv)), 'repo_commit': repo_commit},
@@ -3593,6 +3747,30 @@ def record_tricky_inputs(work, iso, identity, argv, ssx3):
               'created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
     tricky_inputs_path(work).write_text(json.dumps(record, indent=2) + '\n')
     return record
+
+
+def tricky_ssx3_ident(a):
+    """Re-hashed SSX3 identity for the tricky step (F13).
+
+    The SSX3 ISO may have moved or changed since prepare; re-hash it
+    here instead of trusting the old record's path.
+    """
+    inputs = json.loads((Path(a.work) / 'inputs.json').read_text())
+    ssx3 = Path(inputs['iso'])
+    if not ssx3.is_file() or sha(ssx3) != inputs.get('iso_sha256'):
+        raise ValueError('SSX3 ISO changed since prepare ('
+                         + str(ssx3) + '); re-run prepare in a fresh --work directory')
+    return {'path': str(ssx3), 'sha256': inputs['iso_sha256'],
+            'bytes': ssx3.stat().st_size}
+
+
+def tricky_reuse_line(record):
+    """User-facing reuse line (tricky-manifest-1 manifest fields)."""
+    wall = record.get('wall_seconds')
+    wall_text = ('%.1f' % (wall / 60.0)) if isinstance(wall, (int, float)) else 'unknown'
+    return 'tricky: reusing outputs built %s by %s (converter %s, %s min)' % (
+        record.get('created_utc'), (record.get('builder_version') or 'unknown')[:12],
+        (record.get('converter_version') or 'unknown')[:12], wall_text)
 
 
 def build_tricky(a, iso):
@@ -3608,35 +3786,31 @@ def build_tricky(a, iso):
     identity = tricky_disc_identity(iso)
     print('Tricky disc: %s %s (%d bytes, SHA-256 %s...).' % (
         identity['serial'], identity['region'], identity['bytes'], identity['sha256'][:16]))
-    inputs = json.loads((Path(a.work) / 'inputs.json').read_text())
-    # F13: the SSX3 ISO may have moved or changed since prepare; re-hash
-    # it here instead of trusting the old record's path.
-    ssx3 = Path(inputs['iso'])
-    if not ssx3.is_file() or sha(ssx3) != inputs.get('iso_sha256'):
-        raise ValueError('SSX3 ISO changed since prepare ('
-                         + str(ssx3) + '); re-run prepare in a fresh --work directory')
-    ssx3_ident = {'path': str(ssx3), 'sha256': inputs['iso_sha256'],
-                  'bytes': ssx3.stat().st_size}
-    if tricky_current(a.work, iso):
-        print('tricky: outputs current for this disc, skipping')
+    ssx3_ident = tricky_ssx3_ident(a)
+    audio_req = getattr(a, 'tricky_audio', None) or 'auto'
+    if audio_req not in ('on', 'off', 'auto'):
+        raise ValueError("--tricky-audio must be on|off|auto: %r" % (audio_req,))
+    # Resolve the current host's audio mode + toolchain BEFORE the skip
+    # so the skip can key on them (G2: the old receipt-vs-record compare
+    # could never fire). Probes are local-only, no downloads.
+    audio_on = tricky_resolve_audio(a) == 'on'
+    toolchain = tricky_current_toolchain(a)
+    if tricky_current(a.work, iso, audio_on=audio_on, toolchain=toolchain):
+        print(tricky_reuse_line(tricky_record(a.work)))
         return tricky_inputs_path(a.work)
     tricky = Path(a.work) / 'tricky'
     if tricky.exists():
         raise ValueError('refusing existing tricky dir; remove ' + str(tricky) +
                          ' or choose a fresh --work directory')
     # Audio tools are optional local installs resolved by the driver
-    # (probe-only, no downloads, so this stays after the skip-check and
-    # needs no wrapper resolution). Forward the requested audio mode.
-    audio_req = getattr(a, 'tricky_audio', None) or 'auto'
-    if audio_req not in ('on', 'off', 'auto'):
-        raise ValueError("--tricky-audio must be on|off|auto: %r" % (audio_req,))
+    # (probe-only, no downloads). Forward the requested audio mode.
     # Port-owned orchestration driver (tk-port-1/tk-port-2): it reads the
     # user's own discs and writes the <work>/tricky/ device layout (plus any
     # intermediates); this step only validates, invokes and records.
     # Proposed contract: build_tricky.py --tricky-iso <iso> --ssx3-iso <iso>
     # --work <work>/tricky [--jobs N] [--tricky-audio on|off|auto].
     argv = [sys.executable, str(TRICKY_DRIVER), '--tricky-iso', str(iso),
-            '--ssx3-iso', str(ssx3), '--work', str(tricky),
+            '--ssx3-iso', str(Path(ssx3_ident['path'])), '--work', str(tricky),
             '--jobs', str(a.jobs), '--tricky-audio', audio_req]
     tools = tricky_tools()
     for flag, attr, env in (('--vgmstream', 'vgmstream', tools.VGMSTREAM_ENV),
@@ -3644,9 +3818,93 @@ def build_tricky(a, iso):
         val = getattr(a, attr, None) or os.environ.get(env)
         if val:
             argv += [flag, str(val)]
+    t0 = time.time()
     run(*argv)
-    record = record_tricky_inputs(a.work, iso, identity, argv, ssx3_ident)
+    wall_seconds = time.time() - t0
+    record = record_tricky_inputs(a.work, iso, identity, argv, ssx3_ident,
+                                  wall_seconds=wall_seconds)
     print('Tricky layer ready: %d files in %s.' % (len(record['outputs']), tricky))
+    return tricky_inputs_path(a.work)
+
+
+def import_tricky(a, iso, srcdir):
+    """Import a finished driver workdir's device outputs (tricky-manifest-1).
+
+    Copies only the device-layout outputs the stage step consumes
+    (TRICKY_DEVICE_FILES present + TRICKY_DEVICE_TREES present; never
+    the intermediates), checks the source tools.json names this disc
+    SHA, this converter version and the same audio mode, then writes
+    the record. Refuses on any mismatch with the exact field.
+    """
+    if not (Path(a.work) / 'inputs.json').is_file():
+        raise ValueError('tricky requires a prepared work directory (run prepare first)')
+    iso = validate_tricky_iso(Path(iso).resolve())
+    identity = tricky_disc_identity(iso)
+    print('Tricky disc: %s %s (%d bytes, SHA-256 %s...).' % (
+        identity['serial'], identity['region'], identity['bytes'], identity['sha256'][:16]))
+    ssx3_ident = tricky_ssx3_ident(a)
+    src = Path(srcdir)
+    try:
+        sreceipt = json.loads((src / 'tools.json').read_text())
+    except (OSError, ValueError):
+        raise ValueError('import source has no tools.json: ' + str(src))
+    if sreceipt.get('tricky', {}).get('sha256') != identity['sha256']:
+        raise ValueError('import refuses: source disc %s != this disc %s '
+                         '(tools.json:tricky.sha256)' % (
+                             sreceipt.get('tricky', {}).get('sha256'),
+                             identity['sha256']))
+    current_converter = tricky_converter_version()
+    if sreceipt.get('converter_version') != current_converter:
+        raise ValueError('import refuses: source converter %s != this checkout %s '
+                         '(tools.json:converter_version)' % (
+                             sreceipt.get('converter_version'), current_converter))
+    audio_req = getattr(a, 'tricky_audio', None) or 'auto'
+    if audio_req not in ('on', 'off', 'auto'):
+        raise ValueError("--tricky-audio must be on|off|auto: %r" % (audio_req,))
+    audio_on = tricky_resolve_audio(a) == 'on'
+    want_audio = 'on' if audio_on else 'off'
+    if sreceipt.get('audio') != want_audio:
+        raise ValueError('import refuses: source audio %s != requested %s '
+                         '(tools.json:audio)' % (sreceipt.get('audio'), want_audio))
+    tricky = Path(a.work) / 'tricky'
+    if tricky.exists():
+        raise ValueError('refusing existing tricky dir; remove ' + str(tricky) +
+                         ' or choose a fresh --work directory')
+    tricky.mkdir(parents=True)
+    for name in TRICKY_DEVICE_FILES:
+        source = src / name
+        if source.is_file():
+            shutil.copy2(source, tricky / name)
+    for name in TRICKY_DEVICE_TREES:
+        source = src / name
+        if source.is_dir():
+            shutil.copytree(source, tricky / name)
+    copied = sorted(p.relative_to(tricky).as_posix()
+                    for p in tricky.rglob('*') if p.is_file())
+    if not copied:
+        raise ValueError('import source has none of the device outputs: ' + str(src))
+    # Dest receipt mirrors the driver contract but with THIS host's
+    # toolchain probe (the skip keys on the current host's tools, so the
+    # record must name them). Pins come from the source receipt: the
+    # converter check above already pins the code that defines them.
+    toolchain = tricky_current_toolchain(a)
+    (tricky / 'tools.json').write_text(json.dumps({
+        'tricky': {'sha256': identity['sha256'], 'serial': identity['serial'],
+                   'region': identity['region'], 'bytes': identity['bytes']},
+        'ssx3': {'sha256': ssx3_ident['sha256'], 'bytes': ssx3_ident['bytes']},
+        'audio': want_audio, 'audio_requested': audio_req,
+        'audio_note': 'imported from ' + str(src),
+        'ffmpeg': toolchain['ffmpeg'], 'vgmstream': toolchain['vgmstream'],
+        'capacity': None, 'jobs': getattr(a, 'jobs', 0),
+        'pins': sreceipt.get('pins'), 'toolchain': toolchain,
+        'converter_version': current_converter,
+        'wall_seconds': sreceipt.get('wall_seconds'),
+        'course_walls': sreceipt.get('course_walls'),
+        'phase_walls': sreceipt.get('phase_walls'),
+    }, indent=2) + '\n')
+    record = record_tricky_inputs(a.work, iso, identity,
+                                  ['tricky', '--from', str(src)], ssx3_ident)
+    print('Tricky layer imported: %d files from %s.' % (len(copied), src))
     return tricky_inputs_path(a.work)
 
 
@@ -3810,7 +4068,10 @@ def android_onecmd(a):
     else:
         prepare(a)
     if a.tricky_iso:
-        build_tricky(a, a.tricky_iso)
+        if getattr(a, 'tricky_from', None):
+            import_tricky(a, a.tricky_iso, a.tricky_from)
+        else:
+            build_tricky(a, a.tricky_iso)
     if android_libs_current(a.work):
         print('android-libs: staged libraries current, skipping')
     else:
@@ -3836,6 +4097,10 @@ def main():
                    help='own supported USA disc image: android becomes the one-command build (doctor, prepare, android-libs, android)')
     p.add_argument('--tricky-iso', '--tricky-disc', dest='tricky_iso', type=Path,
                    help='own Tricky disc image: validated always; the tricky step runs it when the converter driver is present')
+    p.add_argument('--from', dest='from_dir', type=Path,
+                   help='tricky step: import the device outputs from a finished driver workdir instead of rebuilding')
+    p.add_argument('--tricky-from', dest='tricky_from', type=Path,
+                   help='android step: import the Tricky device outputs from a finished driver workdir instead of rebuilding')
     p.add_argument('--install', action='store_true',
                    help='with android --ssx3-iso: install to a connected device after the build')
     p.add_argument('--accept-android-licenses', action='store_true',
@@ -3927,6 +4192,16 @@ def main():
         p.error('tricky requires --iso (the Tricky disc)')
     if a.step == 'tricky' and a.tricky_iso:
         p.error('--tricky-iso is only valid with the android step; the tricky step takes --iso')
+    if a.step == 'tricky' and a.tricky_from:
+        p.error('--tricky-from is only valid with the android step; the tricky step takes --from')
+    if a.step == 'android' and a.from_dir:
+        p.error('--from is only valid with the tricky step; the android step takes --tricky-from')
+    if a.from_dir and a.step != 'tricky':
+        p.error('--from is only valid with the tricky step')
+    if a.tricky_from and a.step != 'android':
+        p.error('--tricky-from is only valid with the android step')
+    if a.tricky_from and not a.tricky_iso:
+        p.error('--tricky-from needs --tricky-iso for the disc check')
     if a.step == 'tricky' and a.dry_run:
         tricky_dry_run(a)
         return
@@ -3934,7 +4209,10 @@ def main():
         p.error('run prepare in this work directory first')
     a.work.mkdir(parents=True, exist_ok=True)
     if a.step == 'tricky':
-        build_tricky(a, a.iso)
+        if a.from_dir:
+            import_tricky(a, a.iso, a.from_dir)
+        else:
+            build_tricky(a, a.iso)
         return
     {'prepare': prepare, 'mac': mac, 'android': android, 'mac-libs': libs, 'run': play,
      'android-libs': android_libs, 'stage': stage, 'install': install,
