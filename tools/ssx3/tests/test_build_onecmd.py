@@ -6,6 +6,7 @@ heavy steps are stubbed, and licence prompts run non-interactive.
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -169,13 +170,39 @@ class AppLabelTest(unittest.TestCase):
         gradle = (ROOT / 'apps/android/app/build.gradle').read_text()
         self.assertIn("def ps2xAppLabel = project.findProperty('ps2xAppLabel')", gradle)
         self.assertIn("'SSX3 120'", gradle)
-        self.assertIn('manifestPlaceholders = [ps2xAppLabel: ps2xAppLabel]', gradle)
+        self.assertIn('ps2xAppLabel: ps2xAppLabel', gradle)
+        self.assertIn('ps2xProfileable:', gradle)
+        # One map: a second `manifestPlaceholders =` replaces the whole map
+        # and drops the other key (release-pb71-1: label placeholder lost).
+        self.assertEqual(len(re.findall(r'manifestPlaceholders\s*=\s*\[', gradle)), 1)
+
+    def test_launcher_aliases_derive_from_app_label(self):
+        manifest = (ROOT / 'apps/android/app/src/main/AndroidManifest.xml').read_text()
+        self.assertIn('${ps2xAlias60}', manifest)
+        self.assertIn('${ps2xAlias120}', manifest)
+        gradle = (ROOT / 'apps/android/app/build.gradle').read_text()
+        self.assertIn('ps2xAlias60', gradle)
+        self.assertIn('ps2xAlias120', gradle)
 
     def test_builder_passes_label_to_both_platforms(self):
         source = (HERE / 'build.py').read_text()
         self.assertIn("'-Pps2xAppLabel='", source)
         self.assertIn("'-DPS2X_APP_DISPLAY_NAME='", source)
         self.assertIn('--app-label', source)
+
+
+class PresetValuesTest(unittest.TestCase):
+    """Play = public recipe values (audit items 9 + 5): the Android public
+    preset skips intro movies like the play envs; STOCK120 rides the
+    online.env stage (test_online_stage)."""
+
+    def test_android_preset_skips_movies(self):
+        values = {}
+        for line in (build.ROOT / 'presets/ps2x.env').read_text().splitlines():
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                values[key] = value
+        self.assertEqual(values['PS2X_SKIP_MOVIE'], '1')
 
 
 class AndroidReceiptTest(unittest.TestCase):

@@ -2206,18 +2206,46 @@ def find_provisioning_profile(team, bundle_id, profiles_dir=None):
     return best
 
 
+def profile_plist_get_task_allow(data):
+    """get-task-allow from a parsed provisioning profile dict (pure).
+
+    Development profiles carry True; distribution/ad-hoc carry False.
+    Missing/unreadable -> False."""
+    try:
+        return bool((data.get('Entitlements') or {}).get('get-task-allow', False))
+    except Exception:
+        return False
+
+
+def profile_get_task_allow(profile_path):
+    """get-task-allow from a provisioning profile file's own entitlements."""
+    import plistlib
+    try:
+        proc = subprocess.run(['security', 'cms', '-D', '-i', str(profile_path)],
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              timeout=30, check=False)
+        if proc.returncode:
+            return False
+        data = plistlib.loads(proc.stdout)
+    except Exception:
+        return False
+    return profile_plist_get_task_allow(data)
+
+
 def sign_staged_app(work, stage_app, team, bundle_id, dev=False):
     """Sign the staged app with the user's team (profile from Xcode's
     automatic signing; entitlements generated, never committed).
-    F8 (appsec-fix-1): public builds omit get-task-allow; lab/dev builds
-    keep it via --dev."""
+    F8 (appsec-fix-1): lab/dev builds keep get-task-allow via --dev.
+    release-pb71-1: otherwise match the selected profile (every public user
+    signs with a development profile, which requires true; distribution /
+    ad-hoc profiles carry false)."""
     import plistlib
     profile = find_provisioning_profile(team, bundle_id)
     identity = signing_identity(team, profile=profile)
     shutil.copy2(profile, stage_app / 'embedded.mobileprovision')
     entitlements = {'application-identifier': team + '.' + bundle_id,
                     'com.apple.developer.team-identifier': team,
-                    'get-task-allow': bool(dev)}
+                    'get-task-allow': True if dev else profile_get_task_allow(profile)}
     ent_file = work / 'ios-entitlements.plist'
     with open(ent_file, 'wb') as f:
         plistlib.dump(entitlements, f)
@@ -2539,6 +2567,21 @@ def ios_build_versions(cc, cxx):
     }
 
 
+def append_ios_dev_recording(ps2x_env, dev):
+    """Append --dev session-recording rows to a staged iOS ps2x.env.
+
+    Brad 10-18 (audit item 8): recording is ON newest-10 for --dev builds
+    only (Brad's own iPhone install is one); public builds stay off.
+    Returns True when rows were appended."""
+    if not dev:
+        return False
+    with open(ps2x_env, 'a') as staged:
+        staged.write('# --dev session recording (newest 10).\n'
+                     'PS2X_PAD_RECORD_DIR=${DOCUMENTS}/padrec\n'
+                     'PS2X_PAD_RECORD_KEEP=10\n')
+    return True
+
+
 def stage_ios_presets(app):
     """Copy the shipped iOS presets into the staged app bundle.
 
@@ -2666,6 +2709,7 @@ def ios(a):
     shutil.copy2(files['SSX3.iso'], app / 'SSX3.iso')
     shutil.copy2(files['SSX3.iso.holes'], app / 'SSX3.iso.holes')
     staged_presets = stage_ios_presets(app)
+    append_ios_dev_recording(app / 'ps2x.env', getattr(a, 'dev', False))
     shutil.copytree(ENGINE / 'ps2xRuntime/ios/Settings.bundle', app / 'Settings.bundle')
     frameworks = app / 'Frameworks'
     frameworks.mkdir(exist_ok=True)
@@ -2789,8 +2833,7 @@ def stage(a):
     # online like the iOS preset does. presets/online.env stays the single
     # definition of the lobby rows; the staged ps2x.env appends them so the
     # runtime (which layers only ps2x.env + full120.env) arms
-    # PS2X_NET=1 / ssx.bradr.dev / Quick Play. STOCK120 is deliberately not
-    # staged (code default off, per the decided default).
+    # PS2X_NET=1 / ssx.bradr.dev / Quick Play / STOCK120 (Brad 10-17).
     online_src = presets / 'online.env'
     if not online_src.is_file():
         raise ValueError('missing shipped preset: ' + str(online_src))
@@ -3827,7 +3870,7 @@ def main():
     p.add_argument('--app-label', default=None,
                    help="home-screen name for android and ios (default: 'SSX3 120' for product ids, 'SSX3 120 Test' otherwise)")
     p.add_argument('--dev', action='store_true',
-                   help='lab/dev build: keep get-task-allow (iOS), debuggable + shell-profileable (Android)')
+                   help='lab/dev build: keep get-task-allow + session recording newest 10 (iOS), debuggable + shell-profileable (Android)')
     p.add_argument('--engine', type=Path, default=None,
                    help='engine checkout (default: SSX3_ENGINE_DIR or deps/PS2Recomp submodule)')
     a = p.parse_args()

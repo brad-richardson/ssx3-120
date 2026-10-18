@@ -14,7 +14,7 @@ SPEC.loader.exec_module(build)
 
 
 class OnlineStageTest(unittest.TestCase):
-    def test_stage_appends_online_rows_and_keeps_stock120_off(self):
+    def test_stage_appends_online_rows_including_stock120(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / 'root'
             presets = root / 'presets'
@@ -23,7 +23,8 @@ class OnlineStageTest(unittest.TestCase):
             (presets / 'full120.env').write_text('PS2X_SSX3_FULL120=events\n')
             (presets / 'online.env').write_text(
                 '# comment\nPS2X_NET=1\nPS2X_NET_SERVER=ssx.bradr.dev\n'
-                'PS2X_NET_QUICKPLAY=1\nPS2X_NET_QUICKPLAY_NAV=online\n')
+                'PS2X_NET_QUICKPLAY=1\nPS2X_NET_QUICKPLAY_NAV=online\n'
+                'PS2X_NET_STOCK120=1\n')
             work = Path(temp) / 'work'
             (work / 'stage/files').mkdir(parents=True)
             (work / 'app-id.txt').write_text('com.ssx3.recomp\n')
@@ -36,9 +37,9 @@ class OnlineStageTest(unittest.TestCase):
                 files = build.stage(args)
             staged = (files / 'ps2x.env').read_text()
             for row in ('PS2X_NET=1', 'PS2X_NET_SERVER=ssx.bradr.dev',
-                        'PS2X_NET_QUICKPLAY=1', 'PS2X_NET_QUICKPLAY_NAV=online'):
+                        'PS2X_NET_QUICKPLAY=1', 'PS2X_NET_QUICKPLAY_NAV=online',
+                        'PS2X_NET_STOCK120=1'):
                 self.assertIn(row, staged)
-            self.assertNotIn('STOCK120', staged)
 
 
 if __name__ == '__main__':

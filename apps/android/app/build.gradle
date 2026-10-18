@@ -79,6 +79,10 @@ def ps2xAppId = project.findProperty('ps2xAppId') ?: (ps2xKeystoreFile ? 'com.ss
 // 'SSX3 120'. -Pps2xAppLabel overrides; otherwise test ids default to a
 // distinguishable label so two installs never look identical.
 def ps2xAppLabel = project.findProperty('ps2xAppLabel') ?: (ps2xAppId in ['com.ps2x.runner', 'com.ssx3.recomp'] ? 'SSX3 120' : 'SSX3 120 Test')
+// release-pb71-1 (audit item 12): launcher aliases derive from the requested
+// app label so test installs are distinguishable, keeping the mode.
+def ps2xAlias60 = "${ps2xAppLabel} · 60"
+def ps2xAlias120 = "${ps2xAppLabel} · 120"
 def ps2xBootElf = project.findProperty('ps2xBootElf') ?: "/storage/emulated/0/Android/data/${ps2xAppId}/files/game.elf"
 
 android {
@@ -96,13 +100,17 @@ android {
 
     defaultConfig {
         applicationId ps2xAppId
-        manifestPlaceholders = [ps2xAppLabel: ps2xAppLabel]
         minSdk 29
         targetSdk 34
         versionCode ps2xVersionCode
         versionName '0.1.0'
         // F8: shell-profileable only for lab/dev builds; public drops it.
-        manifestPlaceholders = [ps2xProfileable: (ps2xDev || ps2xPgoGen) ? 'true' : 'false']
+        // G7 app label rides along: one map — a second `manifestPlaceholders =`
+        // assignment would replace the whole map and drop the other key.
+        manifestPlaceholders = [ps2xAppLabel: ps2xAppLabel,
+                                ps2xProfileable: (ps2xDev || ps2xPgoGen) ? 'true' : 'false',
+                                ps2xAlias60: ps2xAlias60,
+                                ps2xAlias120: ps2xAlias120]
         if (ps2xPgoGen) {
             versionNameSuffix '-pgogen'
         }

@@ -681,14 +681,15 @@ class PresetHygieneTest(unittest.TestCase):
         for required in ('PS2X_OM1_LEAN', 'PS2X_OM1_SCAN', 'PS2X_PERF_LOG',
                          'PS2X_SSX3_NATIVE_WORLD', 'PS2X_VIF_UNPACK_FAST',
                          'PS2X_GS_GIF_BATCH', 'PS2X_GS_GIF_ARENA',
-                         'GE1_ONDEVICE_UPSCALE', 'PS2X_NET', 'PS2X_NET_SERVER'):
+                         'GE1_ONDEVICE_UPSCALE', 'PS2X_NET', 'PS2X_NET_SERVER',
+                         'PS2X_SKIP_MOVIE'):
             self.assertIn(required, keys)
         # Achievements are out of the product (Brad 10-17); the Tricky bundle
-        # rows ship (each fails closed without its files). SKIP_MOVIE/PAD_SCRIPT
-        # stay out (dev-only). Marker + quick-state UI are settings-panel
+        # rows ship (each fails closed without its files). PAD_SCRIPT stays
+        # out (dev-only). Marker + quick-state UI are settings-panel
         # defaults (off/hidden, Brad 10-18), never preset lines (G3).
-        for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_SKIP_MOVIE=',
-                          'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision',
+        # Intro movies skip like play (PS2X_SKIP_MOVIE=1, audit item 9).
+        for forbidden in ('/Users/', 'org.ps2x.ps2entryrunner', 'PS2X_PAD_SCRIPT', 'APP_PACK', 'mobileprovision',
                           'PS2X_OM1_DENY=', 'PS2X_ACHIEVEMENTS',
                           'PS2X_INPUT_MARKER=', 'PS2X_QUICKSTATE_UI='):
             self.assertNotIn(forbidden, joined)
@@ -699,12 +700,36 @@ class PresetHygieneTest(unittest.TestCase):
             if line and not line.startswith('#') and '=' in line:
                 key, value = line.split('=', 1)
                 values[key] = value
-        # G3 (public-parity-2): no explicit GE1_UPSCALE — the settings panel +
-        # device tier own resolution (capable iOS: Screen on 1080p else 2x).
-        self.assertNotIn('GE1_UPSCALE', values)
+        # G3 (public-parity-2) + release-pb71-1: GE1_UPSCALE=auto arms the
+        # device-tier resolver (capable iOS: Screen on 1080p else 2x); unset
+        # skips it and the renderer falls back to 1x. A saved panel choice
+        # still wins because it isn't 'auto'.
+        self.assertEqual(values['GE1_UPSCALE'], 'auto')
         self.assertEqual(values['GE1_CAS'], '0.25')
+        self.assertEqual(values['PS2X_SKIP_MOVIE'], '1')
+        self.assertEqual(values['PS2X_NET_STOCK120'], '1')
         self.assertEqual(values['PS2X_GE1_EXPORT_SIZE'], 'display')
         self.assertEqual(values['PS2X_NET_SERVER'], 'ssx.bradr.dev')
+
+
+class DevRecordingTest(unittest.TestCase):
+    """Brad 10-18 (audit item 8): session recording newest-10 is --dev only."""
+
+    def test_dev_build_records_newest_10(self):
+        with tempfile.TemporaryDirectory() as temp:
+            env = Path(temp) / 'ps2x.env'
+            env.write_text('PS2X_SOUND=1\n')
+            self.assertTrue(build.append_ios_dev_recording(env, True))
+            text = env.read_text()
+            self.assertIn('PS2X_PAD_RECORD_DIR=${DOCUMENTS}/padrec', text)
+            self.assertIn('PS2X_PAD_RECORD_KEEP=10', text)
+
+    def test_public_build_has_no_recorder_rows(self):
+        with tempfile.TemporaryDirectory() as temp:
+            env = Path(temp) / 'ps2x.env'
+            env.write_text('PS2X_SOUND=1\n')
+            self.assertFalse(build.append_ios_dev_recording(env, False))
+            self.assertNotIn('PAD_RECORD', env.read_text())
 
 
 class MoltenvkManifestTest(unittest.TestCase):

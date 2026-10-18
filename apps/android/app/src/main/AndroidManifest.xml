@@ -57,7 +57,7 @@
 
         <activity-alias
             android:name=".Launch60"
-            android:label="SSX 3 · 60"
+            android:label="${ps2xAlias60}"
             android:icon="@mipmap/ic_ssx_60"
             android:roundIcon="@mipmap/ic_ssx_60"
             android:targetActivity=".LaunchActivity"
@@ -70,7 +70,7 @@
 
         <activity-alias
             android:name=".Launch120"
-            android:label="SSX 3 · 120"
+            android:label="${ps2xAlias120}"
             android:icon="@mipmap/ic_ssx_120"
             android:roundIcon="@mipmap/ic_ssx_120"
             android:targetActivity=".LaunchActivity"
