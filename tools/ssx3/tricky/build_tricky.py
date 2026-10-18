@@ -358,6 +358,28 @@ def size_course_workers(nready, inner, peak_gb, reserve_gb=8.0):
     return workers, note
 
 
+def size_inner_jobs(workers, group_peak_gb=0.5, reserve_gb=8.0):
+    """Inner pack-pool size from the same core/RAM budget as the course pool.
+
+    Independent groups within a course already pack in parallel
+    (assemble_archive Pool, order-independent assembly into the stream,
+    so worker count and completion order never affect bytes); this only
+    unifies the bound so course workers x inner workers stay within
+    cores and free RAM. Scheduling only: byte-identical by construction
+    (proven: captures at default jobs vs replays at inner=2 agree on
+    all 9 courses). [tk-speed-1]
+    """
+    cores = cpu_budget()
+    by_cpu = max(1, cores // max(1, workers))
+    free = free_gb()
+    if free > 0:
+        by_mem = max(1, int((free - reserve_gb)
+                            // (workers * group_peak_gb)))
+    else:
+        by_mem = by_cpu
+    return max(1, min(by_cpu, by_mem))
+
+
 def iso_member(iso, want):
     """Find a disc member by basename (case-insensitive); fail closed."""
     with open(iso, 'rb') as f:
@@ -464,7 +486,7 @@ class Build:
         # Bound inner pack pools so total processes stay within cores.
         if 'TRICKY_INNER_JOBS' not in os.environ:
             os.environ['TRICKY_INNER_JOBS'] = str(
-                max(1, cpu_budget() // workers))
+                size_inner_jobs(workers))
         # mesa's s3 borrows aloha-b's receipt, so mesa starts after aloha
         # finishes; every other pair is disjoint (per-course donor, build,
         # iso, w-*, log paths; shared tmp/ uses per-course filenames).
@@ -1050,7 +1072,8 @@ def main(argv=None):
                     help='per-course peak GiB assumed by auto sizing')
     ap.add_argument('--inner-jobs', type=int, default=0,
                     help='cap for inner pack pools (default 6); the pool sets '
-                         'TRICKY_INNER_JOBS=cores//workers when auto')
+                         'TRICKY_INNER_JOBS from the same core/RAM budget '
+                         'when auto')
     ap.add_argument('--from-phase', default=None, choices=['speech'],
                     help='resume at a later phase, reusing a finished run')
     ap.add_argument('--reuse-worlds', default=None,

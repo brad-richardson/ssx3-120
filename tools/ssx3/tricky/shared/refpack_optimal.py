@@ -23,7 +23,12 @@ MAX_DIST = 131072
 
 
 def _extend(data, a, b, limit):
-    """Length of the common prefix of data[a:] and data[b:], at most limit (a < b)."""
+    """Length of the common prefix of data[a:] and data[b:], at most limit (a < b).
+
+    Bytes slicing here beat the tried memoryview variant (bytes ==
+    uses optimized memcmp; measured 0.85x for views on real group
+    bytes) — keep slices. [tk-speed-1]
+    """
     n = 0
     while n < limit:
         k = min(64, limit - n)
