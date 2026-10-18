@@ -89,7 +89,14 @@ def _cost(length, distance):
     return 4
 
 
-def encode(data, candidates=128, skip_threshold=64):
+def plan(data, candidates=128, skip_threshold=64):
+    """Optimal command plan for data: ordered picks as taken by the emitter.
+
+    Each pick is ('lit', k), ('match', prefix, length, distance) or
+    ('stop', trailing). Deterministic; same inputs give the same picks.
+    This is the searched decision; emit_commands() applies it with no
+    search. [tk-speed-1]
+    """
     data = bytes(data)
     n = len(data)
     if n > 0xffffff:
@@ -135,34 +142,85 @@ def encode(data, candidates=128, skip_threshold=64):
                     if c < best:
                         best, pick = c, ('match', p, L, dist)
         cost[i], choice[i] = best, pick
-    # emit
-    out = bytearray(b'\x10\xfb' + n.to_bytes(3, 'big'))
-    i = 0
+    # follow the emitter's walk to record the ordered picks
+    picks, i = [], 0
     while True:
         pick = choice[i] if i < n else ('stop', 0)
+        picks.append(pick)
         if pick[0] == 'stop':
-            rem = pick[1]
-            out.append(0xfc | rem)
-            out.extend(data[i:i + rem])
             break
         if pick[0] == 'lit':
+            i += pick[1]
+            continue
+        _, p, L, _dist = pick
+        i += p + L
+    return picks
+
+
+def emit_commands(data, picks):
+    """Serialize a recorded plan without any search. Byte-identical to the
+    emitter inside encode() for picks from plan(); raises ValueError on a
+    malformed plan instead of emitting guess bytes. [tk-speed-1]"""
+    data = bytes(data)
+    n = len(data)
+    out = bytearray(b'\x10\xfb' + n.to_bytes(3, 'big'))
+    i = 0
+    for pick in picks:
+        if not isinstance(pick, tuple) or not pick:
+            raise ValueError('malformed plan pick')
+        kind = pick[0]
+        if kind == 'stop':
+            (_k, rem) = pick if len(pick) == 2 else (None, None)
+            if not isinstance(rem, int) or rem < 0 or rem > 3 or i + rem != n:
+                raise ValueError('malformed stop pick')
+            out.append(0xfc | rem)
+            out.extend(data[i:i + rem])
+            i += rem
+            break
+        if kind == 'lit':
+            if len(pick) != 2:
+                raise ValueError('malformed lit pick')
             k = pick[1]
+            if not isinstance(k, int) or k < 4 or k > 112 or k % 4 or i + k > n:
+                raise ValueError('malformed lit pick')
             out.append(0xe0 + k // 4 - 1)
             out.extend(data[i:i + k])
             i += k
             continue
-        _, p, L, dist = pick
-        offset = dist - 1
-        if L <= 10 and dist <= 1024:
-            out.extend((p | ((L - 3) << 2) | ((offset >> 8) << 5), offset & 255))
-        elif L <= 67 and dist <= 16384:
-            out.extend((0x80 | (L - 4), (p << 6) | (offset >> 8), offset & 255))
-        else:
-            out.extend((0xc0 | p | (((L - 5) >> 8) << 2) | ((offset >> 16) << 4),
-                        (offset >> 8) & 255, offset & 255, (L - 5) & 255))
-        out.extend(data[i:i + p])
-        i += p + L
+        if kind == 'match':
+            if len(pick) != 4:
+                raise ValueError('malformed match pick')
+            _, p, L, dist = pick
+            if not all(isinstance(v, int) for v in (p, L, dist)):
+                raise ValueError('malformed match pick')
+            if p < 0 or p > 3 or i + p > n:
+                raise ValueError('malformed match prefix')
+            minimum = 3 if dist <= 1024 else 4 if dist <= 16384 else 5
+            if (L < minimum or L > MAX_LEN or dist < 1 or dist > MAX_DIST
+                    or dist > i + p or i + p + L > n):
+                raise ValueError('malformed match pick')
+            offset = dist - 1
+            if L <= 10 and dist <= 1024:
+                out.extend((p | ((L - 3) << 2) | ((offset >> 8) << 5), offset & 255))
+            elif L <= 67 and dist <= 16384:
+                out.extend((0x80 | (L - 4), (p << 6) | (offset >> 8), offset & 255))
+            else:
+                out.extend((0xc0 | p | (((L - 5) >> 8) << 2) | ((offset >> 16) << 4),
+                            (offset >> 8) & 255, offset & 255, (L - 5) & 255))
+            out.extend(data[i:i + p])
+            i += p + L
+            continue
+        raise ValueError('malformed plan pick')
+    else:
+        raise ValueError('plan has no stop pick')
+    if i != n:
+        raise ValueError('plan does not consume the input')
     return bytes(out)
+
+
+def encode(data, candidates=128, skip_threshold=64):
+    data = bytes(data)
+    return emit_commands(data, plan(data, candidates, skip_threshold))
 
 
 if __name__ == '__main__':

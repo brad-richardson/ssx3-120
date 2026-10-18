@@ -307,6 +307,57 @@ def run(logdir, name, *argv, cwd=None):
     return log
 
 
+def cpu_budget():
+    """Usable cores: cpuset affinity when present, else cpu count."""
+    try:
+        return max(1, len(os.sched_affinity(0)))
+    except (AttributeError, OSError):
+        return max(1, os.cpu_count() or 8)
+
+
+def free_gb():
+    """Free RAM in GiB for worker sizing (Linux + macOS)."""
+    try:
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemAvailable:'):
+                    return float(line.split()[1]) / 1048576.0
+    except OSError:
+        pass
+    try:
+        out = subprocess.run(['vm_stat'], capture_output=True, text=True,
+                             timeout=10).stdout
+        page = 16384
+        free = inactive = 0
+        for line in out.splitlines():
+            if line.startswith('page size of'):
+                page = int(line.split()[-2])
+            elif line.startswith('Pages free:'):
+                free = int(line.split(':')[1].strip().rstrip('.'))
+            elif line.startswith('Pages inactive:'):
+                inactive = int(line.split(':')[1].strip().rstrip('.'))
+        if free:
+            return (free + inactive) * page / 1073741824.0
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return 0.0
+
+
+def size_course_workers(nready, inner, peak_gb, reserve_gb=8.0):
+    """Worker count from cores and free RAM. Returns (workers, note)."""
+    cores = cpu_budget()
+    by_cpu = max(1, cores // max(1, inner))
+    free = free_gb()
+    if free > 0 and peak_gb > 0:
+        by_mem = max(1, int((free - reserve_gb) // peak_gb))
+    else:
+        by_mem = by_cpu
+    workers = max(1, min(nready, by_cpu, by_mem))
+    note = (f'cores={cores} inner={inner} free={free:.1f}G '
+            f'peak={peak_gb}G reserve={reserve_gb}G -> {workers}')
+    return workers, note
+
+
 def iso_member(iso, want):
     """Find a disc member by basename (case-insensitive); fail closed."""
     with open(iso, 'rb') as f:
@@ -345,33 +396,115 @@ class Build:
         check(p, want, f'{c} final')
         return p
 
+    def world_argv(self, c, host_bam):
+        return [sys.executable, T / 'run_chain.py',
+                '--tricky-iso', self.a.tricky_iso, '--ssx3-iso', self.a.ssx3_iso,
+                '--host-bam', host_bam, '--workdir', self.W,
+                '--course', c, '--rung', 'all',
+                *(['--routes-ref-dir', self.a.routes_ref_dir]
+                  if self.a.routes_ref_dir else [])]
+
+    def run_one_course(self, c, host_bam):
+        """Run one course chain; replicate the serial skip contract."""
+        try:
+            run(self.logs, f'world-{c}', *self.world_argv(c, host_bam),
+                cwd=self.W)
+        except SystemExit as e:
+            if c == 'mega' and 'routes-ref-dir' in str(e):
+                return ('skip', 'mega',
+                        f'no verified routes base: {e}')
+            if 'gc-resets-missing' in str(e):
+                return ('skip', f'resets-{c}', f'no GameCube donor: {e}')
+            return ('fail', c, str(e))
+        return ('ok', c, '')
+
     def phase_worlds(self):
         # host-bam: stock BAM.BIG bytes from the user's SSX3 ISO.
         host_bam = self.W / 'host-bam' / 'BAM.BIG'
         bam = iso_member(self.a.ssx3_iso, 'BAM.BIG')
         extract_member(self.a.ssx3_iso, bam['path'], host_bam)
-        for c in BUILD_COURSES:
-            try:
-                run(self.logs, f'world-{c}', sys.executable, T / 'run_chain.py',
-                    '--tricky-iso', self.a.tricky_iso, '--ssx3-iso', self.a.ssx3_iso,
-                    '--host-bam', host_bam, '--workdir', self.W,
-                    '--course', c, '--rung', 'all',
-                    *(['--routes-ref-dir', self.a.routes_ref_dir]
-                      if self.a.routes_ref_dir else []),
-                    cwd=self.W)
-            except SystemExit as e:
-                if c == 'mega' and 'routes-ref-dir' in str(e):
-                    print('MEGA SKIPPED: no verified routes base '
-                          '(pending mega-h/u2/c tail); continuing without it')
-                    self.skipped['mega'] = str(e)
+        # Pre-create the shared world report once: concurrent courses must
+        # never race on it (content is identical for a fixed host-bam).
+        wr = self.W / 'ssx3-world.json'
+        if not wr.exists():
+            run(self.logs, 'world-report', sys.executable,
+                T / 'shared' / 'probe_worlds.py', 'ssx3', host_bam,
+                '--report', wr, cwd=self.W)
+        inner = int(os.environ.get('TRICKY_INNER_JOBS')
+                    or getattr(self.a, 'inner_jobs', 0) or 6)
+        want = getattr(self.a, 'course_workers', 0) or 0
+        if want == 1:
+            workers, note = 1, 'serial (--course-workers 1: exact path)'
+        else:
+            peak = float(getattr(self.a, 'course_mem_gb', 0) or 4.0)
+            workers, note = size_course_workers(len(BUILD_COURSES), inner,
+                                                peak)
+            if want > 1:
+                workers = min(workers, want)
+        print(f'course pool: workers={workers} ({note})', flush=True)
+        if workers <= 1:
+            for c in BUILD_COURSES:
+                status, key, msg = self.run_one_course(c, host_bam)
+                if status == 'skip':
+                    if key == 'mega':
+                        print('MEGA SKIPPED: no verified routes base '
+                              '(pending mega-h/u2/c tail); continuing '
+                              'without it')
+                    else:
+                        print(f'{c.upper()} SKIPPED: resets need the '
+                              f'GameCube donor (pass --gc-dir); continuing '
+                              f'without it')
+                    self.skipped[key] = msg
                     continue
-                if 'gc-resets-missing' in str(e):
-                    print(f'{c.upper()} SKIPPED: resets need the GameCube '
-                          f'donor (pass --gc-dir); continuing without it')
-                    self.skipped[f'resets-{c}'] = str(e)
-                    continue
-                raise
-            self.world_final(c)
+                if status == 'fail':
+                    raise SystemExit(msg)
+                self.world_final(c)
+            print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
+            return
+        # Bound inner pack pools so total processes stay within cores.
+        if 'TRICKY_INNER_JOBS' not in os.environ:
+            os.environ['TRICKY_INNER_JOBS'] = str(
+                max(1, cpu_budget() // workers))
+        # mesa's s3 borrows aloha-b's receipt, so mesa starts after aloha
+        # finishes; every other pair is disjoint (per-course donor, build,
+        # iso, w-*, log paths; shared tmp/ uses per-course filenames).
+        order = [c for c in BUILD_COURSES if c != 'mesa']
+        from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+        pending, done = {}, {}
+        with ThreadPoolExecutor(max_workers=workers,
+                                thread_name_prefix='course') as ex:
+            for c in order:
+                pending[ex.submit(self.run_one_course, c, host_bam)] = c
+            aloha_done = 'aloha' not in order
+            while pending:
+                finished, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+                for fut in finished:
+                    c = pending.pop(fut)
+                    try:
+                        status, key, msg = fut.result()
+                    except Exception as e:  # noqa: BLE001 - fail loud
+                        status, key, msg = ('fail', c, f'{type(e).__name__}: {e}')
+                    if status == 'skip':
+                        if key == 'mega':
+                            print('MEGA SKIPPED: no verified routes base '
+                                  '(pending mega-h/u2/c tail); continuing '
+                                  'without it')
+                        else:
+                            print(f'{c.upper()} SKIPPED: resets need the '
+                                  f'GameCube donor (pass --gc-dir); '
+                                  f'continuing without it')
+                        self.skipped[key] = msg
+                    elif status == 'fail':
+                        for p in pending:
+                            p.cancel()
+                        raise SystemExit(msg)
+                    else:
+                        self.world_final(c)
+                    done[c] = status
+                if not aloha_done and done.get('aloha') in ('ok', 'skip'):
+                    aloha_done = True
+                    pending[ex.submit(self.run_one_course, 'mesa',
+                                      host_bam)] = 'mesa'
         print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
 
     def resume_worlds(self, reuse):
@@ -910,6 +1043,14 @@ def main(argv=None):
     ap.add_argument('--ssx3-iso', required=True)
     ap.add_argument('--work', required=True)
     ap.add_argument('--jobs', default=str(os.cpu_count() or 8))
+    ap.add_argument('--course-workers', type=int, default=0,
+                    help='course pool size: 0 = auto from free RAM and cores, '
+                         '1 = serial exact path')
+    ap.add_argument('--course-mem-gb', type=float, default=4.0,
+                    help='per-course peak GiB assumed by auto sizing')
+    ap.add_argument('--inner-jobs', type=int, default=0,
+                    help='cap for inner pack pools (default 6); the pool sets '
+                         'TRICKY_INNER_JOBS=cores//workers when auto')
     ap.add_argument('--from-phase', default=None, choices=['speech'],
                     help='resume at a later phase, reusing a finished run')
     ap.add_argument('--reuse-worlds', default=None,

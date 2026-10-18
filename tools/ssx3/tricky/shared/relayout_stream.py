@@ -24,6 +24,7 @@ from inspect_disc import Region, big_members, file_region
 from probe_worlds import refpack, probe_ssx3
 from refpack_encode import encode as greedy
 from refpack_optimal import encode as optimal
+from refpack_optimal import plan as optimal_plan, emit_commands as optimal_emit
 
 BLOCK = 32768
 CAPACITY = BLOCK - 8
@@ -50,12 +51,18 @@ def largest_fitting(raw, start, max_decoded, margin):
 
 def pack_group(job):
     index, raw, max_decoded, margin = job
+    if max_decoded == 81920 and margin == 96:
+        replayed = _pack_group_replay(index, raw)
+        if replayed is not None:
+            return replayed
     blocks, start = [], 0
+    cuts, plans, payloads = [], [], []
     while start < len(raw):
         length = largest_fitting(raw, start, max_decoded, margin)
         while True:
             chunk = raw[start:start + length]
-            payload = optimal(chunk)
+            picks = optimal_plan(chunk)
+            payload = optimal_emit(chunk, picks)
             if len(payload) <= CAPACITY:
                 break
             length -= 512
@@ -63,10 +70,49 @@ def pack_group(job):
                 raise ValueError(f'Group {index}: cannot fit a block at {start}')
         if refpack(payload)[0] != chunk:
             raise ValueError(f'Group {index}: encoder round trip failed at {start}')
+        cuts.append(length)
+        plans.append(picks)
+        payloads.append(payload)
         start += length
         tag = b'CEND' if start >= len(raw) else b'CBXS'
         blocks.append(tag + struct.pack('<I', BLOCK) + payload + bytes(CAPACITY - len(payload)))
+    _pack_group_capture(raw, cuts, plans, payloads)
     return index, b''.join(blocks), len(blocks)
+
+
+def _pack_group_replay(index, raw):
+    """Emit from shipped decisions when the input hash matches. Returns
+    None (loudly) when no decision applies, so the caller searches."""
+    import os as _os
+    path = _os.environ.get('REFPACK_DECISIONS')
+    if not path:
+        return None
+    import refpack_decisions as _dec
+    table = _dec.load_data(path)
+    if not table:
+        print(f'REFPACK-SEARCH-FALLBACK group={index}: no decisions loaded from {path}', flush=True)
+        return None
+    sha = _dec.group_sha(raw)
+    rec = table.get(sha)
+    if rec is None:
+        print(f'REFPACK-SEARCH-FALLBACK group={index} sha={sha[:16]}: no recorded decision', flush=True)
+        return None
+    try:
+        data, n = _dec.emit_group(raw, rec)
+    except ValueError as e:
+        print(f'REFPACK-SEARCH-FALLBACK group={index} sha={sha[:16]}: {e}', flush=True)
+        return None
+    print(f'REFPACK-REPLAY group={index} sha={sha[:16]} blocks={n}', flush=True)
+    return index, data, n
+
+
+def _pack_group_capture(raw, cuts, plans, payloads):
+    import os as _os
+    dest = _os.environ.get('REFPACK_CAPTURE')
+    if not dest:
+        return
+    import refpack_decisions as _dec
+    _dec.capture_group(dest, raw, cuts, plans, payloads)
 
 
 def bigf_entries(header):
@@ -113,6 +159,11 @@ def assemble_archive(original, report, group_raw, sdb_bytes, jobs=6, max_decoded
     sdb_bytes: SDB member bytes (already edited for any count changes); group offsets are
     regenerated here. Returns (archive bytes, per-group layout list, stream length).
     """
+    import os as _os
+    try:
+        jobs = min(jobs, max(1, int(_os.environ.get('TRICKY_INNER_JOBS', jobs))))
+    except ValueError:
+        pass
     region = Region(io.BytesIO(original), 0, len(original))
     _, members = big_members(region)
     ssb = file_region(region, members, 'data/worlds/bam.ssb')
