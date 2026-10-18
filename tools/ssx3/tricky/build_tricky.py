@@ -518,15 +518,21 @@ class Build:
         # mesa's s3 borrows aloha-b's receipt, so mesa starts after aloha
         # finishes; every other pair is disjoint (per-course donor, build,
         # iso, w-*, log paths; shared tmp/ uses per-course filenames).
-        # Longest-first submit (course_submit_order) keeps all workers
-        # busy; mesa is appended at aloha completion.
+        # Longest-first gated feeding: submit only `workers` jobs up front
+        # (the longest), then feed the next-longest on each completion,
+        # mesa first at aloha completion. Never pre-submit the queue: a
+        # freed worker would otherwise grab a queued task before mesa is
+        # appended, making the wall nondeterministic (104-137 min spread
+        # on r13 walls). Scheduling only; bytes unaffected.
         order = course_submit_order()
         from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
         pending, done = {}, {}
         with ThreadPoolExecutor(max_workers=workers,
                                 thread_name_prefix='course') as ex:
-            for c in order:
+            rest = list(order)
+            for c in rest[:workers]:
                 pending[ex.submit(self.run_one_course, c, host_bam)] = c
+            rest = rest[workers:]
             aloha_done = 'aloha' not in order
             while pending:
                 finished, _ = wait(list(pending), return_when=FIRST_COMPLETED)
@@ -557,6 +563,9 @@ class Build:
                     aloha_done = True
                     pending[ex.submit(self.run_one_course, 'mesa',
                                       host_bam)] = 'mesa'
+                while rest and len(pending) < workers:
+                    c = rest.pop(0)
+                    pending[ex.submit(self.run_one_course, c, host_bam)] = c
         print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
 
     def resume_worlds(self, reuse):

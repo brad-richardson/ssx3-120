@@ -43,6 +43,12 @@ class SubmitOrderTest(unittest.TestCase):
         weights = [bt.SUBMIT_WEIGHTS[c] for c in order]
         self.assertEqual(weights, sorted(weights, reverse=True))
 
+    def test_initial_trio_is_longest(self):
+        # Gated feeding submits workers-many jobs up front; the first
+        # trio must be the three longest so no worker idles early.
+        self.assertEqual(bt.course_submit_order()[:3],
+                         ['gari', 'merq', 'aloha'])
+
     def test_serial_path_keeps_canonical_order(self):
         # The serial exact path still iterates BUILD_COURSES itself;
         # only the pool branch calls course_submit_order().
