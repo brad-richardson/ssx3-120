@@ -51,6 +51,39 @@ class SubmitOrderTest(unittest.TestCase):
         self.assertIn('course_submit_order()', src)
 
 
+class MegaSkipTest(unittest.TestCase):
+    def _build(self, tmp):
+        import argparse
+        import os
+        a = argparse.Namespace(
+            tricky_iso='/none/Tricky.iso', ssx3_iso='/none/SSX3.iso',
+            work=os.path.join(tmp, 'w'), routes_ref_dir=None)
+        return bt.Build(a)
+
+    def test_mega_missing_final_is_skip(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            b = self._build(tmp)
+            with mock.patch.object(bt, 'run', return_value=None):
+                status, key, _msg = b.run_one_course(
+                    'mega', b.W / 'host-bam' / 'BAM.BIG')
+                self.assertEqual((status, key), ('skip', 'mega'))
+
+    def test_mega_present_final_is_ok(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            b = self._build(tmp)
+            p, _want = b.world_final_path('mega')
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b'fake-final')
+            with mock.patch.object(bt, 'run', return_value=None):
+                self.assertEqual(
+                    b.run_one_course('mega', b.W / 'host-bam' / 'BAM.BIG'),
+                    ('ok', 'mega', ''))
+
+
 class BudgetTest(unittest.TestCase):
     def test_inner_within_cores(self):
         import os

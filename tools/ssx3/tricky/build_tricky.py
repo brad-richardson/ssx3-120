@@ -456,6 +456,16 @@ class Build:
             if 'gc-resets-missing' in str(e):
                 return ('skip', f'resets-{c}', f'no GameCube donor: {e}')
             return ('fail', c, str(e))
+        if c == 'mega':
+            # Skip-with-record (tk-nogc-1): the chain exits 0 without a
+            # routes final when there is no verified routes base; keep
+            # the loud skip instead of gating a file that was never
+            # produced (r13: world_final crashed on w-mega-routes).
+            p, _want = self.world_final_path(c)
+            if not p.is_file():
+                return ('skip', 'mega',
+                        'no verified routes base (skip-with-record; see '
+                        f'{self.logs}/world-mega.log)')
         return ('ok', c, '')
 
     def phase_worlds(self):
