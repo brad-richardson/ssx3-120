@@ -169,6 +169,54 @@ class AppLabelTest(unittest.TestCase):
         self.assertIn('--app-label', source)
 
 
+class AndroidReceiptTest(unittest.TestCase):
+    """G6 (public-parity-2): the Android build writes a receipt recording the
+    effective microVU/GE1 library SHAs, Turnip inclusion, PGO profile and
+    preset SHAs."""
+
+    def test_receipt_records_effective_inputs(self):
+        import json as jsonlib
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            jni = work / 'jniLibs'
+            (jni / 'arm64-v8a').mkdir(parents=True)
+            (jni / 'arm64-v8a' / 'libmv2_microvu.so').write_bytes(b'mv2')
+            (jni / 'arm64-v8a' / 'libge1_gs.so').write_bytes(b'gs')
+            (work / 'android-resources').mkdir()
+            a = types.SimpleNamespace(work=work, jnilibs=jni, ndk=None,
+                                      prebuilt=False, prebuilt_cache=None,
+                                      no_turnip=True, app_id=build.PUBLIC_APP_ID,
+                                      app_label=None, jobs=2, pgo_profile=None,
+                                      no_pgo=True)
+            seen = {}
+
+            def fake_run(*args, **kwargs):
+                seen['args'] = list(map(str, args))
+            with patch.object(build, 'ensure_android_toolchain'), \
+                 patch.object(build, 'support_bundle', return_value=None), \
+                 patch.object(build, 'android_libs'), \
+                 patch.object(build, 'ensure_keystore', return_value=work / 'k'), \
+                 patch.object(build, 'next_version_code', return_value=1), \
+                 patch.object(build, 'resolve_vu0_stage', return_value=str(work / 'vu0')), \
+                 patch.object(build, 'run', side_effect=fake_run):
+                build.android(a)
+            receipt = jsonlib.loads((work / 'android-app.json').read_text())
+            self.assertEqual(receipt['app_id'], build.PUBLIC_APP_ID)
+            self.assertEqual(receipt['app_label'], 'SSX3 120')
+            self.assertEqual(receipt['microvu_lib_sha256'], build.sha(
+                jni / 'arm64-v8a' / 'libmv2_microvu.so'))
+            self.assertEqual(receipt['ge1_lib_sha256'], build.sha(
+                jni / 'arm64-v8a' / 'libge1_gs.so'))
+            self.assertFalse(receipt['turnip_included'])
+            self.assertIsNone(receipt['turnip_binary_sha256'])
+            self.assertIsNone(receipt['pgo_profile'])
+            self.assertEqual(receipt['preset_sha256'],
+                             build.sha(build.ROOT / 'presets/ps2x.env'))
+            self.assertEqual(receipt['ge1_vendor'], build.ANDROID_GE1_VENDOR_PIN)
+            gradle_args = seen['args']
+            self.assertIn('-Pps2xAppLabel=SSX3 120', gradle_args)
+
+
 class OneCommandOrderTest(unittest.TestCase):
     def run_onecmd(self, current, install=False):
         with tempfile.TemporaryDirectory() as tmp:

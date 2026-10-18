@@ -10,8 +10,8 @@ README.md	authored:readme	-	ef0d0a7f644b1f26628dfb83631688a4f81e8c1ffcc97c075798
 SOURCE_PROVENANCE.md	authored:provenance	-	0a8b8ca89a206a84e9ee3f87285d1579a13c0d38e98b249f9553261ea0311759	8746	new
 THIRD_PARTY_NOTICES.md	authored:notices	-	bbe79b32bfc10b74cf600e0c9fbbc8c47bedca1eb19ad48673429ae6c35641ac	4480	new
 apps/android/README.md	fork@f7a96f23	android/README.md	b9306de582f19343587c3209ea97c1ad3032807ba93d5a158814c45c953b81bc	6974	composition:product-paths-and-host-support
-apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	e56dde20a18469054a8cf2fcf5ef6ff12ce8dd8fcb7f0dd59f7a55d7e3754828	9874	composition:explicit-engine-cmake-path+public-parity-2-g7-app-label
-apps/android/app/src/main/AndroidManifest.xml	fork@f7a96f23	android/app/src/main/AndroidManifest.xml	9edf286d0df2c94791c055171caabbdacfa4972c1f54ee8894f11ad6ae4d7759	3645	composition:android-internet-permission+public-parity-2-g7-app-label
+apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	e0184e0fab8b10a6b9fd494724ceb453616abbc1df41720aae12e3eb58eb94b5	10316	composition:explicit-engine-cmake-path+public-parity-2-g7-app-label
+apps/android/app/src/main/AndroidManifest.xml	fork@f7a96f23	android/app/src/main/AndroidManifest.xml	7642f77caffd92b5eb4ffba2d3d07269d99949b560f235e2f8493af8a0a81330	3851	composition:android-internet-permission+public-parity-2-g7-app-label
 apps/android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	204d91a8305680926db893565968c4891400f836fbc6d7218186344a2353af7f	3634	verbatim
 apps/android/app/src/main/java/com/ps2x/runner/RunnerApplication.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/RunnerApplication.java	d1f28aed576a66dd4236c590e69de85f29ddb4684f63c1967bc65a0c000d873a	7621	composition:appsec-fix-1-internal-secret-dir
 apps/android/app/src/main/java/com/ps2x/runner/Set2Relaunch.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/Set2Relaunch.java	4b9acedeb4096ec933490ce387811c8e9623e7ba91c25d01e34a67bf92cb33d4	1065	verbatim
@@ -76,8 +76,8 @@ infra/rollback-lobby-mcomm.sh	infra-staged	public-infra/rollback-lobby-mcomm.sh	
 justfile	authored:builder-ux-1	-	e406934788f295dd6c5fcfa7ad72cea3cc26fc3ac64d3e8b0257e331400bd324	618	new
 presets/full120-ios.env	fork@f7a96f23	tools/ssx3/presets/full120-ios.env	78405b44674f0c8671bc21916ffbe294b7dce26f01acbf66eff6fa026a0b3101	389	composition:synced-engine-fix-list
 presets/full120.env	fork@f7a96f23	tools/ssx3/presets/full120.env	49a78599d7c35c5e1485dd0291566b2126befe74cc39ef04d1c503ac8524704a	541	verbatim
-presets/ios.env	fork@f7a96f23	tools/ssx3/presets/ios.env	fee15f4a5e2e909ca06b5a69438ae40b76c295b3744e5e157ed39b9b436952bf	3547	composition:reconciled-signed-off-play-keys+public-parity-2-g3-tier-resolution
-presets/ps2x.env	fork@5235b114	tools/ssx3/presets/ps2x.env	4890b866e039614cceb97ab0d297bfe6ed087ef37cf233a9e6a1b98be3d8cac8	2531	composition:reconciled-signed-off-play-keys
+presets/ios.env	fork@f7a96f23	tools/ssx3/presets/ios.env	83ec50eb8078d1fbb5692820a9b5eaa8bc0b9ff25e577e3d899f392bc745c130	3573	composition:reconciled-signed-off-play-keys+public-parity-2-g3-tier-resolution
+presets/ps2x.env	fork@5235b114	tools/ssx3/presets/ps2x.env	460eb43a53180c956faf57ebbd452d56bc82e502b4865a5753c3401bec3ffcf9	2828	composition:reconciled-signed-off-play-keys+public-parity-2-g6-blendconst
 presets/online.env	authored:online	-	ddf104ade4449bdaa0b7bd3f962dafbd20c693bc2d5c4cef28b30ee0f236a259	382	new
 tests/det/README.md	authored:gate-docs	-	fbd2689ec58cd135e88daed346063e09bdc15ac77580cf17ae92621db33add75	2929	new
 tests/det/boot/baseline.py	lab@ed718e09	local/tooling/boot/baseline.py	d1b7fb9849051592771701513f68cc967691442f96235695af484d41f3743a42	39073	composition:generalized-key-store
@@ -122,7 +122,7 @@ tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
 tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	d4647f70eef0e68bf2ed306afbcb4a2836b0bcfd3a11549763da2715b51c95c3	24791	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	3faa5e2bb91ceb99059005c1f936832564e1f3d900873a29029bad8655d19798	159067	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1+public-parity-2-g7-app-label+g9-ios-preset-name
+tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	f14d8b98432dc2162da4ba5a5fd73ac6710755096260fff98960ef6fcd46eaef	168050	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1+public-parity-2-g7-app-label+g9-ios-preset-name+g6-android-receipt
 tools/ssx3/build.py.lock	authored:tk-toolchain-1	-	da63d38c6e2aa2dcdad4473445f246b9df04ab6709ecb53799233e238e468bf1	11292	new
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
@@ -139,7 +139,7 @@ tools/ssx3/prebuilt.py	fork@b9bf530a	tools/ssx3/prebuilt.py	f111d5937aee42c45ae6
 tools/ssx3/remaster_font.py	fork@f7a96f23	tools/ssx3/remaster_font.py	c8ad4cf729002ff19a2671eb93f1a77d243d22964c039e68be6baecb2f199366	14254	verbatim
 tools/ssx3/test_prebuilt.py	fork@b9bf530a	tools/ssx3/test_prebuilt.py	45508b4fa21d716e794c58c94b7e5f21daa0619f7abc3ef5b1107381867c4f5f	23276	composition:contract-tests-read-the-engine-checkout
 tools/ssx3/tests/test_android_source_default.py	fork@5235b114	tools/ssx3/tests/test_android_source_default.py	3c8d58dbcff4bb1ddabcd4f3265c836aa47919c9abe572dadb7edcbf9f48649f	2538	verbatim
-tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	548d69fab8ec4b59d77015cb4220c7fc6a0c855dc22c6445cfd3bdd94fdc2e34	9696	new
+tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	2426b5e83d2d8efc995319d623479d920675c8d8a7dabc420512744e8cdb2873	14181	new
 tools/ssx3/tests/test_public_install_stage.py	fork@f7a96f23	tools/ssx3/tests/test_public_install_stage.py	813fa2b912e0a259226f2451fdac0206f4f974c17b7b3f56dae553f830d66fe5	3715	composition:product-apps-layout-apk-path
 tools/ssx3/tests/test_remaster_font.py	fork@f7a96f23	tools/ssx3/tests/test_remaster_font.py	618c6f3e7df4c5cebb3909cc157f255295c9cda081cb6bc31dcac88d8996b43c	7875	verbatim
 tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a7525057ba5003705f95729d5d273d3ba8c8b43634672822525b8d3a5f3a2368	1242	verbatim
@@ -160,7 +160,7 @@ tools/ssx3/write_prewarm.py	fork@f7a96f23	tools/ssx3/write_prewarm.py	7aef838b42
 tools/ssx3_codegen_scan.py	fork@f7a96f23	tools/ssx3_codegen_scan.py	de2ca1d0978856720ea1a06d0b7b66b5a97f52561a7af95889063ab644ffe8ce	7250	verbatim
 tools/ssx3/pgo/android/MANIFEST.json	authored:pgo-public-1	-	210b5a831e6b20bab9e50f1caa3b89d0a075161f4b0be98deb65333fbdad8fd6	1501	new
 tools/ssx3/pgo/android/profile.profdata.gz	lab-pgo:pb58	-	f7c8eecf60d416b2145e977660aca8b7fa16c2e5943b2e7ac1ac35a9007a46bc	1734322	new
-tools/ssx3/pgo/ios/MANIFEST.json	authored:pgo-public-1	-	4be0b6ad8b9b78e35ca86e4a98700fc0bdc4c8b29fde9764853083348fb9580f	1850	new
+tools/ssx3/pgo/ios/MANIFEST.json	authored:pgo-public-1	-	6e65bbe0585eeafee00b494cfca320d0192f2945e7d35cd35e8beca12ef238e1	1847	new
 tools/ssx3/pgo/ios/profile.profdata.gz	lab-pgo:ipb30	-	c89faf19a4a69a8f3ab4d823e0efd3644cb4731ebea06a3705e5ef3e370b0bdc	1639399	new
 tools/ssx3/tests/test_pgo.py	authored:pgo-public-1	-	6437270518e75fedbecfb2995e0d866e07b709f21a18a5d00eac71f37dc61ac3	8675	new
 tools/ssx3/tests/test_ios_flags.py	authored:pgo-public-1	-	67e241a477acf3d77e759d069dc1eab603a73210e3269318e6c16bd5fad8e693	8915	new

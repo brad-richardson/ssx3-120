@@ -948,6 +948,36 @@ def resolve_pgo(work, platform, explicit=None, disabled=False):
     return str(dest)
 
 
+def write_android_receipt(a, version_code, pgo_data, turnip_included, jnilibs):
+    """Record the effective Android build inputs (G6 public-parity-2).
+
+    The receipt names the app id/label, version, engine + GE1 vendor pins,
+    staged microVU/GE1 library SHAs, whether the pinned Turnip driver was
+    bundled (plus its SHA), the applied PGO profile (or null), and the
+    shipped preset SHAs — so a release receipt proves V37/microVU/PGO are
+    actually in the APK instead of silently fallen back."""
+    turnip = json.loads((ROOT / 'tools/ssx3/turnip.json').read_text())
+    libs = Path(jnilibs)
+    def lib_sha(name):
+        p = libs / 'arm64-v8a' / name
+        return sha(p) if p.is_file() else None
+    engine_head = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
+                                          text=True).strip()
+    (a.work / 'android-app.json').write_text(json.dumps({
+        'app_id': a.app_id, 'app_label': resolve_app_label(a),
+        'version_code': version_code, 'engine': engine_head,
+        'ge1_vendor': ANDROID_GE1_VENDOR_PIN,
+        'microvu_lib_sha256': lib_sha('libmv2_microvu.so'),
+        'ge1_lib_sha256': lib_sha('libge1_gs.so'),
+        'turnip_included': turnip_included,
+        'turnip_binary_sha256': turnip['binary']['sha256'] if turnip_included else None,
+        'pgo_profile': pgo_data or None,
+        'preset_sha256': sha(ROOT / 'presets/ps2x.env'),
+        'full120_sha256': sha(ROOT / 'presets/full120.env')},
+        indent=2, sort_keys=True) + '\n')
+    print('Wrote Android build receipt ' + str(a.work / 'android-app.json'))
+
+
 def android(a):
     ensure_android_toolchain(a)
     bundle = support_bundle(a)
@@ -977,6 +1007,7 @@ def android(a):
     notices_dir.mkdir(parents=True, exist_ok=True)
     if bundle is not None:
         shutil.copytree(bundle / 'notices', notices_dir / 'third_party/support', dirs_exist_ok=True)
+    turnip_included = False
     if a.no_turnip:
         turnip_path.unlink(missing_ok=True)
         print('Turnip disabled by --no-turnip; system Vulkan driver will be used.')
@@ -1014,6 +1045,7 @@ def android(a):
                 z.extractall(notices_dir / 'third_party/turnip')
             turnip_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(binary, turnip_path)
+            turnip_included = True
             print('Turnip included (SHA-256 ' + manifest['binary']['sha256'] + ').')
         except (OSError, ValueError, zipfile.BadZipFile) as e:
             turnip_path.unlink(missing_ok=True)
@@ -1042,6 +1074,7 @@ def android(a):
         '-Pps2xKeyPassword=' + SIGNING_PASSWORD,
         '--max-workers=' + str(a.jobs))
     (a.work / 'app-id.txt').write_text(a.app_id + '\n')
+    write_android_receipt(a, version_code, pgo_data, turnip_included, jnilibs)
 
 
 def source(url, revision, destination):
