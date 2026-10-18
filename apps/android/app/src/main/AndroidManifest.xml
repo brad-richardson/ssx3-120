@@ -8,7 +8,7 @@
 
     <application
         android:name=".RunnerApplication"
-        android:label="PS2 Recomp"
+        android:label="${ps2xAppLabel}"
         android:hasCode="true"
         android:isGame="true"
         android:appCategory="game">

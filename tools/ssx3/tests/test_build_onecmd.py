@@ -137,6 +137,38 @@ class ResumeTest(unittest.TestCase):
             self.assertTrue(build.android_libs_current(work))
 
 
+class AppLabelTest(unittest.TestCase):
+    """G7 (public-parity-2): --app-label sets the home-screen name on both
+    platforms; product ids default to 'SSX3 120', test ids to 'SSX3 120 Test'."""
+
+    def test_product_ids_default_to_ssx3_120(self):
+        self.assertEqual(build.default_app_label(build.PUBLIC_APP_ID), 'SSX3 120')
+        self.assertEqual(build.default_app_label(build.PLAY_APP_ID), 'SSX3 120')
+
+    def test_test_id_defaults_to_distinguishable_label(self):
+        self.assertEqual(build.default_app_label('com.ssx3.test'), 'SSX3 120 Test')
+
+    def test_explicit_label_wins_over_default(self):
+        args = types.SimpleNamespace(app_id=build.PUBLIC_APP_ID, app_label='Custom Name')
+        self.assertEqual(build.resolve_app_label(args), 'Custom Name')
+        args = types.SimpleNamespace(app_id='com.ssx3.test', app_label=None)
+        self.assertEqual(build.resolve_app_label(args), 'SSX3 120 Test')
+
+    def test_android_shell_carries_label_placeholder(self):
+        manifest = (ROOT / 'apps/android/app/src/main/AndroidManifest.xml').read_text()
+        self.assertIn('${ps2xAppLabel}', manifest)
+        gradle = (ROOT / 'apps/android/app/build.gradle').read_text()
+        self.assertIn("def ps2xAppLabel = project.findProperty('ps2xAppLabel')", gradle)
+        self.assertIn("'SSX3 120'", gradle)
+        self.assertIn('manifestPlaceholders = [ps2xAppLabel: ps2xAppLabel]', gradle)
+
+    def test_builder_passes_label_to_both_platforms(self):
+        source = (HERE / 'build.py').read_text()
+        self.assertIn("'-Pps2xAppLabel='", source)
+        self.assertIn("'-DPS2X_APP_DISPLAY_NAME='", source)
+        self.assertIn('--app-label', source)
+
+
 class OneCommandOrderTest(unittest.TestCase):
     def run_onecmd(self, current, install=False):
         with tempfile.TemporaryDirectory() as tmp:

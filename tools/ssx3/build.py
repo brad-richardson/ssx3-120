@@ -59,6 +59,25 @@ ISO_SHA = '3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5'
 ELF_SHA = '1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc'
 PUBLIC_APP_ID = 'com.ssx3.recomp'
 PLAY_APP_ID = 'com.ps2x.runner'
+APP_LABEL_DEFAULT = 'SSX3 120'
+APP_LABEL_TEST_DEFAULT = 'SSX3 120 Test'
+
+
+def default_app_label(app_id):
+    """Home-screen name for an app id (odin-testapp-1 addendum 2, G7).
+
+    Product ids show 'SSX3 120'; lab/test ids get a distinguishable
+    'SSX3 120 Test' so two installs never look identical. Mirrors the
+    engine's -Pps2xAppLabel gradle default and PS2X_APP_DISPLAY_NAME cache
+    default; --app-label overrides on both platforms."""
+    return APP_LABEL_DEFAULT if app_id in (PUBLIC_APP_ID, PLAY_APP_ID) else APP_LABEL_TEST_DEFAULT
+
+
+def resolve_app_label(a):
+    label = getattr(a, 'app_label', None)
+    if label:
+        return label
+    return default_app_label(getattr(a, 'app_id', PUBLIC_APP_ID))
 SECTOR = 2048
 SLIM_MAGIC = b'PS2XSLM2'
 MOVIE_PREFIX_SECTORS = 512  # 1 MiB; observed reads end by sector 272.
@@ -1012,6 +1031,7 @@ def android(a):
         '-Pps2xDev=' + ('ON' if getattr(a, 'dev', False) else 'OFF'),
         '-Pps2xPgoData=' + pgo_data, '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
         '-Pps2xAppId=' + a.app_id,
+        '-Pps2xAppLabel=' + resolve_app_label(a),
         '-Pps2xPrebuiltDir=' + (str(bundle) if bundle else ''),
         '-Pps2xJobs=' + str(a.jobs),
         '-Pps2xNativeBuildDir=' + str(a.work / 'android-native-build'),
@@ -2408,7 +2428,7 @@ def ios(a):
     bundle_id = check_bundle_id(getattr(a, 'bundle_id', None) or default_bundle_id(team))
     if a.dry_run:
         print('Would build the iOS app (no Xcode, no device touched):')
-        print('  team ' + team + ', bundle id ' + bundle_id)
+        print('  team ' + team + ', bundle id ' + bundle_id + ', app label ' + resolve_app_label(a))
         print('  engine ' + str(ENGINE))
         print('  GE1 vendor ' + GE1_VENDOR_REPO + ' @ ' + GE1_VENDOR_SHORT)
         print('  OM1 vendor ' + OM1_VENDOR_REPO + ' @ ' + OM1_VENDOR_SHORT)
@@ -2472,6 +2492,7 @@ def ios(a):
             '-DPS2X_VU0_RECOMP_DIR=' + resolve_vu0_stage(a),
             '-DCMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER=' + bundle_id,
             '-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=' + team,
+            '-DPS2X_APP_DISPLAY_NAME=' + resolve_app_label(a),
             '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic')
         run('cmake', '--build', build_dir, '--config', 'Release',
             '--target', 'ps2EntryRunner', '--', '-jobs', str(a.jobs))
@@ -2529,7 +2550,7 @@ def ios(a):
     subprocess.run(['find', str(app), '-name', '._*', '-delete'], check=False)
     identity = sign_staged_app(a.work, app, team, bundle_id, dev=getattr(a, 'dev', False))
     (a.work / 'ios-app.json').write_text(json.dumps({
-        'team': team, 'bundle_id': bundle_id, 'identity': identity,
+        'team': team, 'bundle_id': bundle_id, 'app_label': resolve_app_label(a), 'identity': identity,
         'engine': subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
                                           text=True).strip(),
         'ge1_vendor': GE1_VENDOR_PIN, 'om1_vendor': receipt.get('om1_vendor'),
@@ -3315,6 +3336,8 @@ def main():
                    help='tricky step audio phases (need local ffmpeg + vgmstream): '
                         'on fails without them, off skips them, auto runs them when present')
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
+    p.add_argument('--app-label', default=None,
+                   help="home-screen name for android and ios (default: 'SSX3 120' for product ids, 'SSX3 120 Test' otherwise)")
     p.add_argument('--dev', action='store_true',
                    help='lab/dev build: keep get-task-allow (iOS), debuggable + shell-profileable (Android)')
     p.add_argument('--engine', type=Path, default=None,
@@ -3345,6 +3368,8 @@ def main():
         p.error('--jobs must be 1..16')
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+', a.app_id):
         p.error('--app-id must be a dotted Android application id')
+    if a.app_label is not None and not a.app_label.strip():
+        p.error('--app-label must be a non-empty display name')
     if a.tricky_iso:
         validate_tricky_iso(a.tricky_iso)
     if a.step == 'android' and a.ssx3_iso:
