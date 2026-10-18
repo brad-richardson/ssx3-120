@@ -426,6 +426,12 @@ class IosTfxStagingTest(unittest.TestCase):
                                   om1_stage=None, bundle_id=None, device=None)
         with patch.object(build, 'ios_libs_current', return_value=True), \
              patch.object(build, 'ensure_ios_om1_stage', return_value=work / 'om1stage'), \
+             patch.object(build, 'xcrun_llvm',
+                          return_value=('/fake/clang', '/fake/clang++')), \
+             patch.object(build, 'ios_build_versions', return_value={
+                 'c_compiler': '/fake/clang', 'cxx_compiler': '/fake/clang++',
+                 'c_compiler_version': 'Apple clang 21', 'xcode_version': 'Xcode 27.0',
+                 'iphoneos_sdk_version': '27.0'}), \
              patch.object(build, 'sign_staged_app', return_value='fake-id'), \
              patch.object(build, 'verified_disc_payload',
                           return_value=[(work / 'SLUS_207.72', 'SLUS_207.72'),
