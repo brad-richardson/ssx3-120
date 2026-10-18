@@ -2939,9 +2939,11 @@ def stage(a):
     tricky_staged, tricky_trees = stage_tricky(a, files)
     # Layer activation (astra-config-audit-1 item 6): the staged tricky.env
     # is never loaded by the normal entrypoints (they layer only the base
-    # env), so merge its rows into the staged base. Stock (no layer) is
-    # untouched: no Tricky rows, no picker.
-    activate_tricky_env(files / 'ps2x.env', files / 'tricky.env')
+    # env), so merge its rows into the staged base. Record-gated (not
+    # file-gated) so a stale staged copy without a record stays inert.
+    # Stock (no record) is untouched: no Tricky rows, no picker.
+    if tricky_record(a.work) is not None:
+        activate_tricky_env(files / 'ps2x.env', files / 'tricky.env')
     apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
     print('Staged device layout in ' + str(files))
     if a.step != 'stage':

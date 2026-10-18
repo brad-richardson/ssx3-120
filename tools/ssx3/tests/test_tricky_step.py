@@ -1430,6 +1430,18 @@ class StageActivateTest(unittest.TestCase):
             for key in ActivateTrickyEnvTest.LAYER_KEYS:
                 self.assertNotIn(key, env)
 
+    def test_stage_ignores_a_stale_tricky_env_without_a_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            (work / 'app-id.txt').write_text('com.example.game\n')
+            (work / 'android-resources').mkdir()
+            args = tricky_args(work, app_id='com.example.game', step='stage')
+            files = build.stage(args)
+            (files / 'tricky.env').write_text('PS2X_SSX3_COURSE_PICKER=1\n')
+            files2 = build.stage(args)
+            env = (files2 / 'ps2x.env').read_text()
+            self.assertNotIn('PS2X_SSX3_COURSE_PICKER=', env)
+
 
 class StageIosTrickyTest(unittest.TestCase):
     def ios_layer_source(self, tmp, iso_digest, audio='off'):
