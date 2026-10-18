@@ -280,6 +280,45 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class EnginePinTest(unittest.TestCase):
+    """F20: missing/stale submodules fail with the recovery command."""
+
+    def test_missing_submodule_names_the_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ok, detail = build.engine_status(Path(tmp) / 'empty-engine')
+            self.assertFalse(ok)
+            self.assertIn('git submodule update --init -- deps/PS2Recomp', detail)
+
+    def test_valid_engine_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'engine'
+            (root / 'ps2xRuntime').mkdir(parents=True)
+            (root / 'ps2xRuntime/CMakeLists.txt').write_text('# fake\n')
+            self.assertTrue(build.engine_status(root)[0])
+
+    def test_matching_pin_passes(self):
+        self.assertIsNone(build.engine_pin_error(build.ENGINE))
+
+    def test_mismatched_pin_names_the_recovery(self):
+        with patch.object(build.subprocess, 'check_output', return_value='0' * 40):
+            error = build.engine_pin_error(build.ENGINE)
+        self.assertIn('engine pin mismatch', error)
+        self.assertIn('git submodule update -- deps/PS2Recomp', error)
+
+    def test_parser_reports_missing_submodule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [sys.executable, HERE / 'build.py', 'doctor', '--target', 'android',
+                 '--engine', str(Path(tmp) / 'empty-engine')],
+                capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn('git submodule update --init -- deps/PS2Recomp', proc.stderr)
+
+    def test_gradle_route_guards_the_submodule(self):
+        text = (ROOT / 'apps/android/app/build.gradle').read_text()
+        self.assertIn('git submodule update --init -- deps/PS2Recomp', text)
+
+
 class DryRunGateTest(unittest.TestCase):
     """F06: the first iOS dry-run works before prepare."""
 

@@ -2857,6 +2857,41 @@ def resolve_adb(a):
     return str(adb)
 
 
+def engine_status(engine_root):
+    """F20: engine checkout diagnosis. Returns (ok, detail)."""
+    if (Path(engine_root) / 'ps2xRuntime/CMakeLists.txt').is_file():
+        return True, str(engine_root)
+    if (ROOT / '.gitmodules').is_file():
+        return False, ('engine submodule missing (no ps2xRuntime/CMakeLists.txt under ' +
+                       str(engine_root) + '): run `git submodule update --init -- deps/PS2Recomp` '
+                       'from the checkout root, then retry')
+    return False, ('--engine must point at the pinned PS2Recomp checkout '
+                   '(missing ps2xRuntime/CMakeLists.txt): ' + str(engine_root))
+
+
+def engine_pin_error(engine_root):
+    """F20: default-engine HEAD vs deps.lock.json pin. Error text or None.
+
+    A stale engine after `git pull` used to build despite the lock
+    mismatch (only CMake guarded it). Explicit --engine checkouts stay
+    the caller's responsibility.
+    """
+    try:
+        want = json.loads((ROOT / 'deps.lock.json').read_text())['engine']['pin']
+    except (OSError, ValueError, KeyError):
+        return None
+    try:
+        actual = subprocess.check_output(['git', '-C', str(engine_root), 'rev-parse', 'HEAD'],
+                                         text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return 'cannot read engine HEAD in ' + str(engine_root)
+    if actual != want:
+        return ('engine pin mismatch: have ' + actual[:12] + ', want ' + want[:12] +
+                ' (deps.lock.json); run `git submodule update -- deps/PS2Recomp` '
+                'from the checkout root, then retry')
+    return None
+
+
 def check_device_flags(step, device, serial):
     """F11: --serial is Android-only, --device is iOS-only. Returns the
     p.error message, or None when the combination is valid."""
@@ -3763,8 +3798,13 @@ def main():
     global ENGINE
     if a.engine is not None:
         ENGINE = a.engine.resolve()
-    if not (ENGINE / 'ps2xRuntime/CMakeLists.txt').is_file():
-        p.error('--engine must point at the pinned PS2Recomp checkout (missing ps2xRuntime/CMakeLists.txt): ' + str(ENGINE))
+    ok, detail = engine_status(ENGINE)
+    if not ok:
+        p.error(detail)
+    if a.engine is None:
+        pin_error = engine_pin_error(ENGINE)
+        if pin_error:
+            p.error(pin_error)
     actual_engine = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'], text=True).strip()
     print('engine: ' + str(ENGINE) + ' @ ' + actual_engine)
     if a.step == 'doctor':

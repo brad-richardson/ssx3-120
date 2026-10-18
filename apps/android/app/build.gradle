@@ -68,6 +68,12 @@ def ps2xKeyPassword = project.findProperty('ps2xKeyPassword') ?: ''
 // tools/ssx3/build.py. The default keeps direct Gradle invocations working
 // from this tree layout (apps/android/app -> product deps/PS2Recomp).
 def ps2xEngineCMakeLists = project.findProperty('ps2xEngineCMakeLists') ?: '../../../deps/PS2Recomp/CMakeLists.txt'
+// F20: the Gradle route bypasses the CMake pin guard, so a missing or stale
+// submodule fails here with the recovery command instead of a generic
+// file-not-found deep in the native build.
+if (!file(ps2xEngineCMakeLists).exists()) {
+    throw new GradleException("engine submodule missing (${ps2xEngineCMakeLists} not found): run `git submodule update --init -- deps/PS2Recomp` from the checkout root, then retry")
+}
 def ps2xAppId = project.findProperty('ps2xAppId') ?: (ps2xKeystoreFile ? 'com.ssx3.recomp' : 'com.ps2x.runner')
 // public-parity-2 G7 (odin-testapp-1 addendum 2): the product display name is
 // 'SSX3 120'. -Pps2xAppLabel overrides; otherwise test ids default to a
