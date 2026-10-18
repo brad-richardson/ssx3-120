@@ -302,6 +302,76 @@ class DryRunGateTest(unittest.TestCase):
         self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
 
 
+class InstallDeviceTest(unittest.TestCase):
+    """F14: --install discovers its target in the doctor, not after the build."""
+
+    def collect(self, func, *args):
+        seen = []
+        func(*args, lambda label, ok, detail, fix: seen.append((label, ok, detail)))
+        return {label: (ok, detail) for label, ok, detail in seen}
+
+    def android_args(self, **over):
+        base = dict(work=None, serial=None, install=True)
+        base.update(over)
+        return types.SimpleNamespace(**base)
+
+    def test_single_ready_device_passes(self):
+        args = self.android_args()
+        listing = 'List of devices attached\nXYZ123\tdevice\n'
+        with patch.object(build, 'resolve_adb', return_value='/sdk/adb'), \
+             patch.object(build, 'probe', return_value=(True, listing)):
+            got = self.collect(build.check_install_device, args)
+        self.assertEqual(got['Android device'], (True, 'XYZ123'))
+
+    def test_no_device_fails_with_the_fix(self):
+        args = self.android_args()
+        with patch.object(build, 'resolve_adb', return_value='/sdk/adb'), \
+             patch.object(build, 'probe', return_value=(True, 'List of devices attached\n\n')):
+            got = self.collect(build.check_install_device, args)
+        self.assertFalse(got['Android device'][0])
+        self.assertIn('no Android device', got['Android device'][1])
+
+    def test_unauthorized_device_names_trust(self):
+        args = self.android_args()
+        listing = 'List of devices attached\nXYZ123\tunauthorized\n'
+        with patch.object(build, 'resolve_adb', return_value='/sdk/adb'), \
+             patch.object(build, 'probe', return_value=(True, listing)):
+            got = self.collect(build.check_install_device, args)
+        self.assertFalse(got['Android device'][0])
+        self.assertIn('unauthorized', got['Android device'][1])
+
+    def test_several_devices_require_serial(self):
+        args = self.android_args()
+        listing = 'List of devices attached\nAAA\tdevice\nBBB\tdevice\n'
+        with patch.object(build, 'resolve_adb', return_value='/sdk/adb'), \
+             patch.object(build, 'probe', return_value=(True, listing)):
+            got = self.collect(build.check_install_device, args)
+        self.assertFalse(got['Android device'][0])
+        self.assertIn('several', got['Android device'][1])
+
+    def test_named_serial_must_be_connected(self):
+        args = self.android_args(serial='ZZZ')
+        listing = 'List of devices attached\nAAA\tdevice\n'
+        with patch.object(build, 'resolve_adb', return_value='/sdk/adb'), \
+             patch.object(build, 'probe', return_value=(True, listing)):
+            got = self.collect(build.check_install_device, args)
+        self.assertFalse(got['Android device'][0])
+        self.assertIn('ZZZ', got['Android device'][1])
+
+    def test_ios_install_resolves_the_default_device(self):
+        listing = '* 00008110-001A2B3C4D5E6F70 (UDID) connected physical\n'
+        args = types.SimpleNamespace(device=None, install=True, team=None)
+        with patch.object(build, 'devicectl_devices', return_value=(True, listing)):
+            got = self.collect(build.doctor_ios, args)
+        self.assertTrue(got['iOS device'][0])
+
+    def test_ios_install_without_device_fails_early(self):
+        args = types.SimpleNamespace(device=None, install=True, team=None)
+        with patch.object(build, 'devicectl_devices', return_value=(True, 'no devices\n')):
+            got = self.collect(build.doctor_ios, args)
+        self.assertFalse(got['iOS device'][0])
+
+
 class IsoPreflightTest(unittest.TestCase):
     """F12: disc identity and host tools precede any toolchain download."""
 

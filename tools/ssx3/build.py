@@ -243,6 +243,9 @@ def doctor(a):
         for tool in ('make', 'bison', 'flex'):
             ok, detail = probe([tool, '--version'])
             check(tool, ok, detail.splitlines()[0] if detail else 'missing', packages)
+        # F14: --install discovers its target here, not after the build.
+        if getattr(a, 'install', False):
+            check_install_device(a, check)
         # F01: the install step shells adb, so the doctor checks it the
         # same way install resolves it (managed SDK platform-tools first,
         # then the selected SDK, then PATH) and fails with the fix.
@@ -1605,6 +1608,15 @@ def doctor_ios(a, check):
             check('iOS device', False, str(error),
                   'connect the device over USB, trust the computer, and pass its UDID '
                   '(xcrun devicectl list devices)')
+    elif getattr(a, 'install', False):
+        # F14: default --install resolves its target here, not at install time.
+        try:
+            found = resolve_device(None, for_install=True)
+            check('iOS device', True, found, '')
+        except ValueError as error:
+            check('iOS device', False, str(error),
+                  'connect one device over USB, trust the computer, enable '
+                  'Developer Mode, and list it with (xcrun devicectl list devices)')
 
 
 def pin_ios_deps(deps_root):
@@ -2805,6 +2817,60 @@ def needs_prepare(step, dry_run):
     which lists the prepared payload) still requires prepare first.
     """
     return step != 'prepare' and step != 'tricky' and not (step == 'ios' and dry_run)
+
+
+def check_install_device(a, check):
+    """F14: early install-target check for Android --install.
+
+    Runs inside doctor() so a missing/unauthorized/ambiguous device fails
+    before the build, not after it. Honors --serial: a named serial must
+    be present and authorized.
+    """
+    try:
+        binary = resolve_adb(a)
+    except ValueError as error:
+        check('Android device', False, str(error),
+              'fetch the pinned toolchain or put adb on PATH (see the adb check above)')
+        return
+    ok, listing = probe([binary, 'devices'])
+    if not ok:
+        check('Android device', False, 'cannot list devices: ' + listing,
+              'reconnect the device and retry')
+        return
+    states = {}
+    for line in listing.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) >= 2:
+            states[parts[0]] = parts[1]
+    want = getattr(a, 'serial', None)
+    fix = ('connect the device over USB, accept the on-device RSA trust '
+           'prompt and enable USB debugging; WSL2: attach the USB device '
+           'to Ubuntu first (usbipd); with several devices pass '
+           '--serial <adb-serial> from `adb devices`')
+    if want:
+        state = states.get(want)
+        if state == 'device':
+            check('Android device', True, want, '')
+        elif state == 'unauthorized':
+            check('Android device', False, want + ' is unauthorized',
+                  'accept the RSA trust prompt on the device, then retry')
+        else:
+            check('Android device', False,
+                  '--serial ' + want + ' not connected (adb devices: ' +
+                  (', '.join(sorted(states)) if states else 'none') + ')', fix)
+        return
+    ready = sorted(serial for serial, state in states.items() if state == 'device')
+    if len(ready) == 1:
+        check('Android device', True, ready[0], '')
+    elif not states:
+        check('Android device', False, 'no Android device listed by adb devices', fix)
+    elif not ready:
+        check('Android device', False,
+              'no authorized device (states: ' + ', '.join(sorted(set(states.values()))) + ')',
+              'accept the RSA trust prompt on the device, then retry')
+    else:
+        check('Android device', False,
+              'several devices connected (' + ', '.join(ready) + ')', fix)
 
 
 def adb(a, *args, capture=False):
