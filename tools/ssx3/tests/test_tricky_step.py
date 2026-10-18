@@ -636,6 +636,42 @@ class BuildTrickyDriverTest(unittest.TestCase):
                              '--work', str(work), '--from-phase', 'speech'])
             self.assertFalse(work.exists())
 
+    def test_music_convert_takes_staged_mus_and_offsets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work, tricky_iso=work / 't.iso',
+                               ssx3_iso=work / 's.iso')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, args
+            b.logs = work / 'logs'
+            calls = []
+
+            def fake_big_member(iso, big, want, out):
+                out = Path(out)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes(b'SCHl' + b'\0' * 16 + b'SCHl' + b'\0' * 16)
+                return out
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                calls.append((name, list(argv)))
+                return Path(logdir) / f'{name}.log'
+
+            with patch.object(driver, 'big_member', side_effect=fake_big_member), \
+                 patch.object(driver, 'run', side_effect=fake_run):
+                pool = b.phase_music()
+            self.assertEqual(pool, work / 'music' / 'pool')
+            conv = [(n, a) for n, a in calls if n.startswith('music-convert-')]
+            self.assertTrue(conv)
+            for n, a in conv:
+                song = n[len('music-convert-'):]
+                ex, stage = work / 'music' / 'extract', work / 'music' / 'stage'
+                self.assertEqual(
+                    [str(x) for x in a[2:8]],
+                    ['convert', str(ex / f'{song}.mpf'),
+                     str(stage / f'{song}.mus'), str(stage / f'{song}.mpf'),
+                     '--offsets', str(stage / f'{song}.tsv')])
+
     def test_speech_decisions_cover_all_targets(self):
         decisions = driver.T / 'data' / 'speech-decisions'
         for t in driver.SPEECH_TARGETS:

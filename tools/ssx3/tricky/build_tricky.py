@@ -425,11 +425,17 @@ class Build:
             run(self.logs, f'music-remus-{song}', sys.executable, T / 'music_remus.py',
                 mus, mpf, tmpl, stage / f'{song}.mus', stage / f'{song}.tsv',
                 f'jobs={self.a.jobs}', cwd=self.W)
+            # convert takes the remus'd stage mus + its offsets TSV (the
+            # remus receipt), not the extracted pair alone.
             run(self.logs, f'music-convert-{song}', sys.executable, T / 'mpf3to4.py',
-                mpf, stage / f'{song}.mpf', cwd=self.W)
-        run(self.logs, 'music-selfcheck', sys.executable, T / 'music_selfcheck.py',
-            '--stage-dir', stage, '--assign-tsv', T / 'music-pool-default.tsv',
-            cwd=self.W)
+                'convert', mpf, stage / f'{song}.mus', stage / f'{song}.mpf',
+                '--offsets', stage / f'{song}.tsv', cwd=self.W)
+        # No music-selfcheck step: music_selfcheck.py is a tooling smoke
+        # test (positional <workdir>, extract/tricky layout) and never
+        # accepted --stage-dir/--assign-tsv. Stage validation is covered
+        # by cmd_convert's own walk + sample-resolution asserts, the pool
+        # build's reproduces_big/offsets/content verifies, and the
+        # AUDIO_SHA music pins.
         pool = mu / 'pool'
         run(self.logs, 'music-pool', sys.executable, T / 'build_music_pool.py',
             '--ssx3-iso', self.a.ssx3_iso, '--stage-dir', stage,
