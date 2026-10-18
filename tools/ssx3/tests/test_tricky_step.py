@@ -947,6 +947,10 @@ class BuildTrickyDriverTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 driver.validate_pins()
 
+    def test_current_pins_validate(self):
+        # F01: every exact-equality pin in the tree is a full 64-hex SHA.
+        self.assertTrue(driver.validate_pins())
+
 
 if __name__ == '__main__':
     unittest.main()

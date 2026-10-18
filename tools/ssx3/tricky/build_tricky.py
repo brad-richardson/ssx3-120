@@ -67,11 +67,19 @@ AUDIO_SHA = {'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723a
              # Oracle change (orch 10-18): song -> ours 62bdec9b (77 dB SNR
              # vs staging is ffmpeg resample/dither, inaudible).
              'tricky-song.wav': '62bdec9b23cbe1993397127cc78f293b8bbd2dea2b22f12c4d5941598874f2e1',
-             'tricky-gems.tsv': '3f4cd72b511b6bab83b9e869e4ca4436c8fb0d92bde9072078b4bef66c',
-             'tricky-resetvol.tsv': '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'}
-GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13'
+             # Full-build gems reference (TK52 gem-all-step receipt: +138
+             # rows, 483/512, identical on two reads; same bytes as the
+             # staged device file). Partial builds skip this gate.
+             'tricky-gems.tsv': '3f4cd72b939461923d448cff08f832366c80348a1e09490b1bf78ce717be5ff1'}
+# Full 345-row sidecar reference (TK52 receipts: the existing-rows input
+# sidecar, identical on two reads). Partial builds skip this gate; the
+# driver never emits a full sidecar until tk-nogc-1's courses land.
+GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13b'
 HUD_ATLAS_SHA = 'a7ccacdabb2cfefb392fb2dba319cb7f3d6056ec911ede1510e9aaba26071f28'
-RESETVOL_SHA = '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'
+# Resetvol: two standalone gate-container bakes on run-11 donor trees are
+# byte-identical AND match the staged file (DEV1 staging.tsv, RSV1).
+# Standing-rule adoption (deterministic + matches staging).
+RESETVOL_SHA = '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c8'
 # Oracle change (orch 10-18): play == public, so the public pipeline is the
 # reference — adopt OUR composite 4106bce5 (speech_eaxa.py from the pinned
 # decisions). PB70's 07dcb666 came from the lost TK43b builders and cannot
