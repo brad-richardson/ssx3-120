@@ -308,5 +308,98 @@ class AdbResolutionTest(unittest.TestCase):
                 self.assertIsNone(toolchain.find_adb(Path(tmp) / 'work'))
 
 
+class PartialSdkTest(unittest.TestCase):
+    """F18: partial SDKs are repaired in place, with clear errors otherwise."""
+
+    def partial_sdk(self, root):
+        sdk = make_sdk(root)
+        (sdk / 'build-tools/34.0.0/aapt2').unlink()
+        return sdk
+
+    def test_gaps_name_every_missing_piece(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk = self.partial_sdk(Path(tmp) / 'sdk')
+            gaps = toolchain.sdk_gaps(sdk)
+            self.assertIn('build-tools;34.0.0', gaps)
+            self.assertIn('platform-tools', gaps)
+            self.assertIn('cmake;3.22.1', gaps)
+            self.assertIn('ndk;' + toolchain.NDK_VERSION, gaps)
+            self.assertNotIn('platforms;android-34', gaps)
+            self.assertTrue(toolchain.is_partial_sdk(sdk))
+            self.assertFalse(toolchain.is_partial_sdk(Path(tmp) / 'plain-dir'))
+
+    def test_partial_env_sdk_is_repaired_not_abandoned(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk = self.partial_sdk(Path(tmp) / 'sdk')
+            java = make_java(Path(tmp) / 'jdk')
+            (sdk / 'licenses').mkdir()
+            (sdk / 'licenses' / 'android-sdk-license').write_text('hash\n')
+
+            def fake_sdkmanager(sdk_arg, java_arg, *packages):
+                for package in packages:
+                    if package == 'build-tools;34.0.0':
+                        (Path(sdk_arg) / 'build-tools/34.0.0/aapt2').write_bytes(b'aapt2')
+                    elif package == 'platform-tools':
+                        adb = Path(sdk_arg) / 'platform-tools/adb'
+                        adb.parent.mkdir(parents=True, exist_ok=True)
+                        adb.write_bytes(b'adb')
+                        adb.chmod(0o755)
+                    elif package == 'cmake;3.22.1':
+                        cmake = Path(sdk_arg) / 'cmake/3.22.1/bin/cmake'
+                        cmake.parent.mkdir(parents=True, exist_ok=True)
+                        cmake.write_bytes(b'cmake')
+                    elif package.startswith('ndk;'):
+                        ndk = Path(sdk_arg) / 'ndk' / toolchain.NDK_VERSION
+                        ndk.mkdir(parents=True, exist_ok=True)
+                        (ndk / 'source.properties').write_text(
+                            'Pkg.Revision = %s\n' % toolchain.NDK_VERSION)
+
+            with patch.dict(os.environ, {'ANDROID_HOME': str(sdk)}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]), \
+                 patch.object(toolchain, 'sdkmanager', side_effect=fake_sdkmanager):
+                got, managed = toolchain.ensure_sdk(Path(tmp) / 'work', java,
+                                                    auto_download=True,
+                                                    accept_licenses=True)
+            self.assertEqual(got, sdk)
+            self.assertFalse(managed)
+            self.assertTrue(toolchain.sdk_ok(sdk))
+            self.assertEqual(toolchain.sdk_gaps(sdk), [])
+
+    def test_partial_sdk_with_no_download_names_the_repair(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk = self.partial_sdk(Path(tmp) / 'sdk')
+            with patch.dict(os.environ, {'ANDROID_HOME': str(sdk)}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                with self.assertRaisesRegex(ValueError, r'partial Android SDK.*drop --no-auto-download'):
+                    toolchain.ensure_sdk(Path(tmp) / 'work', Path(tmp) / 'jdk',
+                                         auto_download=False)
+
+    def test_missing_ndk_installs_through_sdkmanager(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk = make_sdk(Path(tmp) / 'sdk')
+            java = make_java(Path(tmp) / 'jdk')
+            sdkm = sdk / 'cmdline-tools/latest/bin/sdkmanager'
+            sdkm.parent.mkdir(parents=True, exist_ok=True)
+            sdkm.write_bytes(b'manager')
+            (sdk / 'licenses').mkdir()
+            (sdk / 'licenses' / 'android-sdk-license').write_text('hash\n')
+
+            def fake_sdkmanager(sdk_arg, java_arg, *packages):
+                self.assertEqual(list(packages), ['ndk;' + toolchain.NDK_VERSION])
+                ndk = Path(sdk_arg) / 'ndk' / toolchain.NDK_VERSION
+                ndk.mkdir(parents=True, exist_ok=True)
+                (ndk / 'source.properties').write_text(
+                    'Pkg.Revision = %s\n' % toolchain.NDK_VERSION)
+
+            with patch.object(toolchain, 'sdkmanager', side_effect=fake_sdkmanager):
+                got = toolchain.ensure_ndk(sdk, auto_download=True,
+                                           java_home=java, accept_licenses=True)
+            self.assertTrue(toolchain.ndk_ok(got))
+
+
 if __name__ == '__main__':
     unittest.main()

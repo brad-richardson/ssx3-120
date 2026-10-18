@@ -134,6 +134,53 @@ def sdk_ok(sdk):
             and (sdk / 'build-tools/34.0.0/aapt2').is_file())
 
 
+def sdk_gaps(sdk):
+    """F18: missing pieces of the full package set (empty when complete)."""
+    sdk = Path(sdk)
+    gaps = []
+    if not (sdk / 'platforms/android-34/android.jar').is_file():
+        gaps.append('platforms;android-34')
+    if not (sdk / 'build-tools/34.0.0/aapt2').is_file():
+        gaps.append('build-tools;34.0.0')
+    if adb_path(sdk) is None:
+        gaps.append('platform-tools')
+    if not (sdk / 'cmake/3.22.1/bin/cmake').is_file():
+        gaps.append('cmake;3.22.1')
+    if not ndk_ok(sdk / 'ndk' / NDK_VERSION):
+        gaps.append('ndk;' + NDK_VERSION)
+    return gaps
+
+
+def is_partial_sdk(path):
+    """An existing dir that looks like an SDK but fails sdk_ok."""
+    try:
+        entries = {p.name for p in Path(path).iterdir()}
+    except OSError:
+        return False
+    return bool(entries & {'platforms', 'build-tools', 'ndk', 'cmdline-tools',
+                           'licenses', 'platform-tools'}) and not sdk_ok(path)
+
+
+def repair_candidates(work):
+    """SDK dirs worth repairing, user-explicit first (F18)."""
+    seen, ordered = set(), []
+    for var in ('ANDROID_HOME', 'ANDROID_SDK_ROOT'):
+        value = os.environ.get(var)
+        if value and value not in seen:
+            seen.add(value)
+            ordered.append(Path(value))
+    if work is not None:
+        managed = Path(work, TOOLCHAIN_DIR, 'android-sdk')
+        if str(managed) not in seen:
+            seen.add(str(managed))
+            ordered.append(managed)
+    for candidate in _common_sdk_dirs():
+        if str(candidate) not in seen:
+            seen.add(str(candidate))
+            ordered.append(candidate)
+    return [c for c in ordered if is_partial_sdk(c)]
+
+
 def ndk_ok(ndk):
     """An NDK directory counts when source.properties pins the version."""
     import re
@@ -450,11 +497,43 @@ def ensure_jdk(work, jdk_explicit=None, auto_download=True):
     return staged, True
 
 
+def repair_sdk(sdk, java_home, accept_licenses):
+    """F18: complete a partial SDK in place with sdkmanager (never a wipe).
+
+    Licences gate first (same rule as a fresh fetch); a failed repair names
+    the manual sdkmanager command instead of silently falling back to a
+    second managed SDK.
+    """
+    sdk = Path(sdk)
+    require_licenses(sdk, accept_licenses, java_home)
+    try:
+        sdkmanager(sdk, java_home, *SDK_PACKAGES)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError('cannot repair the partial Android SDK at ' + str(sdk) +
+                         ' (' + str(error) + '); repair it by hand with '
+                         '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ' +
+                         ' '.join('"' + p + '"' for p in SDK_PACKAGES) +
+                         ' or point ANDROID_HOME at a complete SDK')
+    if not sdk_ok(sdk):
+        raise ValueError('SDK repair finished but the pinned platform/tools are '
+                         'still missing under ' + str(sdk) + ' (missing: ' +
+                         ', '.join(sdk_gaps(sdk)) + ')')
+
+
 def ensure_sdk(work, java_home, auto_download=True, accept_licenses=False):
     """(sdk, managed): existing install wins; download + sdkmanager only when missing."""
     found = find_sdk()
     if found:
         return found, False
+    partials = repair_candidates(work)
+    if partials:
+        partial = partials[0]
+        if not auto_download:
+            raise ValueError('partial Android SDK at ' + str(partial) + ' is missing ' +
+                             ', '.join(sdk_gaps(partial)) + '; set ANDROID_HOME to a '
+                             'complete SDK or drop --no-auto-download to repair it in place')
+        repair_sdk(partial, java_home, accept_licenses)
+        return partial, partial == Path(work, TOOLCHAIN_DIR, 'android-sdk')
     have = managed_sdk(work)
     if have:
         return have, True
@@ -476,13 +555,32 @@ def ensure_sdk(work, java_home, auto_download=True, accept_licenses=False):
     return sdk, True
 
 
-def ensure_ndk(sdk, ndk_explicit=None, auto_download=True):
+def ensure_ndk(sdk, ndk_explicit=None, auto_download=True, java_home=None,
+               accept_licenses=False):
+    """Pinned NDK: explicit/env/SDK paths win; F18 installs it when missing.
+
+    A missing NDK under an otherwise usable SDK is added with sdkmanager
+    (same licence gate as the SDK fetch) instead of erroring out; only an
+    SDK without cmdline-tools (nothing to install with) keeps the precise
+    missing-X error.
+    """
     found = find_ndk(sdk, ndk_explicit)
     if found:
         return found
     if not auto_download:
         raise ValueError('missing NDK ' + NDK_VERSION + '; pass --ndk <path> '
                          'or drop --no-auto-download to let ./build fetch it')
+    if sdk is not None and java_home is not None and (
+            Path(sdk) / 'cmdline-tools' / 'latest' / 'bin' / 'sdkmanager').is_file():
+        require_licenses(sdk, accept_licenses, java_home)
+        try:
+            sdkmanager(sdk, java_home, 'ndk;' + NDK_VERSION)
+        except (OSError, subprocess.CalledProcessError) as error:
+            raise ValueError('cannot install NDK ' + NDK_VERSION + ' into ' + str(sdk) +
+                             ' (' + str(error) + ')')
+        installed = find_ndk(sdk, ndk_explicit)
+        if installed:
+            return installed
     raise ValueError('NDK ' + NDK_VERSION + ' missing under ' + str(sdk) +
                      '; delete the managed SDK to re-install, or pass --ndk <path>')
 
@@ -515,7 +613,7 @@ def resolve(work, jdk_explicit=None, ndk_explicit=None,
     sdk, sdk_managed = ensure_sdk(work, java_home, auto_download, accept_licenses)
     if sdk_managed:
         require_licenses(sdk, accept_licenses, java_home)
-    ndk = ensure_ndk(sdk, ndk_explicit, auto_download)
+    ndk = ensure_ndk(sdk, ndk_explicit, auto_download, java_home, accept_licenses)
     record = {'jdk': str(java_home), 'jdk_managed': jdk_managed,
               'sdk': str(sdk), 'sdk_managed': sdk_managed,
               'ndk': str(ndk), 'jdk_release': JDK_RELEASE,
