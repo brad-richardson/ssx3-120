@@ -575,6 +575,65 @@ class BuildTrickyDriverTest(unittest.TestCase):
                     sp / ('work-' + t))
             self.assertEqual(out, work / 'speech-tricky-big')
 
+    def test_resume_copies_finals_and_skips_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reuse = Path(tmp) / 'reuse'
+            (reuse / 'host-bam').mkdir(parents=True)
+            (reuse / 'host-bam' / 'BAM.BIG').write_bytes(b'bam')
+            (reuse / 'w-pipe-s5').mkdir(parents=True)
+            (reuse / 'w-pipe-s5' / 'PIPE.BIG').write_bytes(b'pipe')
+            (reuse / 'w-merq-routes').mkdir(parents=True)
+            (reuse / 'w-merq-routes' / 'MERQ.BIG').write_bytes(b'merq')
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            with patch.object(driver, 'check') as check:
+                b.resume_worlds(reuse)
+            self.assertEqual(
+                (work / 'host-bam' / 'BAM.BIG').read_bytes(), b'bam')
+            self.assertEqual(
+                (work / 'w-pipe-s5' / 'PIPE.BIG').read_bytes(), b'pipe')
+            self.assertEqual(
+                (work / 'w-merq-routes' / 'MERQ.BIG').read_bytes(), b'merq')
+            self.assertEqual(check.call_count, 2)
+            want = {}
+            for c in driver.BUILD_COURSES:
+                if c in ('pipe', 'merq'):
+                    continue
+                rel, _ = b.world_final_rel(c)
+                key = 'mega' if c == 'mega' else f'resets-{c}'
+                want[key] = f'reused worlds lack {rel}'
+            self.assertEqual(b.skipped, want)
+
+    def test_resume_needs_host_bam(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reuse = Path(tmp) / 'reuse'
+            reuse.mkdir()
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            with self.assertRaisesRegex(SystemExit, 'host BAM'):
+                b.resume_worlds(reuse)
+
+    def test_resume_refuses_same_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            with self.assertRaisesRegex(SystemExit, 'must differ'):
+                b.resume_worlds(work)
+
+    def test_from_phase_needs_reuse_worlds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            with self.assertRaisesRegex(SystemExit, '--reuse-worlds'):
+                driver.main(['--tricky-iso', 't.iso', '--ssx3-iso', 's.iso',
+                             '--work', str(work), '--from-phase', 'speech'])
+            self.assertFalse(work.exists())
+
     def test_speech_decisions_cover_all_targets(self):
         decisions = driver.T / 'data' / 'speech-decisions'
         for t in driver.SPEECH_TARGETS:

@@ -44,7 +44,10 @@ BUILD_COURSES = ['pipe', 'untrack', 'snow', 'gari', 'aloha',
                  'mesa', 'merq', 'elys', 'alaska', 'mega']
 # World finals, imported from the driver's recorded pins (never
 # transcribed): routes finals from the course recipes, s5 finals from the
-# TKP5 table (mega excluded: it never reaches s5).
+# TKP5 table (mega excluded: it never reaches s5). Oracle note (orch
+# 10-18): MERQ publishes the post-routes final a23d529a (tk-routes-2
+# wall-2819 fix, shipped in PB70/IPB40); the TKP5 s5 pin bcbaf32d is
+# stale for MERQ and is never gated (merq has an oracle_routes entry).
 ROUTES_COURSES = {c: r['oracle_routes'] for c, r in COURSES.items()
                   if r.get('oracle_routes')}
 S5_FINALS = {c: TKP5_FINALS[c] for c in TKP5_FINALS if c != 'mega'}
@@ -238,11 +241,16 @@ class Build:
         self.logs = self.W / 'logs'
         self.skipped = {}
 
+    def world_final_rel(self, c):
+        """Planned final relpath + golden: routes-final else s5-final."""
+        if c in ROUTES_COURSES:
+            return f'w-{c}-routes/{c.upper()}.BIG', ROUTES_COURSES[c]
+        return f'w-{c}-s5/{c.upper()}.BIG', S5_FINALS[c]
+
     def world_final_path(self, c):
         """Planned final path + golden: routes-final else s5-final."""
-        if c in ROUTES_COURSES:
-            return self.W / f'w-{c}-routes' / f'{c.upper()}.BIG', ROUTES_COURSES[c]
-        return self.W / f'w-{c}-s5' / f'{c.upper()}.BIG', S5_FINALS[c]
+        rel, want = self.world_final_rel(c)
+        return self.W / rel, want
 
     def world_final(self, c):
         """Collect a course's gated final: routes-final else s5-final."""
@@ -278,6 +286,36 @@ class Build:
                 raise
             self.world_final(c)
         print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
+
+    def resume_worlds(self, reuse):
+        """Resume from speech: copy a finished run's world finals + host
+        BAM into this fresh workdir, then rerun preview onward. Courses
+        with no final in the reuse dir take the same loud skip keys
+        phase_worlds uses (mega / resets-<course>)."""
+        reuse = Path(reuse)
+        if reuse.resolve() == self.W.resolve():
+            raise SystemExit(f'--reuse-worlds must differ from --work: {reuse}')
+        host = reuse / 'host-bam' / 'BAM.BIG'
+        if not host.is_file():
+            raise SystemExit(f'reuse worlds lack host BAM: {host}')
+        dest = self.W / 'host-bam' / 'BAM.BIG'
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(host, dest)
+        for c in BUILD_COURSES:
+            rel, _want = self.world_final_rel(c)
+            src = reuse / rel
+            if not src.is_file():
+                key = 'mega' if c == 'mega' else f'resets-{c}'
+                self.skipped[key] = f'reused worlds lack {rel}'
+                print(f'{c.upper()} REUSED-SKIP: no {rel} in {reuse}; '
+                      f'continuing without it', flush=True)
+                continue
+            dst = self.W / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            self.world_final(c)
+        print(f'worlds reused from {reuse}; skipped: {sorted(self.skipped)}',
+              flush=True)
 
     def phase_preview(self):
         run(self.logs, 'preview', sys.executable, T / 'run_chain.py',
@@ -548,14 +586,25 @@ def main(argv=None):
     ap.add_argument('--ssx3-iso', required=True)
     ap.add_argument('--work', required=True)
     ap.add_argument('--jobs', default=str(os.cpu_count() or 8))
+    ap.add_argument('--from-phase', default=None, choices=['speech'],
+                    help='resume at a later phase, reusing a finished run')
+    ap.add_argument('--reuse-worlds', default=None,
+                    help='finished --work dir whose world finals + host BAM '
+                         'are copied into the fresh --work dir (fresh dir '
+                         'only; never the same dir)')
     ap.add_argument('--routes-ref-dir', default=None)
     ap.add_argument('--english-base', default=None)
     ap.add_argument('--vgmstream', default='vgmstream-cli')
     ap.add_argument('--ffmpeg', default='ffmpeg')
     a = ap.parse_args(argv)
+    if a.from_phase == 'speech' and not a.reuse_worlds:
+        raise SystemExit('--from-phase speech needs --reuse-worlds <dir>')
     b = Build(a)
     t0 = time.time()
-    b.phase_worlds()
+    if a.from_phase == 'speech':
+        b.resume_worlds(a.reuse_worlds)
+    else:
+        b.phase_worlds()
     courspit = b.phase_preview()
     b.phase_menu(courspit)
     speech = b.phase_speech()
