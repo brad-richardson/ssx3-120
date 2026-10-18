@@ -653,11 +653,15 @@ COURSES = {
                        '--offline-tex-max', '64',
                        '--lm-alpha-scale', '1.0'],
         oracle_c='3c97fa33893854b58eb92b76c2ea3dc27780d20e367af57ec716a7844254f263',
+        # Floor runs on -c directly (no bind/blend/fix tail for Megaplex).
+        floor_base='c',
         floor_group=94,
         oracle_final='52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4',
-        # Play == staged == TKP5 final for Megaplex (no signs, no tail steps);
-        # reachable once mega-h/u2/c lands the floor input.
+        # Play == staged == TKP5 final for Megaplex (no signs, no tail steps).
+        # oracle_mat pins the materialized world so it cannot be confused
+        # with the compact descriptor (both from the same play rung).
         oracle_play='8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
+        oracle_mat='f4787cf47a114088405041e1632fb211c1b65d2b68e2546eb775f8c2e9f7b1e0',
         oracle_staged='8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
         fix_group=None,
         oracle_fix=None,
@@ -1539,8 +1543,11 @@ class Chain:
             else:
                 print(f'{c} bind skipped (not wired)', flush=True)
         if 'floor' in order:
-            if bound is not None and r.get('floor_group'):
-                final = self.rung_floor(c, r, bound)
+            # floor_base 'c' (Megaplex: no bind/blend/fix tail): the floor
+            # input is the terrain -c world, not a bound world.
+            fworld = cbig if r.get('floor_base') == 'c' else bound
+            if fworld is not None and r.get('floor_group'):
+                final = self.rung_floor(c, r, fworld)
             else:
                 print(f'{c} floor skipped (not wired)', flush=True)
         if 'composite' in order:

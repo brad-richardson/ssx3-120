@@ -423,6 +423,22 @@ class MegaGatesTest(unittest.TestCase):
         self.assertEqual(recipe.get('oracle_h'),
                          '261ed4ef724d540b0bc1f5d4efa72283081cbf59c20f69d7d6fa61092df6f537')
 
+    def test_mega_tail_wiring(self):
+        recipe = run_chain.COURSES['mega']
+        self.assertEqual(recipe.get('floor_base'), 'c')
+        self.assertEqual(recipe.get('floor_group'), 94)
+        self.assertEqual(recipe.get('oracle_final'),
+                         '52582c77f02d72bd022a24e23ea710d3fb79134437812e9feff7494a85ecd7d4')
+        self.assertEqual(recipe.get('oracle_play'),
+                         '8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd')
+        self.assertEqual(recipe.get('oracle_mat'),
+                         'f4787cf47a114088405041e1632fb211c1b65d2b68e2546eb775f8c2e9f7b1e0')
+        self.assertEqual(recipe.get('oracle_staged'), recipe.get('oracle_play'))
+        # No bind/blend/fix tail for Megaplex.
+        for key in ('bind_names', 'bind_base', 'oracle_blend', 'fix_group',
+                    'tk53_rids', 'oracle_s2', 'oracle_s3', 'oracle_s4'):
+            self.assertIsNone(recipe.get(key), key)
+
     def test_mega_c_wiring(self):
         recipe = run_chain.COURSES['mega']
         self.assertEqual(recipe.get('terrain_tool'), 'tk26/make_terrain_tex23.py')
