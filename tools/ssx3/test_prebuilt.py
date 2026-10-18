@@ -467,5 +467,27 @@ class ContractInputsTests(unittest.TestCase):
         self.assertEqual(prebuilt._stamp(before), prebuilt._stamp(list(before)))
 
 
+class VendorAgreementTest(unittest.TestCase):
+    """The support-bundle ARMSX2 source is the recipe's shipped pin.
+
+    Exporter metadata (SOURCES.json armsx2 URL), the recipe table and the
+    old-pin reuse check all derive from prebuilt.VENDOR; it must equal the
+    tree android_libs() actually builds (build.py ANDROID_GE1_VENDOR_PIN)
+    and the deps.lock.json pin.
+    """
+
+    def test_exporter_vendor_is_the_recipe_pin(self):
+        import importlib.util
+        here = Path(__file__).resolve().parent
+        spec = importlib.util.spec_from_file_location('ssx3_build_pins', here / 'build.py')
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        self.assertEqual(prebuilt.VENDOR, build.ANDROID_GE1_VENDOR_PIN)
+        self.assertEqual(prebuilt.RECIPE['vendor'], build.ANDROID_GE1_VENDOR_PIN)
+        root = here.parents[1]
+        lock = json.loads((root / 'deps.lock.json').read_text())
+        self.assertEqual(lock['vendor']['armsx2']['pin'], build.ANDROID_GE1_VENDOR_PIN)
+
+
 if __name__ == '__main__':
     unittest.main()

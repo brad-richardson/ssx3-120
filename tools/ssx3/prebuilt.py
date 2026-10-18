@@ -23,7 +23,10 @@ ROOT = Path(__file__).resolve().parents[2]
 # SHA) is recorded separately in deps.lock.json, not in the archive stamp.
 ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
 NDK = '28.2.13676358'
-VENDOR = 'afad5a04c2668a10e12adadaa51d54c46f832236'
+# ARMSX2 source for the support bundle: the same tree android_libs()
+# builds (build.py ANDROID_GE1_VENDOR_PIN) and deps.lock.json pins.
+# Keep them equal (test_prebuilt.py VendorAgreementTest enforces it).
+VENDOR = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
 RELEASES = 'https://github.com/brad-richardson/PS2Recomp/releases/download/'
 FORMAT = 1
 ARCHIVES = ('libps2EntryRunner.a', 'libps2_runtime.a', 'libps2_gs_shadow.a',
@@ -714,7 +717,8 @@ def build(a):
         vendor = libraries / 'android-assembly/vendor-pcsx2'
         actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'], text=True).strip()
         if actual != VENDOR:
-            raise ValueError('reused library vendor pin mismatch')
+            raise ValueError('reused library vendor pin mismatch: reused tree is at '
+                             + actual + ' but the recipe builds ' + VENDOR)
         for directory, staged in [('ge1', 'adapter'), ('mv2', 'mv2-adapter')]:
             for source in (ENGINE / 'ps2xRuntime/third_party/armsx2' / directory).rglob('*'):
                 if source.is_file():
