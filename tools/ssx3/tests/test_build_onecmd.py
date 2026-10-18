@@ -280,6 +280,36 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class AgentSetupTest(unittest.TestCase):
+    """F23: the agent guide covers discovery, prerequisites and device trust."""
+
+    def text(self):
+        return (ROOT / 'docs/agent-setup.md').read_text()
+
+    def test_discovery_and_prerequisites(self):
+        text = self.text()
+        self.assertIn('uv', text)
+        self.assertIn('doctor --target', text)
+        self.assertIn('--recurse-submodules', text)
+        self.assertIn('git submodule update --init -- deps/PS2Recomp', text)
+        self.assertIn('SSX 3 (USA).iso', text)
+        self.assertIn('tricky-inputs.md', text)
+
+    def test_platform_device_steps(self):
+        text = self.text()
+        self.assertIn('usbipd', text)
+        self.assertIn('Developer Mode', text)
+        self.assertIn('trust the', text)
+        self.assertIn('devicectl list devices', text)
+        self.assertIn('--serial <adb-serial>', text)
+
+    def test_no_redundant_rebuild_and_managed_interpreter(self):
+        text = self.text()
+        self.assertIn('--install', text)
+        self.assertIn('not a rebuild', text)
+        self.assertIn('uv python install', text)
+
+
 class LockPinsTest(unittest.TestCase):
     """F22: deps.lock.json records every platform source pin."""
 

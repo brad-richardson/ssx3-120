@@ -4,6 +4,28 @@ You are a coding agent helping the user build and install this game from
 **their own disc**. Read this whole file first, then run exactly what it
 says. Do not improvise toolchains, flags, or signing.
 
+## Start here: discover before you run
+
+1. **Target.** Android (`./build android ...`) or iOS (`./build ios ...`).
+   Android builds on macOS Apple silicon or Linux x86_64/arm64 (Windows:
+   Ubuntu in WSL2, everything inside its Linux filesystem, never
+   `/mnt/c`); iOS needs macOS Apple silicon with Xcode.
+2. **Inputs.** The user supplies their USA `SSX 3 (USA).iso`
+   (`SLUS_207.72`); confirm the path exists before running anything.
+   Optional: their Tricky USA disc (`--tricky-iso`, see
+   `docs/tricky-inputs.md`) — without it the build is stock SSX 3 only.
+3. **Checkout.** This repo needs its engine submodule: clone with
+   `git clone --recurse-submodules <url>`, or recover with
+   `git submodule update --init -- deps/PS2Recomp`. Every builder command
+   below fails closed with that recovery line when the submodule is
+   missing or stale.
+4. **Prerequisites.** Install [`uv`](https://docs.astral.sh/uv/) first —
+   the `./build` wrapper runs the builder through it (pinned Python plus
+   the font-pack libraries, no system Python setup). Then run the doctor
+   before anything heavy: `python3 build.py doctor --target android`
+   (or `--target ios` on a Mac). It prints the exact install line for
+   anything missing (README lists per-host packages).
+
 ## Ground rules
 
 - Bring your own disc: the user supplies their USA `SSX 3 (USA).iso`
@@ -11,7 +33,9 @@ says. Do not improvise toolchains, flags, or signing.
   keystores, or provisioning profiles. The work directory stays outside
   this checkout and private.
 - The builder resumes: `prepare` and the `*-libs` steps are skipped when
-  their outputs are current. Re-run the same command to continue.
+  their outputs are current. Re-run the same command to continue — and do
+  not stack a build and a build+install: one `--install` command builds
+  (or resumes) and installs; the second example below is not a rebuild.
 - iOS: never uninstall the app (it wipes saves) — upgrade with a plain
   install, which is what `--install` does.
 - If a step fails, read its error to the end and fix the named cause
@@ -32,13 +56,20 @@ unless `--no-auto-download` is passed — then set `JAVA_HOME`,
 `android`. `--serial <adb-serial>` picks among several Android devices
 (`adb devices` lists them); `--device <udid>` is iOS-only and
 `--serial` is Android-only — the builder rejects the swapped combination.
+WSL2: attach the phone to Ubuntu first (`usbipd`), otherwise `adb devices`
+is empty and the doctor says so before anything builds. Keep 25 GB free
+under `--work` (README budgets); the builder preflights this.
 
 ## iOS (host: macOS Apple silicon with Xcode; target: iPhone/iPad)
 
-Two user values are required: the Apple Development **team id**
-(10 characters, Xcode > Settings > Accounts > Team) and the connected
-device. The offline-VU1 microVU stage is generated from your disc into
-`work/om1-stage` by the builder (`--om1-stage` overrides it).
+One user value is required to build: the Apple Development **team id**
+(10 characters, Xcode > Settings > Accounts > Team — sign in with an
+Apple ID first; free personal teams work, re-sign weekly). A connected
+device is required only for `--install`: connect it over USB, trust the
+computer, enable Developer Mode (Settings > Privacy & Security), and find
+its UDID with `xcrun devicectl list devices`. The offline-VU1 microVU
+stage is generated from your disc into `work/om1-stage` by the builder
+(`--om1-stage` overrides it; Mac-only generation).
 
 ```sh
 ./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work
@@ -46,8 +77,7 @@ device. The offline-VU1 microVU stage is generated from your disc into
 ./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --work ~/ssx3-work --install
 ```
 
-The dry run needs no prepared outputs (F06: the old first command omitted
-`--ssx3-iso` and died at the prepare gate before reaching dry-run).
+The dry run needs no prepared outputs. Keep 20 GB free under `--work`.
 
 What each run does: `doctor` (Xcode, CMake, signing identity, device),
 `prepare` (ISO validation + codegen), `ios-libs` (GE1 renderer, OM1
@@ -66,14 +96,21 @@ Facts the builder depends on (do not "fix" these):
 - The engine plist template keeps its own id; the builder rewrites the
   staged copy and says so in the log.
 
-After install, launch the app on the device and confirm it stays up:
-`xcrun devicectl device process launch --device <udid>
+After install, confirm the app stays up. Android: `adb shell pm path
+<app-id>` lists the installed package, then launch it from the device and
+confirm it stays in the foreground. iOS: launch on the device and confirm
+it stays up: `xcrun devicectl device process launch --device <udid>
 com.ssx3recomp.<team-lower>`, then check the process is still listed a
 minute later. Gameplay feel is the user's call — hand the device back.
 
 ## Checks before handing back
 
 - `python3 tools/ssx3/tests/test_build_onecmd.py` and (for iOS)
-  `python3 tools/ssx3/tests/test_ios.py` pass.
+  `python3 tools/ssx3/tests/test_ios.py` pass. The tests are stdlib-only;
+  if `python3` is missing, provision it with `uv python install` and run
+  them with that interpreter — never a different toolchain than the build.
 - The exact commands run, their SHAs/timings, and anything the user must
   decide (device choice, Tricky ISO, gameplay feel) go in the handoff.
+  Name the product/engine/toolchain/disc identities and disclose the
+  Tricky stop (stock-only without `--tricky-iso`) before requesting
+  inputs.
