@@ -111,6 +111,22 @@ def jdk_ok(java_home):
     return ok and bool(match) and match[1] == '17'
 
 
+def normalize_jdk_home(candidate):
+    """F02: accept a macOS bundle root as well as its Contents/Home dir.
+
+    A `jdk-….jdk` (or unpacked Temurin `jdk-…`) directory whose java lives
+    at `Contents/Home/bin/java` normalizes to that `Contents/Home` dir;
+    anything else passes through unchanged for jdk_ok to judge.
+    """
+    candidate = Path(candidate)
+    if (candidate / 'bin/java').is_file():
+        return candidate
+    home = candidate / 'Contents' / 'Home'
+    if (home / 'bin/java').is_file():
+        return home
+    return candidate
+
+
 def sdk_ok(sdk):
     """An SDK directory counts when the pinned platform + aapt2 are present."""
     sdk = Path(sdk)
@@ -164,14 +180,15 @@ def _common_sdk_dirs():
 
 def find_jdk(explicit=None):
     """First usable JDK 17: --jdk, JAVA_HOME, common installs. None if absent."""
-    if explicit and jdk_ok(explicit):
-        return Path(explicit)
+    if explicit and jdk_ok(normalize_jdk_home(explicit)):
+        return normalize_jdk_home(Path(explicit))
     java_home = os.environ.get('JAVA_HOME')
-    if java_home and jdk_ok(java_home):
-        return Path(java_home)
+    if java_home and jdk_ok(normalize_jdk_home(java_home)):
+        return normalize_jdk_home(Path(java_home))
     for candidate in _common_jdk_dirs():
-        if jdk_ok(candidate):
-            return candidate
+        normalized = normalize_jdk_home(candidate)
+        if jdk_ok(normalized):
+            return normalized
     return None
 
 
@@ -207,8 +224,9 @@ def find_ndk(sdk=None, explicit=None):
 def managed_jdk(work):
     found = sorted(Path(work, TOOLCHAIN_DIR).glob('jdk-*'))
     for candidate in found:
-        if jdk_ok(candidate):
-            return candidate
+        normalized = normalize_jdk_home(candidate)
+        if jdk_ok(normalized):
+            return normalized
     return None
 
 
@@ -305,11 +323,14 @@ def unpack_jdk(archive, dest_root):
     with tarfile.open(archive, 'r:gz') as t:
         _safe_members(t.getnames())
         t.extractall(dest_root)
-    hits = [p.parent.parent for p in dest_root.glob('*/bin/java')]
-    hits = [p for p in hits if (p / 'bin/java').is_file()]
-    if not hits:
-        hits = [p.parent.parent for p in dest_root.glob('*/*/bin/java')]
+    # F02: Temurin mac archives nest java three levels deep
+    # (<top>/Contents/Home/bin/java); linux stays at one or two.
+    hits = []
+    for pattern in ('*/bin/java', '*/*/bin/java', '*/*/*/bin/java'):
+        hits = [p.parent.parent for p in dest_root.glob(pattern)]
         hits = [p for p in hits if (p / 'bin/java').is_file()]
+        if hits:
+            break
     if len(hits) != 1:
         raise ValueError('JDK layout changed in ' + str(archive))
     if not jdk_ok(hits[0]):
@@ -416,15 +437,15 @@ def ensure_jdk(work, jdk_explicit=None, auto_download=True):
     url, want_sha = JDK_URLS[key]
     archive = fetch(url, want_sha, downloads_dir(work) / ('temurin17-' + key + '.tar.gz'))
     staged = tool_dir(work) / ('jdk-' + key + '-' + JDK_RELEASE.replace('+', 'p'))
-    if not jdk_ok(staged):
+    if not jdk_ok(normalize_jdk_home(staged)):
         shutil.rmtree(staged, ignore_errors=True)
         unpack_jdk(archive, tool_dir(work))
         got = managed_jdk(work)
         if got is None:
             raise ValueError('JDK fetch unpacked but no usable JDK 17 found')
-        if got != staged:
+        if normalize_jdk_home(got) != staged:
             shutil.rmtree(staged, ignore_errors=True)
-            got.replace(staged)
+            normalize_jdk_home(got).replace(staged)
     print('JDK 17 managed at ' + str(staged))
     return staged, True
 

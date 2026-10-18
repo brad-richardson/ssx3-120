@@ -134,6 +134,49 @@ class DiscoveryTest(unittest.TestCase):
                     toolchain.ensure_ndk(Path(tmp) / 'sdk', auto_download=False)
 
 
+class MacJdkLayoutTest(unittest.TestCase):
+    """F02: macOS bundle layouts (Contents/Home) are recognized."""
+
+    def test_bundle_root_normalizes_to_contents_home(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'temurin-17.jdk'
+            home = root / 'Contents' / 'Home'
+            make_java(home)
+            self.assertEqual(toolchain.normalize_jdk_home(root), home)
+            self.assertTrue(toolchain.jdk_ok(toolchain.normalize_jdk_home(root)))
+
+    def test_plain_home_passes_through(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            home = make_java(Path(tmp) / 'jdk-17')
+            self.assertEqual(toolchain.normalize_jdk_home(home), home)
+
+    def test_java_home_bundle_root_is_found(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'jdk-mac'
+            home = root / 'Contents' / 'Home'
+            make_java(home)
+            with patch.dict(os.environ, {'JAVA_HOME': str(root)}, clear=True), \
+                 patch.object(toolchain, '_common_jdk_dirs', return_value=[]):
+                self.assertEqual(toolchain.find_jdk(), home)
+
+    def test_unpack_finds_three_level_mac_bundle(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            top = Path(tmp) / 'top' / 'jdk-17.0.20.1_1' / 'Contents' / 'Home'
+            make_java(top)
+            archive = Path(tmp) / 'jdk.tgz'
+            with tarfile.open(archive, 'w:gz') as t:
+                t.add(top.parent.parent, arcname='jdk-17.0.20.1_1')
+            dest = Path(tmp) / 'dest'
+            dest.mkdir()
+            got = toolchain.unpack_jdk(archive, dest)
+            self.assertEqual(got, dest / 'jdk-17.0.20.1_1' / 'Contents' / 'Home')
+            self.assertTrue(toolchain.jdk_ok(got))
+
+
 class FetchTrustTest(unittest.TestCase):
     def test_fetch_accepts_exact_bytes_over_file_url(self):
         import tempfile
