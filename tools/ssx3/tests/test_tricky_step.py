@@ -1290,6 +1290,7 @@ class ImportDispatchTest(unittest.TestCase):
             calls = []
             with patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
+                 patch.object(build, 'validate_ssx3_iso', return_value=iso), \
                  patch.object(build, 'validate_tricky_iso', return_value=tricky), \
                  patch.object(build, 'prepare_current', return_value=False), \
                  patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
@@ -1315,6 +1316,7 @@ class ImportDispatchTest(unittest.TestCase):
             calls = []
             with patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
+                 patch.object(build, 'validate_ssx3_iso', return_value=iso), \
                  patch.object(build, 'validate_tricky_iso', return_value=tricky), \
                  patch.object(build, 'prepare_current', return_value=False), \
                  patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
@@ -1563,6 +1565,7 @@ class IosOneCommandTrickyTest(unittest.TestCase):
         args = self.onecmd_args(work, ssx3_iso=iso, tricky_iso=tricky, **over)
         with patch.object(build, 'check_team'), \
              patch.object(build, 'doctor'), \
+             patch.object(build, 'validate_ssx3_iso', return_value=iso), \
              patch.object(build, 'validate_tricky_iso', return_value=tricky), \
              patch.object(build, 'prepare_current', return_value=False), \
              patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
