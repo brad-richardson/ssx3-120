@@ -1197,8 +1197,20 @@ class Chain:
         return out
 
     # -- rung: TK57 glass panes + blocks -----------------------------------------
-    # Glass specs (scenery/donor/specs) come from data/tk57-glass-targets.json;
+    # Glass specs come from a workdir-generated targets file (no tracked
+    # decoded tables): make_glass_targets.py decodes the Break* functions
+    # from the workdir donor + the resolved scenery receipt. The static
+    # table below is lane-authored recipe data (names only), never content.
     # gari also passes --blocks. Proven: gari 3e714aca -> 51736b49.
+    GLASS_COURSES = {
+        'gari': ('gari', 'gari-sg', 'GARI'),
+        'snow': ('snow', 'snow-cand', 'SNOW'),
+        'mesa': ('mesa', 'mesa-final', 'MESA'),
+        'merq': ('merquer', 'merq-cand', 'MERQ'),
+        'aloha': ('aloha', 'aloha-b', 'ALOHA'),
+        'elys': ('elysium', 'elys-cand', 'ELYS'),
+    }
+
     def need(self, value, what):
         if value is None:
             raise SystemExit(f'no public input for {what}; pass --pins')
@@ -1208,8 +1220,9 @@ class Chain:
         w = self.W / f'w-{c}-s2'
         w.mkdir(parents=True, exist_ok=True)
         out = w / f'{c.upper()}.BIG'
-        gt = json.loads((self.T / 'data' / 'tk57-glass-targets.json')
-                        .read_text())[c]
+        if c not in self.GLASS_COURSES:
+            raise SystemExit(f'{c}: no glass course mapping; s2 needs a GLASS_COURSES entry')
+        donor_stem, scenery_name, world = self.GLASS_COURSES[c]
         # Public default: the workdir donor + our own run receipts, mapped
         # from the pins-compatible scenery names. The s2 oracle judges
         # every substitution fail-closed.
@@ -1219,16 +1232,24 @@ class Chain:
                       'merq-cand': self.W / 'w-merq-b' / 'scenery.json',
                       'aloha-b': self.W / 'w-aloha-b' / 'scenery.json',
                       'elys-cand': self.W / 'w-elys-b' / 'scenery.json'}
-        scenery = gt_scenery.get(gt['scenery'])
+        scenery = gt_scenery.get(scenery_name)
         if scenery is None or not scenery.is_file():
             scenery = self.need(self.pin_file('scenery-effects', 'scenery',
-                                              f"{gt['scenery']}-scenery.json"),
-                                f"s2 {gt['scenery']} scenery")
-        donor_pbd = self.donor / gt['donor'] / f"{gt['donor']}.pbd"
+                                              f"{scenery_name}-scenery.json"),
+                                f"s2 {scenery_name} scenery")
+        donor_pbd = self.donor / donor_stem / f"{donor_stem}.pbd"
         if not donor_pbd.is_file():
-            donor_pbd = self.need(self.pin_file('donor', gt['donor'],
-                                                f"{gt['donor']}.pbd"),
-                                  f"s2 {gt['donor']} donor")
+            donor_pbd = self.need(self.pin_file('donor', donor_stem,
+                                                f"{donor_stem}.pbd"),
+                                  f"s2 {donor_stem} donor")
+        glass_json = w / 'glass-targets.json'
+        if not glass_json.is_file():
+            run('s2-glass', sys.executable, self.T / 'tk57' / 'make_glass_targets.py',
+                '--donor-dir', donor_pbd.parent, '--donor-stem', donor_stem,
+                '--scenery-receipt', scenery, '--scenery-name', scenery_name,
+                '--world', world, '--course', c, '--out', glass_json,
+                cwd=self.W, log=self.log(c, 's2-glass'))
+        gt = json.loads(glass_json.read_text())[c]
         cmd = [sys.executable, self.T / 'tk57' / 'interact_step.py',
                self.a.ssx3_iso, base, out, '--group', str(r['fix_group']),
                '--scenery', scenery,
@@ -1244,8 +1265,9 @@ class Chain:
         return out
 
     # -- rung: TK51 hidden riding proxies -----------------------------------------
-    # Census from data/; donor defaults to the workdir donor tree (which
-    # the extract rung builds), scenery to our own run receipts under
+    # Census from a workdir-generated file (no tracked decoded tables):
+    # make_hidden_census.py surveys the workdir donor tree (which the
+    # extract rung builds); scenery comes from our own run receipts under
     # pins-compatible names, pins only as a comparison fallback.
     def rung_s3(self, c, r, base):
         w = self.W / f'w-{c}-s3'
@@ -1285,9 +1307,15 @@ class Chain:
                 scenery_dir = compat
             else:
                 raise SystemExit(f'{c}: no s3 scenery receipt; pass --pins')
+        census_json = w / 'hidden-census.json'
+        if not census_json.is_file():
+            run('s3-census', sys.executable, self.T / 'tk51' / 'make_hidden_census.py',
+                '--donor-dir', ddir / stem, '--stem', stem,
+                '--out', census_json,
+                cwd=self.W, log=self.log(c, 's3-census'))
         run('s3', sys.executable, self.T / 'tk51' / 'patch_hidden_colliders.py',
             base, out, '--course', c,
-            '--census', self.T / 'data' / 'tk51-hidden-census.json',
+            '--census', census_json,
             '--scenery-dir', scenery_dir,
             '--donor-dir', ddir,
             '--ssx3-iso', self.a.ssx3_iso,

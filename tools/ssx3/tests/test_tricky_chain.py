@@ -425,5 +425,152 @@ class WorkdirGoldenTest(unittest.TestCase):
             self.skipTest(f'no rung outputs in {workdir}')
 
 
+class GeneratedTablesTest(unittest.TestCase):
+    """Decoded Tricky tables are workdir-generated, never tracked.
+
+    The retired tracked files reproduced byte-identically from the pinned
+    discs (digests below); only those digests stay as documentation. The
+    driver generates both into the workdir at build time.
+    """
+    RETIRED = {
+        'tk51-hidden-census.json':
+            '98ca7b8c503c2087a2843a51b0ebd1ef2227f6350cd223308cb13ea4ca8ce6d9',
+        'tk57-glass-targets.json':
+            '32c46adc77048f680fc12d9dfa7b23b153ebec75857dfb807807a178eb735997',
+    }
+
+    def test_decoded_tables_not_tracked(self):
+        for name in self.RETIRED:
+            self.assertFalse((DATA / name).exists(), name)
+
+    def test_no_tracked_table_reads(self):
+        paths = (TRICKY / 'run_chain.py',
+                 TRICKY / 'tk51' / 'patch_hidden_colliders.py',
+                 TRICKY / 'tk51' / 'make_hidden_census.py',
+                 TRICKY / 'tk57' / 'make_glass_targets.py')
+        for path in paths:
+            source = path.read_text()
+            for name in self.RETIRED:
+                self.assertNotIn(name, source,
+                                 f'{path} reads retired {name}')
+
+    def test_generator_scripts_exist(self):
+        self.assertTrue(
+            (TRICKY / 'tk51' / 'make_hidden_census.py').is_file())
+        self.assertTrue(
+            (TRICKY / 'tk57' / 'make_glass_targets.py').is_file())
+
+    def test_s2_generates_glass_into_workdir(self):
+        import json
+        import types
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            work = Path(temp)
+            (work / 'donor' / 'gari').mkdir(parents=True)
+            (work / 'donor' / 'gari' / 'gari.pbd').write_bytes(b'pbd')
+            scenery = work / 'w-gari-sg' / 'scenery.json'
+            scenery.parent.mkdir(parents=True)
+            scenery.write_text('{}')
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         pins=None, ssx3_iso='iso',
+                                         host_bam='bam')
+            chain = run_chain.Chain(args)
+            seen = []
+
+            def fake_run(step, *cmd, **kw):
+                if step == 's2-glass':
+                    out = Path(cmd[cmd.index('--out') + 1])
+                    out.write_text(json.dumps(
+                        {'gari': {'specs': ['315:317'],
+                                  'scenery': 'gari-sg',
+                                  'donor': 'gari'}}))
+                    return None
+                seen.append((step, list(cmd)))
+                raise SystemExit('stop-after-capture')
+
+            with patch.object(run_chain, 'run', side_effect=fake_run):
+                with self.assertRaises(SystemExit) as ctx:
+                    chain.rung_s2('gari', run_chain.COURSES['gari'],
+                                  work / 'base.BIG')
+            self.assertIn('stop-after-capture', str(ctx.exception))
+            self.assertEqual([s for s, _ in seen], ['s2'])
+            cmd = [str(x) for x in seen[0][1]]
+            self.assertIn('interact_step.py', cmd[1])
+            glass = cmd[cmd.index('--glass') + 1]
+            self.assertEqual(glass, '315:317')
+            self.assertEqual(cmd[cmd.index('--scenery') + 1], str(scenery))
+
+    def test_s2_glass_generation_invoked(self):
+        import types
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            work = Path(temp)
+            (work / 'donor' / 'gari').mkdir(parents=True)
+            (work / 'donor' / 'gari' / 'gari.pbd').write_bytes(b'pbd')
+            scenery = work / 'w-gari-sg' / 'scenery.json'
+            scenery.parent.mkdir(parents=True)
+            scenery.write_text('{}')
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         pins=None, ssx3_iso='iso',
+                                         host_bam='bam')
+            chain = run_chain.Chain(args)
+            seen = []
+
+            def fake_run(step, *cmd, **kw):
+                seen.append((step, [str(x) for x in cmd]))
+                raise SystemExit('stop-after-generation')
+
+            with patch.object(run_chain, 'run', side_effect=fake_run):
+                with self.assertRaises(SystemExit):
+                    chain.rung_s2('gari', run_chain.COURSES['gari'],
+                                  work / 'base.BIG')
+            step, cmd = seen[0]
+            self.assertEqual(step, 's2-glass')
+            self.assertIn('make_glass_targets.py', cmd[1])
+            self.assertIn('--donor-stem', cmd)
+            self.assertEqual(cmd[cmd.index('--donor-stem') + 1], 'gari')
+            self.assertIn('--scenery-receipt', cmd)
+            self.assertEqual(cmd[cmd.index('--scenery-receipt') + 1],
+                             str(scenery))
+            self.assertEqual(cmd[cmd.index('--out') + 1],
+                             str(work / 'w-gari-s2' / 'glass-targets.json'))
+
+    def test_s3_generates_census_into_workdir(self):
+        import json
+        import types
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            work = Path(temp)
+            (work / 'donor' / 'gari').mkdir(parents=True)
+            (work / 'donor' / 'gari' / 'gari.pbd').write_bytes(b'pbd')
+            own = work / 'w-gari-b' / 'scenery.json'
+            own.parent.mkdir(parents=True)
+            own.write_text('{}')
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         pins=None, ssx3_iso='iso',
+                                         host_bam='bam')
+            chain = run_chain.Chain(args)
+            seen = []
+
+            def fake_run(step, *cmd, **kw):
+                if step == 's3-census':
+                    out = Path(cmd[cmd.index('--out') + 1])
+                    out.write_text(json.dumps(
+                        [{'course': 'gari', 'hidden': []}]))
+                    return None
+                seen.append((step, [str(x) for x in cmd]))
+                raise SystemExit('stop-after-capture')
+
+            with patch.object(run_chain, 'run', side_effect=fake_run):
+                with self.assertRaises(SystemExit) as ctx:
+                    chain.rung_s3('gari', run_chain.COURSES['gari'],
+                                  work / 'base.BIG')
+            self.assertIn('stop-after-capture', str(ctx.exception))
+            self.assertEqual([s for s, _ in seen], ['s3'])
+            cmd = seen[0][1]
+            self.assertEqual(cmd[cmd.index('--census') + 1],
+                             str(work / 'w-gari-s3' / 'hidden-census.json'))
+
+
 if __name__ == '__main__':
     unittest.main()
