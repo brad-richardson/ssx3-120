@@ -121,7 +121,7 @@ address	kind	name	role	source	evidence	confidence
 0x12f730	code	rider_ctl_state4_takeoff	exit to 5 when R+0x1f0/+0x214/+0x220 are 0	labels.tsv:local/research/FH9 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	local/tooling/ee/labels.tsv:324	verified
 0x131620	code	rider_ground_input_to_controls (pad record → R+0x1f0 triples, pose select)	rider_ground_input_to_controls (pad record → R+0x1f0 triples, pose select) (S)	FA1 §Labels	local/research/FA1/REPORT.md:306	verified
 0x133250	code	takeoff_rate_setter	takeoff setter: sets stunt rate R+0x2E0/0x2DC 1.41x	FLP1/FLP2	docs/facts.md:323	verified
-0x133308	code	hook_tgt_133308	hook target PC (hook-tgt 0x133308)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:3864	inferred
+0x133308	code	rider_directional_trick_tracker	Consumes action words; processes grab first; admits new spin only after grab-return, phase, animation-ID and completion gates	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_00133308_0x133308.cpp:794,1082	verified
 0x134318	code	stunt_step_store	second store of the S+0x18 step ([0x49bca4] x R+0x2E0)	FLP1/FLP2	docs/facts.md:323	verified
 0x136c40	code	cWipeoutMotion_gainFocus	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:95	local/research/SYM1/symbols.tsv:22	decomp-unverified
 0x136f30	code	case2_body_integrator	private dt 0x49be38, gated by R+0x150 alt: wipeout body integrator (pos/vel/spin/quaternion by R+0x300·[0x49be38]) (FH23)	labels.tsv:local/research/FH10 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	local/tooling/ee/labels.tsv:325	verified
@@ -2008,7 +2008,7 @@ address	kind	name	role	source	evidence	confidence
 0x442488	data	topo_base	engine hook/const kTopoBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_course_manifest.h:72	inferred
 0x442820	data	disc_base	engine hook/const kDiscBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_course_manifest.h:74	inferred
 0x442950	data	event_pic_table	RAM table: GL:99QPEvent picks the loading-screen picture by event index (event >= 17 maps to Snow Jam)	TK8/TK9	docs/facts.md:186	verified
-0x446990	data	anim_table	0x1c per entry, +0 = anim id	labels.tsv:local/research/FH15 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	local/tooling/ee/labels.tsv:396	verified
+0x446990	data	anim_table	Animation metadata records: stride0x1c; word0 is class consumed by311ae8 (e.g. ID0x48 -> class0x12), not the input animation ID	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_003115C8_0x3115c8.cpp; sub_00311AE8_0x311ae8.cpp:76	verified
 0x449960	data	records	engine hook/const kRecords: {anim, weight, flags} x 472	engine	deps/PS2Recomp/games/ssx3/module/include/ps2_ssx3_anim_pick_guard.h:38	inferred
 0x4561c0	data	payload_src	engine hook/const kPayloadSrc	engine	deps/PS2Recomp/games/ssx3/module/src/copied_payload.cpp:22	inferred
 0x4585f0	data	ai_source_desc	engine hook/const kAiSourceDesc	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_np_rider.h:18	inferred
@@ -2103,3 +2103,9 @@ R+0x454	data	height above the snow along the normal R+0x370 (leaves ground at �
 R+0x470	data	finish_time	finish time 0x12a250 checks (-1 while racing); each side sends its rider's value as fin/ftime	online-stock-2	local/research/online-stock-2/REPORT.md:601	verified
 S+0x18	data	stunt_step_spin	spin stunt step (0.704x/update)	AIR1/FLP1/FLP2	docs/facts.md:323	verified
 S+0x1c	data	stunt_step_flip	flip stunt step	AIR1/FLP1/FLP2	docs/facts.md:323	verified
+0x1352a8	code	rider_grab_stage_update	Updates S+4/S+8 grab stage and ID; returns 1 iff channel-2 animation metadata class is 0x12..0x14	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_001352A8_0x1352a8.cpp:2777,3135	verified
+0x133648	code	spin_admission_after_grab	Tracker branch: nonzero s2 (grab update return) bypasses new-spin admission and sets/retains S+0=3	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_00133308_0x133308.cpp:1082	verified
+0x311ae8	code	animation_channel_metadata_class	Reads controller[channel] animation ID; returns 0 for 0x1b6, otherwise dereferences word0 of 0x3115c8 metadata lookup	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_00311AE8_0x311ae8.cpp:31	verified
+0x321298	code	digital_input_record_update	Guest input-bank updater wrapped by input2; 28-byte records hold raw, press, release, level, repeat and clock/guard state	astra-input-1	local/research/astra-input-1/REPORT.md; games/ssx3/module/src/input2.cpp:23; ps2_fh1_input2.h:14	verified
+0x135b30	code	rick_set_directional_targets	Writes both directional targets S+10 and S+14 from f12/f13; caller13371c sets phase0 after admission	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_00135B30_0x135b30.cpp:23; sub_00133308_0x133308.cpp:1370	verified
+0x133574	code	grab_result_to_spin_admission	Return from1352a8: copy v0 to s2; when zero clear S0==3 before later directional gates; astra-input-1 candidate boundary	astra-input-1	local/research/astra-input-1/REPORT.md; codegen sub_00133308_0x133308.cpp:800	verified
