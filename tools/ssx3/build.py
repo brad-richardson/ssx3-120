@@ -477,6 +477,10 @@ def prepare_generator(a):
 
 
 def prepare(a):
+    # F03: the one-command paths reach here without the step-by-step
+    # main() mkdir, so prepare owns its work directory before writing
+    # SLUS_207.72 / the slim image / codegen into it.
+    a.work.mkdir(parents=True, exist_ok=True)
     if a.tools_only:
         prepare_generator(a)
         print('Native generator prepared; no disc read and no game sources generated.')
@@ -2661,6 +2665,9 @@ def ios_onecmd(a):
     check_team(a)
     a.target = 'ios'
     a.iso = a.ssx3_iso.resolve()
+    # F03: create WORK before any step writes into it (fresh iOS one-command
+    # setups failed when prepare wrote SLUS_207.72 under a missing parent).
+    a.work.mkdir(parents=True, exist_ok=True)
     doctor(a)
     if a.dry_run:
         ios(a)
@@ -3359,6 +3366,8 @@ def android_onecmd(a):
     a.work = a.work.resolve()
     if a.work == ROOT or ROOT in a.work.parents:
         raise ValueError('--work must be outside the source checkout')
+    # F03: create WORK before any step writes into it.
+    a.work.mkdir(parents=True, exist_ok=True)
     ensure_android_toolchain(a)
     a.target = 'android'
     a.iso = a.ssx3_iso.resolve()

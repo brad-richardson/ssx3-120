@@ -268,6 +268,43 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class WorkDirCreationTest(unittest.TestCase):
+    """F03: one-command paths create WORK before any step writes into it."""
+
+    def test_android_onecmd_creates_missing_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'new-work'
+            iso = Path(tmp) / 'SSX3.iso'
+            make_iso(iso)
+            args = onecmd_args(work, ssx3_iso=iso)
+            with patch.object(build, 'ensure_android_toolchain'), \
+                 patch.object(build, 'doctor'), \
+                 patch.object(build, 'prepare'), \
+                 patch.object(build, 'android_libs'), \
+                 patch.object(build, 'android'), \
+                 patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=True):
+                build.android_onecmd(args)
+            self.assertTrue(work.is_dir())
+
+    def test_ios_onecmd_creates_missing_work_before_doctor(self):
+        created_before_doctor = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'new-work'
+            iso = Path(tmp) / 'SSX3.iso'
+            make_iso(iso)
+            args = onecmd_args(work, ssx3_iso=iso, team='ABCDE12345',
+                               device=None, install=False, dry_run=True)
+            def fake_doctor(a):
+                created_before_doctor['work_existed'] = work.is_dir()
+            with patch.object(build, 'doctor', side_effect=fake_doctor), \
+                 patch.object(build, 'ios') as ios_step:
+                build.ios_onecmd(args)
+            self.assertTrue(created_before_doctor.get('work_existed'), 'WORK must exist when doctor runs')
+            self.assertTrue(work.is_dir())
+            ios_step.assert_called_once()
+
+
 class AdbResolutionTest(unittest.TestCase):
     """F01: install shells the selected SDK's adb, and the doctor checks it."""
 
