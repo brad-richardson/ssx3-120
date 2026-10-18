@@ -1318,6 +1318,7 @@ address	kind	name	role	source	evidence	confidence
 0x3e6070	code	REAL_abortmessage	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:602	prior map SYM1	decomp-unverified
 0x3e6448	code	per_vsync_clearer	clears watched word (store64 0) once per vsync	labels.tsv:E44 [trace] (NM1)	E44 notes	inferred
 0x3e6574	code	byte_copy_loop	Byte-copy loop at 0x3e6630 (6i lbu/sb)	labels.tsv:WL1 [codegen read] (NM1)	WL1 notes	inferred
+0x3e8b10	code	timed_quik_send	timed quik send (quick-match search window; STOCK120 extends the give-up timer 20 s -> 120 s) engine: constexpr kTimedSend (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1203)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1203; deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:39	verified
 0x3f4330	code	cop0_count_delta	Loads prior COP0 Count at 0x3f4410; subtracts at 0x3f441c (timer delta)	labels.tsv:E54F1 [codegen read] (NM1)	E54F1 notes	inferred
 0x3f4448	code	alarm	same-tick, wakes T7 only (never T1)	ONL3 §Decoded mechanism (SLUS_207.72)	ONL3 notes	verified
 0x3f44f8	code	sync-wait	pump -> flag -> sleep (site-B, unconditional)	ONL3 §Decoded mechanism (SLUS_207.72)	ONL3 notes	verified
