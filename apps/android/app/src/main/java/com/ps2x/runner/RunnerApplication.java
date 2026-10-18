@@ -57,6 +57,15 @@ public final class RunnerApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // F2 (appsec-fix-1): publish the internal files dir for online
+        // secrets (login/install-ID/notice live there, never in the shared
+        // external tree). Set before the runner library loads (the native
+        // static initializer reads it).
+        try {
+            Os.setenv("PS2X_ANDROID_INTERNAL_DIR", getFilesDir().getAbsolutePath(), true);
+        } catch (Exception e) {
+            Log.e(TAG, "internal dir: setenv failed", e);
+        }
         // Public adb staging starts this process once before pushing resources.
         // Android 15 denies the app access to shell-created directories in its
         // external tree, so create writable data/card directories as the app.
