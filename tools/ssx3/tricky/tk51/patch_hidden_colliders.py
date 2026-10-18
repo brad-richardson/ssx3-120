@@ -8,7 +8,7 @@ import argparse,math,json,struct,sys,subprocess
 from pathlib import Path
 from collections import Counter
 sys.dont_write_bytecode=True
-R=Path(__file__).resolve().parents[1];WROOT=Path('/Users/brad/dev/ssx3-work/TK51')
+R=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(R/'tk51'),str(R/'tk16')]
 from patch_source_bridge import materialize,sha,rewind,W,read_collision,encode_collision,block_spans,members_of,assemble_archive,gdir,ISO,PBD,ssf_to_gsf,instance_gameplay,read_tricky_collision
 from make_scenery33 import mmul,xform
@@ -57,8 +57,11 @@ def model_bytes(oid,model):
 
 def main():
  global ISO
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');ap.add_argument('--census',default=None,help='workdir hidden-census.json from make_hidden_census.py');ap.add_argument('--scenery-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery');ap.add_argument('--donor-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/donor');ap.add_argument('--ssx3-iso',default=str(ISO),help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');ap.add_argument('--census',default=None,help='workdir hidden-census.json from make_hidden_census.py');ap.add_argument('--scenery-dir',default=None,help='workdir scenery receipts dir (pins-compatible names)');ap.add_argument('--donor-dir',default=None,help='workdir donor root holding <stem>/<stem>.pbd/.ssf/.map');ap.add_argument('--ssx3-iso',default=None,help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
  if a.census is None or not Path(a.census).is_file():raise SystemExit('hidden census missing: generate it with tk51/make_hidden_census.py --donor-dir <donor>/<stem> --stem <stem> --out <workdir>/hidden-census.json, then pass --census')
+ if a.scenery_dir is None or not Path(a.scenery_dir).is_dir():raise SystemExit('hidden colliders: missing --scenery-dir <workdir scenery receipts dir>')
+ if a.donor_dir is None or not Path(a.donor_dir).is_dir():raise SystemExit('hidden colliders: missing --donor-dir <workdir donor root>')
+ if a.ssx3_iso is None or not Path(a.ssx3_iso).is_file():raise SystemExit('hidden colliders: missing --ssx3-iso <stock SSX3 ISO>')
  ISO=Path(a.ssx3_iso);sys.modules['patch_source_bridge'].ISO=ISO
  inputs=[sha(src.read_bytes()) for _ in range(2)];assert inputs[0]==inputs[1]
  census=json.loads(Path(a.census).read_text());donor_stem={'merq':'merquer','elys':'elysium'}.get(a.course,a.course);census=next(r for r in census if r['course']==donor_stem);eligible={x['source'] for x in census['hidden'] if x['solid_proxy_candidate']}
@@ -71,7 +74,9 @@ def main():
  raw=materialize(src.read_bytes());stem=a.course;bam=gdir.rename_world_members(raw,'bam');tmp=out.with_suffix('.bam.tmp');tmp.write_bytes(bam);world=W(tmp);recs=world.records(G);T=next(e['track']for e,p in recs if e['kind']==3)
  if scenery:
   rc=json.loads((Path(a.scenery_dir)/(scenery+'-scenery.json')).read_text());assert rc['instance_source'][anchor_rid]==anchor
- D=Path(a.donor_dir)/donor_stem;D=D if D.exists()else WROOT/'p3-donor/untrack';pbd=PBD((D/(donor_stem+'.pbd')).read_bytes());ssf=(D/(donor_stem+'.ssf')).read_bytes();gs=ssf_to_gsf(ssf);gp=instance_gameplay(gs,len(pbd.instances));colls=read_tricky_collision(gs)
+ D=Path(a.donor_dir)/donor_stem
+ if not (D/(donor_stem+'.pbd')).is_file():raise SystemExit(f'hidden colliders: no donor extract for {donor_stem} under --donor-dir {a.donor_dir}; run the chain extract rung first')
+ pbd=PBD((D/(donor_stem+'.pbd')).read_bytes());ssf=(D/(donor_stem+'.ssf')).read_bytes();gs=ssf_to_gsf(ssf);gp=instance_gameplay(gs,len(pbd.instances));colls=read_tricky_collision(gs)
  # Derive the already-installed placement from a visible instance, never a new fit.
  oldip=next(p for e,p in recs if e['kind']==3 and e['rid']==anchor_rid);vals=struct.unpack_from('<16f',oldip,16);scale=struct.unpack_from('<f',oldip,132)[0];oldm=[list(vals[k*4:k*4+4]) for k in range(4)]
  for k in range(3):oldm[k][:3]=[v*scale for v in oldm[k][:3]]

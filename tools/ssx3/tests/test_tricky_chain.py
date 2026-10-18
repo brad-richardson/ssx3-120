@@ -572,5 +572,71 @@ class GeneratedTablesTest(unittest.TestCase):
                              str(work / 'w-gari-s3' / 'hidden-census.json'))
 
 
+class LabPathsTest(unittest.TestCase):
+    """Converter helpers take explicit inputs; no lab paths (public-fix-2 A4).
+
+    Every Tricky converter runs outside the lab from the workdir: former
+    `/Users/brad/...` defaults are now required arguments (or gone), and a
+    missing input fails with a message naming the fix.
+    """
+    SCRIPTS = (TRICKY / 'run_chain.py',
+               TRICKY / 'tk51' / 'patch_hidden_colliders.py',
+               TRICKY / 'tk51' / 'patch_source_bridge.py',
+               TRICKY / 'tk51' / 'make_hidden_census.py',
+               TRICKY / 'tk57' / 'make_glass_targets.py',
+               TRICKY / 'tk58' / 'fix_hulls.py',
+               TRICKY / 'tk33b' / 'u0zero.py',
+               TRICKY / 'tk18' / 'make_route_tol.py')
+
+    def test_no_lab_path_literals(self):
+        for path in self.SCRIPTS:
+            source = path.read_text()
+            for literal in ('/Users/brad', '/home/brad'):
+                self.assertNotIn(literal, source, f'{path.name}')
+        bridge = (TRICKY / 'tk51' / 'patch_source_bridge.py').read_text()
+        self.assertNotIn('pinned/game', bridge)
+        self.assertNotIn('pinned/tricky', bridge)
+        collider = (TRICKY / 'tk51' / 'patch_hidden_colliders.py').read_text()
+        self.assertNotIn('WROOT', collider)
+        hulls = (TRICKY / 'tk58' / 'fix_hulls.py').read_text()
+        self.assertNotIn('SCENERY', hulls)
+
+    def _run(self, *argv):
+        import subprocess
+        import sys
+        return subprocess.run([sys.executable, *argv], capture_output=True,
+                              text=True, timeout=120)
+
+    def test_patch_hidden_colliders_fails_clearly(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            src = Path(temp) / 'in.BIG'
+            src.write_bytes(b'input')
+            r = self._run(str(TRICKY / 'tk51' / 'patch_hidden_colliders.py'),
+                          str(src), str(Path(temp) / 'out.BIG'),
+                          '--course', 'gari')
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('--census', r.stdout + r.stderr)
+
+    def test_fix_hulls_fails_clearly(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            src = Path(temp) / 'in.BIG'
+            src.write_bytes(b'input')
+            r = self._run(str(TRICKY / 'tk58' / 'fix_hulls.py'),
+                          str(src), str(Path(temp) / 'out.BIG'),
+                          '--course', 'gari')
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('--donor-dir', r.stdout + r.stderr)
+
+    def test_u0zero_requires_root(self):
+        r = self._run(str(TRICKY / 'tk33b' / 'u0zero.py'))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('--root', r.stdout + r.stderr)
+        helped = self._run(str(TRICKY / 'tk33b' / 'u0zero.py'), '--help')
+        self.assertEqual(helped.returncode, 0)
+        self.assertIn('--root', helped.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()

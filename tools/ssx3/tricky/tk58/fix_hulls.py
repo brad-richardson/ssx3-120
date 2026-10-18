@@ -30,17 +30,20 @@ from hull import convex_hull_fixed, verify
 CONFIG = {  # course: (group, scenery receipt (unused since provenance search), donor stem)
     'mesa': (80, 'mesa-final', 'mesa'), 'gari': (33, 'gari-f', 'gari'), 'snow': (56, 'snow-f', 'snow'),
     'aloha': (22, 'aloha-b', 'aloha'), 'merq': (148, 'merq-d', 'merquer'), 'elys': (135, 'elys-b', 'elysium')}
-SCENERY = Path('/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery')
-DONOR = Path('/Users/brad/dev/ssx3-work/pinned/tricky/donor')
+# Donor inputs come from the run workdir (extracted from the user's disc):
+# --donor-dir is required; there is no machine-local default.
+DONOR = None
 
 
 def main():
     global ISO
     ap = argparse.ArgumentParser(description=__doc__); ap.add_argument('input'); ap.add_argument('output')
     ap.add_argument('--course', required=True, choices=sorted(CONFIG)); ap.add_argument('--receipt')
-    ap.add_argument('--donor-dir', default=str(DONOR))
-    ap.add_argument('--ssx3-iso', default=str(ISO), help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)')
+    ap.add_argument('--donor-dir', default=None, help='workdir donor root holding <stem>/<stem>.pbd/.ssf')
+    ap.add_argument('--ssx3-iso', default=None, help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)')
     a = ap.parse_args(); src = Path(a.input); out = Path(a.output); assert not out.exists(); out.parent.mkdir(parents=True, exist_ok=True)
+    if a.donor_dir is None or not Path(a.donor_dir).is_dir(): raise SystemExit('fix_hulls: missing --donor-dir <workdir donor root>')
+    if a.ssx3_iso is None or not Path(a.ssx3_iso).is_file(): raise SystemExit('fix_hulls: missing --ssx3-iso <stock SSX3 ISO>')
     ISO = Path(a.ssx3_iso); sys.modules['patch_source_bridge'].ISO = ISO
     inputs = [sha(src.read_bytes()) for _ in range(2)]; assert inputs[0] == inputs[1]
     G, scen, stem = CONFIG[a.course]

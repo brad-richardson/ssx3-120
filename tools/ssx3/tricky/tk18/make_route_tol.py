@@ -6,5 +6,5 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tk12'))
 import wlib  # noqa: F401
 import race_course
 race_course.donor_race_chain = functools.partial(race_course.donor_race_chain, tolerance=float(sys.argv.pop(1)))
-sys.argv[0] = '/Users/brad/dev/ssx3/local/research/TK12/make_route.py'
+sys.argv[0] = str(Path(__file__).resolve().parents[1] / 'tk12' / 'make_route.py')
 runpy.run_path(sys.argv[0], run_name='__main__')

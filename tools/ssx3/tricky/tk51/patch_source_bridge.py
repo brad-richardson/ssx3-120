@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """TK51 Part 2: import hidden donor1444's authored SSF surface into visible donor1443/world1400.
 
-Usage: patch_source_bridge.py INPUT_COMPOSITE OUTPUT_COMPOSITE --donor-id 1444
+Usage: patch_source_bridge.py INPUT_COMPOSITE OUTPUT_COMPOSITE --donor-id 1444 --donor-pbd <stem>.pbd --ssx3-iso <SSX3-USA.iso>
 The donor transforms are identical. Join the four authored meshes into one exact
 63-vertex/56-face part for SSX3's one-render-part query; no hull, new triangles,
 render geometry, or animation. Every authored position and normal is retained.
@@ -25,8 +25,10 @@ from retrack import members_of
 from relayout_stream import assemble_archive
 import gamecube_game_dir as gdir
 gdir.WORLD_EXTENSIONS=('sdb','ssb','phm','psm')
-ISO=Path('/Users/brad/dev/ssx3-work/pinned/game/ssx3-usa-3c2f8eb1/SSX 3 (USA).iso')
-DONOR=Path('/Users/brad/dev/ssx3-work/pinned/tricky/donor/mesa/mesa.pbd')
+# No machine-local defaults: direct runs pass --donor-pbd/--ssx3-iso;
+# importers (patch_hidden_colliders, fix_hulls) override ISO before use.
+ISO=None
+DONOR=None
 sha=lambda b:hashlib.sha256(b).hexdigest()
 def materialize(blob):
  lines=blob[:2048].split(b'\0')[0].decode().splitlines();assert lines[0]=='PS2XCMP1';out=bytearray()
@@ -54,7 +56,12 @@ def mesh(pbd):
  assert actual==expected  # partition remaps indices in first-use order
  return result,dict(source='mesa.ssf collision table 2 / hidden donor1444',ssf_sha=sha(ssf),source_parts=len(source),vertices=len(vertices),triangles=len(triangles),parts=len(decoded),positions_and_normals_preserved=True,source_surface=g['surface'])
 def main():
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--donor-id',type=int,required=True);a=ap.parse_args();assert a.donor_id==1444,'single-instance proof only'
+ global ISO,DONOR
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--donor-id',type=int,required=True);ap.add_argument('--donor-pbd',required=True,help='donor <stem>.pbd (extracted from the user disc; .ssf alongside)');ap.add_argument('--ssx3-iso',required=True,help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)');a=ap.parse_args();assert a.donor_id==1444,'single-instance proof only'
+ DONOR=Path(a.donor_pbd)
+ if not DONOR.is_file():raise SystemExit(f'source bridge: missing donor pbd {DONOR}')
+ if not Path(a.ssx3_iso).is_file():raise SystemExit(f'source bridge: missing stock SSX3 ISO {a.ssx3_iso}')
+ ISO=Path(a.ssx3_iso)
  src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
  inputs=[sha(src.read_bytes()) for _ in range(2)];assert inputs[0]==inputs[1];blob=src.read_bytes();raw=materialize(blob)
  full=out.with_suffix('.input.BIG');full.write_bytes(raw);stem=W(full).stem;bam_bytes=gdir.rename_world_members(raw,'bam');tmp=out.with_suffix('.bam.tmp');tmp.write_bytes(bam_bytes);world=W(tmp)
