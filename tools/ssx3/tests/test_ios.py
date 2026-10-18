@@ -362,6 +362,35 @@ class Om1GenerateTest(unittest.TestCase):
             self.assertIn('--om1-stage explicitly', str(ctx.exception))
 
 
+class PresetStagingTest(unittest.TestCase):
+    """G9 (public-parity-2): the staged 120 layer is named full120.env, the
+    name the runtime reads (ps2_ios_runtime.mm); no full120-ios.env ships."""
+
+    def test_full120_staged_under_runtime_name(self):
+        with tempfile.TemporaryDirectory() as temp:
+            app = Path(temp) / 'app'
+            app.mkdir()
+            staged = build.stage_ios_presets(app)
+            self.assertEqual((app / 'ps2x.env').read_bytes(),
+                             (build.ROOT / 'presets/ios.env').read_bytes())
+            self.assertEqual((app / 'full120.env').read_bytes(),
+                             (build.ROOT / 'presets/full120-ios.env').read_bytes())
+            self.assertFalse((app / 'full120-ios.env').exists())
+            self.assertEqual(staged['full120.env'], build.sha(app / 'full120.env'))
+            self.assertEqual(staged['ps2x.env'], build.sha(app / 'ps2x.env'))
+
+    def test_missing_preset_fails_clearly(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'root'
+            (root / 'presets').mkdir(parents=True)
+            (root / 'presets/ios.env').write_text('PS2X_CD_IMAGE=x\n')
+            app = Path(temp) / 'app'
+            app.mkdir()
+            with patch.object(build, 'ROOT', root):
+                with self.assertRaisesRegex(ValueError, 'missing shipped preset'):
+                    build.stage_ios_presets(app)
+
+
 class DryRunTest(unittest.TestCase):
     def test_listing_touches_nothing(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -2412,6 +2412,23 @@ def ios_build_versions(cc, cxx):
     }
 
 
+def stage_ios_presets(app):
+    """Copy the shipped iOS presets into the staged app bundle.
+
+    G9 (public-parity-2): the staged 120-layer name must match what the
+    runtime reads (bundle/full120.env in ps2_ios_runtime.mm). The source
+    preset keeps its full120-ios.env name so it cannot collide with the
+    Android presets/full120.env. Returns {staged name: sha256}."""
+    staged = {}
+    for name, dest in (('ios.env', 'ps2x.env'), ('full120-ios.env', 'full120.env')):
+        src = ROOT / 'presets' / name
+        if not src.is_file():
+            raise ValueError('missing shipped preset: ' + str(src))
+        shutil.copy2(src, Path(app) / dest)
+        staged[dest] = sha(Path(app) / dest)
+    return staged
+
+
 def ios_release_flags(pgo_data):
     """iOS app Release flags (D04 apple-a15 tuning plus optional PGO use)."""
     base = '-O3 -DNDEBUG -mcpu=' + IOS_MCPU
@@ -2442,7 +2459,7 @@ def ios(a):
         print('  ios-libs ' + ('current' if ios_libs_current(a.work) else 'MISSING (run ios-libs)') + ': '
               + str(a.work / 'ios-libs'))
         print('  stage into ' + str(a.work / 'ios-stage') + ' (SLUS_207.72, slim ISO, '
-              'presets/ios.env, presets/full120-ios.env, Settings.bundle, MoltenVK.framework)')
+              'presets/ios.env->ps2x.env, presets/full120-ios.env->full120.env, Settings.bundle, MoltenVK.framework)')
         if getattr(a, 'install', False):
             print('  install with xcrun devicectl to ' + str(getattr(a, 'device', None) or 'the connected device'))
         return
@@ -2521,11 +2538,7 @@ def ios(a):
     shutil.copy2(files['SLUS_207.72'], app / 'SLUS_207.72')
     shutil.copy2(files['SSX3.iso'], app / 'SSX3.iso')
     shutil.copy2(files['SSX3.iso.holes'], app / 'SSX3.iso.holes')
-    for name in ('ios.env', 'full120-ios.env'):
-        src = ROOT / 'presets' / name
-        if not src.is_file():
-            raise ValueError('missing shipped preset: ' + str(src))
-        shutil.copy2(src, app / ('ps2x.env' if name == 'ios.env' else name))
+    staged_presets = stage_ios_presets(app)
     shutil.copytree(ENGINE / 'ps2xRuntime/ios/Settings.bundle', app / 'Settings.bundle')
     frameworks = app / 'Frameworks'
     frameworks.mkdir(exist_ok=True)
@@ -2559,6 +2572,7 @@ def ios(a):
         'slim_sha256': inputs['slim_sha256'], 'elf_sha256': inputs['elf_sha256'],
         'signed_binary_sha256': sha(app / 'ps2EntryRunner'),
         'preset_sha256': sha(app / 'ps2x.env'),
+        'full120_sha256': staged_presets['full120.env'],
         'xcode_version': versions['xcode_version'],
         'iphoneos_sdk_version': versions['iphoneos_sdk_version'],
         'c_compiler': versions['c_compiler'],
