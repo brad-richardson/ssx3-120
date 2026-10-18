@@ -54,15 +54,20 @@ S5_FINALS = {c: TKP5_FINALS[c] for c in TKP5_FINALS if c != 'mega'}
 # Device payload goldens (tk-port-2 REPORT section 2 + TKP5 section 1).
 # Preview is a recorded 12-char pin (tk-port-1 REPORT section 6).
 PREVIEW_PIN = '3332b0af708d'
+# Oracle changes (orch 10-18): HUD pin -> a7ccacdabb2c (two independent
+# builds agree byte-for-byte; old pin stale). Music pins -> our pool
+# outputs 26125d2a/de73a5b7 (play == public; arrangement/events match
+# staging exactly, only remus audio differs; quality receipt REPORT
+# §20: min 37.6 dB, median 39.6 dB, nothing below 30 dB).
 AUDIO_SHA = {'speech-tricky-big': 'ed417ac3ff2c19c38fadfaadfeba0b5ff695402ab335655952a4e3dcb861a1',
-             'music-tricky-big': '975c0ae473214de48e37202ba284c71b54043a6a605a23f93f052ba9372',
-             'music2-tricky-big': '0bc17a154244d8cf8b2b1406564fce5ace6dff496d129e277fad017098b08',
+             'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723ad6e9042f04a6c728d7',
+             'music2-tricky-big': 'de73a5b7e5e45f614eb29fcbb205af1d7b0d08758b5ae313ccbc503a1a5b0388',
              'trickyhud.bin': 'a7ccacd07b9982bbc34e48aab463e4e0e652b284a442ea7ff91068e163b8',
              'tricky-song.wav': '9c5dbf717c1614b71a01671d3b8a846a93ef3c8f05f70efeaa606dca435',
              'tricky-gems.tsv': '3f4cd72b511b6bab83b9e869e4ca4436c8fb0d92bde9072078b4bef66c',
              'tricky-resetvol.tsv': '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'}
 GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13'
-HUD_ATLAS_SHA = 'a7ccacd07b9982bbc34e48aab463e4e0e652b284a442ea7ff91068e163b8'
+HUD_ATLAS_SHA = 'a7ccacdabb2cfefb392fb2dba319cb7f3d6056ec911ede1510e9aaba26071f28'
 RESETVOL_SHA = '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'
 # Oracle change (orch 10-18): play == public, so the public pipeline is the
 # reference — adopt OUR composite 4106bce5 (speech_eaxa.py from the pinned
