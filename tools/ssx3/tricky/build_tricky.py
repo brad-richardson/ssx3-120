@@ -297,7 +297,10 @@ class Build:
         """Resume from speech: copy a finished run's world finals + host
         BAM into this fresh workdir, then rerun preview onward. Courses
         with no final in the reuse dir take the same loud skip keys
-        phase_worlds uses (mega / resets-<course>)."""
+        phase_worlds uses (mega / resets-<course>). Also carries the
+        gems/resetvol inputs (w-*-f11, w-*-b, effects, donor) for the
+        non-skipped gem courses; absent trees are left for the phases to
+        fail closed on."""
         reuse = Path(reuse)
         if reuse.resolve() == self.W.resolve():
             raise SystemExit(f'--reuse-worlds must differ from --work: {reuse}')
@@ -320,6 +323,18 @@ class Build:
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
             self.world_final(c)
+        # Gems/resetvol inputs for the non-skipped gem courses (phase_gems
+        # reads w-*-f11, w-*-b/scenery.json, effects/ and donor/).
+        for arch, _group in GEM_COURSES:
+            c = arch.lower()
+            if f'resets-{c}' in self.skipped:
+                continue
+            for tree in (f'w-{c}-f11', f'w-{c}-b'):
+                if (reuse / tree).is_dir():
+                    shutil.copytree(reuse / tree, self.W / tree)
+        for tree in ('effects', 'donor'):
+            if (reuse / tree).is_dir():
+                shutil.copytree(reuse / tree, self.W / tree)
         print(f'worlds reused from {reuse}; skipped: {sorted(self.skipped)}',
               flush=True)
 
@@ -604,8 +619,9 @@ def main(argv=None):
                     help='resume at a later phase, reusing a finished run')
     ap.add_argument('--reuse-worlds', default=None,
                     help='finished --work dir whose world finals + host BAM '
-                         'are copied into the fresh --work dir (fresh dir '
-                         'only; never the same dir)')
+                         '+ gems inputs (w-*-f11, w-*-b, effects, donor) are '
+                         'copied into the fresh --work dir (fresh dir only; '
+                         'never the same dir)')
     ap.add_argument('--routes-ref-dir', default=None)
     ap.add_argument('--english-base', default=None)
     ap.add_argument('--vgmstream', default='vgmstream-cli')

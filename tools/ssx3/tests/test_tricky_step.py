@@ -608,6 +608,36 @@ class BuildTrickyDriverTest(unittest.TestCase):
                 want[key] = f'reused worlds lack {rel}'
             self.assertEqual(b.skipped, want)
 
+    def test_resume_carries_gems_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reuse = Path(tmp) / 'reuse'
+            (reuse / 'host-bam').mkdir(parents=True)
+            (reuse / 'host-bam' / 'BAM.BIG').write_bytes(b'bam')
+            (reuse / 'w-merq-routes').mkdir(parents=True)
+            (reuse / 'w-merq-routes' / 'MERQ.BIG').write_bytes(b'merq')
+            (reuse / 'w-merq-f11').mkdir(parents=True)
+            (reuse / 'w-merq-f11' / 'MERQ.BIG').write_bytes(b'f11')
+            (reuse / 'w-merq-b').mkdir(parents=True)
+            (reuse / 'w-merq-b' / 'scenery.json').write_bytes(b'{}')
+            (reuse / 'effects').mkdir(parents=True)
+            (reuse / 'effects' / 'merquer.json').write_bytes(b'{}')
+            (reuse / 'donor').mkdir(parents=True)
+            (reuse / 'donor' / 'x').write_bytes(b'd')
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            with patch.object(driver, 'check', return_value=None):
+                b.resume_worlds(reuse)
+            self.assertEqual(
+                (work / 'w-merq-f11' / 'MERQ.BIG').read_bytes(), b'f11')
+            self.assertTrue((work / 'w-merq-b' / 'scenery.json').is_file())
+            self.assertTrue((work / 'effects' / 'merquer.json').is_file())
+            self.assertTrue((work / 'donor' / 'x').is_file())
+            # skipped gem courses carry nothing; missing trees don't fail.
+            self.assertFalse((work / 'w-gari-f11').exists())
+            self.assertIn('resets-gari', b.skipped)
+
     def test_resume_needs_host_bam(self):
         with tempfile.TemporaryDirectory() as tmp:
             reuse = Path(tmp) / 'reuse'
