@@ -6,6 +6,7 @@ steps are stubbed, and file-content pins are read from the checkout.
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import types
 import unittest
@@ -192,7 +193,12 @@ class WiringSourceTest(unittest.TestCase):
 
     def test_vu0_step_registered(self):
         text = BUILD.read_text()
-        self.assertIn("'ios-libs', 'vu0'])", text)
+        # Parse the step choices list: new steps (e.g. tricky) must not
+        # break this assertion by shifting the literal tail.
+        m = re.search(r"add_argument\('step', choices=\[([^\]]*)\]\)", text)
+        self.assertIsNotNone(m, 'step choices list not found in build.py')
+        steps = [s.strip().strip("'\"") for s in m.group(1).split(',')]
+        self.assertIn('vu0', steps)
         self.assertIn("'--vu0-stage'", text)
         self.assertIn("'ios': ios, 'vu0': vu0}", text)
 
