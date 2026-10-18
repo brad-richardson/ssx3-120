@@ -178,7 +178,7 @@ in order) and `equiv.py` (identical load outcomes old vs new on all 89).
 - Chain: `tk56/` (fix_binds + survey/verify/table), `tk53/` (trigger_step,
   break_step), `tk57/` (interact_step), `tk51/` (patch_hidden_colliders,
   patch_source_bridge), `tk58/` (fix_hulls, hull).
-- `tkp5/` (relocate_step, preview_step copy, verify_chain, stage,
+- `tkp5/` (relocate_step, preview_step copy, verify_chain,
   event_refs), `tk52/` (preview_step, menu_assets).
 - `tkroutes/` (`route_step.py`: world-data patches — Aloha
   covers3, Merqury wall2819, Megaplex tube94s2; proven by byte-identical

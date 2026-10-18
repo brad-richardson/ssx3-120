@@ -672,7 +672,7 @@ class Build:
         return out
 
     def phase_layout(self, built, audio_on=True):
-        """Assemble the device layout (public equivalent of stage.py).
+        """Assemble the device layout from the built payloads.
 
         Device files land at the top of --work (beside intermediates);
         the builder stages only the allowlisted payload by name. With
