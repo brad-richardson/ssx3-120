@@ -672,6 +672,31 @@ class BuildTrickyDriverTest(unittest.TestCase):
                      str(stage / f'{song}.mus'), str(stage / f'{song}.mpf'),
                      '--offsets', str(stage / f'{song}.tsv')])
 
+    def test_hud_atlas_reads_the_tricky_iso(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work, tricky_iso=work / 't.iso',
+                               ssx3_iso=work / 's.iso')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, args
+            b.logs = work / 'logs'
+            seen = []
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                seen.append((name, list(argv)))
+                atlas = Path(argv[-1])
+                atlas.mkdir(parents=True, exist_ok=True)
+                (atlas / 'trickyhud.bin').write_bytes(b'hud')
+                return Path(logdir) / f'{name}.log'
+
+            with patch.object(driver, 'run', side_effect=fake_run), \
+                 patch.object(driver, 'check', return_value=None):
+                out = b.phase_hud()
+            self.assertEqual(out, work / 'hud' / 'atlas' / 'trickyhud.bin')
+            self.assertEqual(len(seen), 1)
+            self.assertEqual(Path(seen[0][1][2]), work / 't.iso')
+
     def test_speech_decisions_cover_all_targets(self):
         decisions = driver.T / 'data' / 'speech-decisions'
         for t in driver.SPEECH_TARGETS:

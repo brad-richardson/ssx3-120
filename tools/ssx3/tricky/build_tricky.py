@@ -483,8 +483,9 @@ class Build:
     def phase_hud(self):
         hud = self.W / 'hud'
         hud.mkdir(parents=True, exist_ok=True)
+        # HUDGAME.SSH lives on the Tricky disc (DATA/TEXTURES), not SSX3.
         run(self.logs, 'hud-atlas', sys.executable, T / 'make_hud_atlas.py',
-            self.a.ssx3_iso, hud / 'atlas', cwd=self.W)
+            self.a.tricky_iso, hud / 'atlas', cwd=self.W)
         out = hud / 'atlas' / 'trickyhud.bin'
         check(out, HUD_ATLAS_SHA, 'trickyhud.bin')
         return out
