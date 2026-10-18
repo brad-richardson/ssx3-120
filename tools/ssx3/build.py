@@ -1003,6 +1003,7 @@ def android(a):
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
         '-Pps2xVu0RecompDir=' + resolve_vu0_stage(a),
         '-Pps2xGamePch=ON',
+        '-Pps2xDev=' + ('ON' if getattr(a, 'dev', False) else 'OFF'),
         '-Pps2xPgoData=' + pgo_data, '-Pps2xBootElf=/storage/emulated/0/Android/data/' + a.app_id + '/files/SLUS_207.72',
         '-Pps2xAppId=' + a.app_id,
         '-Pps2xPrebuiltDir=' + (str(bundle) if bundle else ''),
@@ -2052,16 +2053,18 @@ def find_provisioning_profile(team, bundle_id, profiles_dir=None):
     return best
 
 
-def sign_staged_app(work, stage_app, team, bundle_id):
+def sign_staged_app(work, stage_app, team, bundle_id, dev=False):
     """Sign the staged app with the user's team (profile from Xcode's
-    automatic signing; entitlements generated, never committed)."""
+    automatic signing; entitlements generated, never committed).
+    F8 (appsec-fix-1): public builds omit get-task-allow; lab/dev builds
+    keep it via --dev."""
     import plistlib
     profile = find_provisioning_profile(team, bundle_id)
     identity = signing_identity(team, profile=profile)
     shutil.copy2(profile, stage_app / 'embedded.mobileprovision')
     entitlements = {'application-identifier': team + '.' + bundle_id,
                     'com.apple.developer.team-identifier': team,
-                    'get-task-allow': True}
+                    'get-task-allow': bool(dev)}
     ent_file = work / 'ios-entitlements.plist'
     with open(ent_file, 'wb') as f:
         plistlib.dump(entitlements, f)
@@ -2518,7 +2521,7 @@ def ios(a):
     validate_tfx_selectors()
     tfx_sha = stage_tfx_selectors(app)
     subprocess.run(['find', str(app), '-name', '._*', '-delete'], check=False)
-    identity = sign_staged_app(a.work, app, team, bundle_id)
+    identity = sign_staged_app(a.work, app, team, bundle_id, dev=getattr(a, 'dev', False))
     (a.work / 'ios-app.json').write_text(json.dumps({
         'team': team, 'bundle_id': bundle_id, 'identity': identity,
         'engine': subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'],
@@ -3226,6 +3229,8 @@ def main():
     p.add_argument('--det', action='store_true', help='mac flavor with the VBlank det-hash tap (gate boots + tap unit tests; separate runner-build-det dir)')
     p.add_argument('--jobs', type=int, default=8)
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
+    p.add_argument('--dev', action='store_true',
+                   help='lab/dev build: keep get-task-allow (iOS), debuggable + shell-profileable (Android)')
     p.add_argument('--engine', type=Path, default=None,
                    help='engine checkout (default: SSX3_ENGINE_DIR or deps/PS2Recomp submodule)')
     a = p.parse_args()

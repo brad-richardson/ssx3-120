@@ -13,8 +13,9 @@
         android:isGame="true"
         android:appCategory="game">
 
-        <!-- N11: allow simpleperf from the shell on release builds (stays non-debuggable) -->
-        <profileable android:shell="true" />
+        <!-- F8 (appsec-fix-1): shell-profileable only for lab/dev builds
+             (-Pps2xDev=ON); public builds substitute false and drop it. -->
+        <profileable android:shell="${ps2xProfileable}" />
 
         <!-- GPU2: opt in to Android Game Mode (performance + battery); no
              downscaling or fps override, so the OS can't change our render

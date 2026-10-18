@@ -24,6 +24,9 @@ def ps2xVu1FmacSimd = project.findProperty('ps2xVu1FmacSimd') ?: 'ON'
 // suffix "-pgogen", so an instrumented APK names itself. Never ships.
 def ps2xPgoGenerate = project.findProperty('ps2xPgoGenerate') ?: 'OFF'
 def ps2xPgoGen = ps2xPgoGenerate == 'ON'
+// F8 (appsec-fix-1): lab/dev builds keep debugging capabilities via
+// -Pps2xDev=ON; public/release builds drop them.
+def ps2xDev = (project.findProperty('ps2xDev') ?: 'OFF') == 'ON'
 // PG5: build-host dir holding the external pgo_flush.c (empty = no helper).
 def ps2xPgoHelperDir = project.findProperty('ps2xPgoHelperDir') ?: ''
 // OF1 (PG1 USE lineage): PGO use build (absolute path to the merged
@@ -87,6 +90,8 @@ android {
         targetSdk 34
         versionCode ps2xVersionCode
         versionName '0.1.0'
+        // F8: shell-profileable only for lab/dev builds; public drops it.
+        manifestPlaceholders = [ps2xProfileable: (ps2xDev || ps2xPgoGen) ? 'true' : 'false']
         if (ps2xPgoGen) {
             versionNameSuffix '-pgogen'
         }
@@ -189,7 +194,8 @@ android {
             minifyEnabled false
             signingConfig ps2xKeystoreFile ? signingConfigs.ssx3Local : signingConfigs.debug
             // PG5 GEN only (see ps2xPgoGenerate): wrap.sh + run-as profile pull.
-            debuggable ps2xPgoGen
+            // F8: public/release builds are non-debuggable; --dev keeps it.
+            debuggable (ps2xPgoGen || ps2xDev)
         }
     }
 }
