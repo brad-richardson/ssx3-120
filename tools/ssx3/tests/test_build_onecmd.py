@@ -280,6 +280,42 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class LockPinsTest(unittest.TestCase):
+    """F22: deps.lock.json records every platform source pin."""
+
+    def lock(self):
+        return json.loads((ROOT / 'deps.lock.json').read_text())
+
+    def test_vendor_pins_match_build_py(self):
+        vendor = self.lock()['vendor']
+        self.assertEqual(vendor['ge1']['pin'], build.GE1_VENDOR_PIN)
+        self.assertEqual(vendor['ge1']['repo'], build.GE1_VENDOR_REPO)
+        self.assertEqual(vendor['om1']['pin'], build.OM1_VENDOR_PIN)
+        self.assertEqual(vendor['om1_replay']['pin'], build.OM1_REPLAY_PIN)
+        self.assertEqual(vendor['armsx2']['pin'], build.ANDROID_GE1_VENDOR_PIN)
+
+    def test_dep_tables_match_build_py(self):
+        vendor = self.lock()['vendor']
+        for table, key in ((build.ANDROID_DEPS, 'android_deps'),
+                           (build.IOS_DEPS, 'ios_deps')):
+            recorded = vendor[key]
+            self.assertEqual({n for n, _, _, _ in table}, set(recorded))
+            for name, repo, tag, commit in table:
+                self.assertEqual(recorded[name]['repo'], repo, name)
+                self.assertEqual(recorded[name]['tag'], tag, name)
+                self.assertEqual(recorded[name]['commit'], commit, name)
+
+    def test_archive_pins_match_manifests(self):
+        vendor = self.lock()['vendor']
+        self.assertEqual(vendor['sdl2']['sha256'], build.SDL2_TARBALL_SHA)
+        self.assertEqual(vendor['ffmpeg']['sha256'], build.FFMPEG_TARBALL_SHA)
+        moltenvk = json.loads((HERE / 'moltenvk.json').read_text())
+        self.assertEqual(vendor['moltenvk']['archive_sha256'], moltenvk['archive_sha256'])
+        turnip = json.loads((HERE / 'turnip.json').read_text())
+        self.assertEqual(vendor['turnip']['archive_sha256'], turnip['binary']['archive_sha256'])
+        self.assertIn('source_note', vendor['turnip'])
+
+
 class SourceNoticesTest(unittest.TestCase):
     """F21: default source builds stage the full notice inventory."""
 
