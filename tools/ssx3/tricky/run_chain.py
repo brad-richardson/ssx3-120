@@ -1423,10 +1423,10 @@ class Chain:
     # route_step.py (tkroutes port of tk-routes-1 tooling) on the s5-final
     # play world. Aloha covers3 (group 22: A per-wedge --rids + B/C whole
     # --cover-rids), merq wall2819 (group 148: --rids 2819), mega tube94s2
-    # (group 94: boost --rid 94 --program 34 --slot 2). Mega's s5 is unwired
-    # (pending mega-h/u2/c tail: needs mega-line-tex20 plus the floor->s5
-    # wiring), so with no chain-built base the rung records a skip instead
-    # of reading any outside reference. Outputs are the post-routes golden.
+    # (group 94: boost --rid 94 --program 34 --slot 2). Mega's base is the
+    # chain-built s5 (tk-mega-1 step 7); with no chain base the rung records
+    # a skip instead of reading any outside reference (no reference input
+    # exists anywhere in the driver). Outputs are the post-routes golden.
     def rung_routes(self, c, r, base):
         if base is None:
             print(f'{c} routes skipped (no chain base: mega tail pending)', flush=True)

@@ -179,8 +179,8 @@ class RoutesRungTest(unittest.TestCase):
     """The tk-routes-2 follow-up rung sits after s5 (post-golden commit).
 
     Aloha covers3, merq wall2819 and mega tube94s2 apply route_step.py to
-    the s5-final play world (mega: recorded reference, input-SHA-gated,
-    until the mega-h/u2/c tail lands).
+    the chain-built s5-final play world (mega included since tk-mega-1
+    step 7; no reference input exists anywhere in the driver).
     """
     COURSES = {'aloha': 22, 'merq': 148, 'mega': 94}
 
