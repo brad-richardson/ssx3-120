@@ -424,6 +424,32 @@ class MegaGatesTest(unittest.TestCase):
         self.assertIsNone(mod.value(rows, 99.0))
 
 
+class RailTemplateTest(unittest.TestCase):
+    """tk-mega-1 step 3: stock-DSS2 template extractor + explicit rails flags."""
+
+    def test_extractor_present_with_group_default(self):
+        tool = TRICKY / 'tk21' / 'rail_template.py'
+        self.assertTrue(tool.exists())
+        source = tool.read_text()
+        self.assertIn('--group', source)
+        # Comparison bytes live in the plan/gate evidence, never in the
+        # shipped tool: the template must come from the user's disc.
+        for const in ('67292d41ffffffff00000000', '00003200344a1100cf576100',
+                      '344a1100344a1100cf576100', '056d55000f000000'):
+            self.assertNotIn(const, source)
+
+    def test_rails_explicit_flags_conflict_fail_closed(self):
+        import subprocess
+        import sys
+        tool = str(TRICKY / 'tk21' / 'make_rails21.py')
+        r = subprocess.run(
+            [sys.executable, tool, 'A', 'B', 'C', 'D', 'E', 'F',
+             '--template', 'T1', 'T2'],
+            capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('conflicting', r.stdout + r.stderr)
+
+
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""
 

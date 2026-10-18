@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """TK16 (copy of TK13's, temp dir only; TK13 from TK12, unchanged except the temp file): import the donor course's rails into a PS2 replace-world (item 3), as <STEM>.BIG.
 
-    make_rails.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG
+    make_rails.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TEMPLATE.json] [--template T] [--tmp D]
+
+TK21: when the host has no rail-bound spline (DBC2), a borrowed template
+may be passed explicitly (--template, same file the positional arg 7 took)
+instead of relying on the positional. --tmp overrides the scratch dir.
 
 Mechanism: every replace-world so far keeps the HOST location's kind-8 splines (rails/paths at the host
 course's positions) and no donor rails. The GameCube route already imports donor rails
@@ -70,12 +74,31 @@ def encode_ps2(spline, rid, track, first_global, matrix, translation, hdr_templa
 
 
 def main():
-    base_p, exp_p, nbd_p, gsf_p, stem, out_p = sys.argv[1:7]  # TK21: optional argv[7] = template rails.json
+    # Explicit --template/--tmp (tk-mega-1): positional arg 7 is ambiguous
+    # with scratch/template use, so flags win; the legacy positional still
+    # works when no flag is given, and conflicts fail closed.
+    argv, tmpdir, template_opt, rest = sys.argv[1:], None, None, []
+    i = 0
+    while i < len(argv):
+        if argv[i] == '--template' and i + 1 < len(argv):
+            template_opt = argv[i + 1]; i += 2
+        elif argv[i] == '--tmp' and i + 1 < len(argv):
+            tmpdir = argv[i + 1]; i += 2
+        else:
+            rest.append(argv[i]); i += 1
+    if len(rest) < 6:
+        raise SystemExit('usage: make_rails21.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TEMPLATE.json] [--template T] [--tmp D]')
+    base_p, exp_p, nbd_p, gsf_p, stem, out_p = rest[:6]  # TK21: optional argv[7] = template rails.json
+    legacy = rest[6] if len(rest) > 6 else None
+    if template_opt is not None and legacy is not None and template_opt != legacy:
+        raise SystemExit('conflicting --template and positional template (arg 7)')
+    borrowed_opt = template_opt or legacy
     base_bytes = Path(base_p).read_bytes()
     tmp = None
     if W(base_p).stem != 'bam':  # probe_ssx3/assemble_archive read data/worlds/bam.*: rename in a scratch copy
-        tmp = str(Path.home() / 'dev/ssx3-work/TK21/tmp' / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
+        tmp = str(Path(tmpdir or Path.home() / 'dev/ssx3-work/TK21/tmp') / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
         base_bytes = gdir.rename_world_members(base_bytes, 'bam')
+        Path(tmp).parent.mkdir(parents=True, exist_ok=True)
         Path(tmp).write_bytes(base_bytes)
     base = W(tmp or base_p)
     exp = json.loads(Path(exp_p).read_text())
@@ -103,9 +126,9 @@ def main():
         hdr_t, seg_prefix, trailer = tmpl[:48], tmpl[48 + 144:48 + 144 + 12], tmpl[48 + 136:48 + 144]
         # first-segment prefix: the majority value among rail-bound host splines (rid 0 alone carries 0x55879b)
         seg_first_prefix = Counter(p[48:60] for (e, p), b in zip(old, bindings) if b == RAIL_BINDING).most_common(1)[0][0]
-    elif len(sys.argv) > 7:
+    elif borrowed_opt is not None:
         # TK21: the host has no rail-bound spline (DBC2): borrow another host's rail-class constants (its make_rails receipt)
-        borrowed = sys.argv[7]
+        borrowed = borrowed_opt
         hc = json.loads(Path(borrowed).read_text())['host_constants']
         hdr_t = bytes(36) + bytes.fromhex(hc['header_36_48'])
         seg_first_prefix, seg_prefix, trailer = (bytes.fromhex(hc[k]) for k in ('first_prefix', 'prefix', 'trailer'))
