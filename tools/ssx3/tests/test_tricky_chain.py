@@ -199,14 +199,20 @@ class RoutesRungTest(unittest.TestCase):
             oracle = recipe.get('oracle_routes')
             self.assertRegex(oracle, r'^[0-9a-f]{64}$', course)
 
-    def test_routes_reference_only_on_mega(self):
+    def test_no_routes_reference_anywhere(self):
+        # Megaplex ships skipped-with-record until its tail lands; no lab
+        # reference file may feed any course (tk-nogc-1).
         for course, recipe in run_chain.COURSES.items():
-            if course == 'mega':
-                self.assertTrue(recipe.get('routes_ref'), course)
-                self.assertEqual(recipe.get('routes_ref_sha'),
-                                 run_chain.TKP5_FINALS['mega'], course)
-            else:
-                self.assertNotIn('routes_ref', recipe, course)
+            self.assertNotIn('routes_ref', recipe, course)
+            self.assertNotIn('routes_ref_sha', recipe, course)
+
+    def test_routes_rung_skips_without_chain_base(self):
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp)
+            chain = run_chain.Chain(args)
+            recipe = dict(run_chain.COURSES['mega'])
+            self.assertIsNone(chain.rung_routes('mega', recipe, None))
 
     def test_routes_rung_after_s5(self):
         order = run_chain.RUN_ORDER
@@ -217,7 +223,8 @@ class ResetsRungTest(unittest.TestCase):
     """The ov-s rung sits between race and scenery (regression cover).
 
     Gari scenery once ran directly on the race world and missed its oracle;
-    the resets rung routes through ov-s wherever GC reset data exists.
+    the resets rung routes through ov-s wherever the PS2 donor carries
+    authored reset surfaces (tk-nogc-1: .pbd patch tail, no GC reader).
     """
 
     def test_order_runs_resets_between_race_and_scenery(self):
@@ -228,7 +235,7 @@ class ResetsRungTest(unittest.TestCase):
     def test_resets_tool_present_where_needed(self):
         tool = TRICKY / 'tk12' / 'make_resets.py'
         for course, recipe in run_chain.COURSES.items():
-            if recipe.get('resets_nbd'):
+            if recipe.get('resets_pbd'):
                 self.assertTrue(tool.exists(), course)
 
     def test_passthrough_without_reset_data(self):
@@ -237,50 +244,21 @@ class ResetsRungTest(unittest.TestCase):
             args = types.SimpleNamespace(workdir=temp, lane_dir=temp)
             chain = run_chain.Chain(args)
             for course, recipe in run_chain.COURSES.items():
-                if not recipe.get('resets_nbd'):
+                if not recipe.get('resets_pbd'):
                     sentinel = Path(temp) / 'race.BIG'
                     self.assertEqual(
                         chain.rung_resets(course, recipe, sentinel,
                                           Path(temp), Path(temp)),
                         sentinel)
 
-    def test_missing_gc_donor_raises_skip_token(self):
-        # Public default: no workdir substitute exists (the PS2 -ps2.nbd
-        # fails the GC terrain extent check), so the rung fails loudly
-        # with a driver-caught token instead of guessing.
-        import types
-        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
-            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
-                                         gc_dir=None)
-            chain = run_chain.Chain(args)
-            for course, recipe in run_chain.COURSES.items():
-                if not recipe.get('resets_nbd'):
-                    continue
-                with self.assertRaises(SystemExit, msg=course) as ctx:
-                    chain.rung_resets(course, recipe, Path(temp) / 'r.BIG',
-                                      Path(temp), Path(temp))
-                self.assertIn('gc-resets-missing', str(ctx.exception),
-                              course)
-
-    def test_gc_file_resolves_donor(self):
-        import types
-        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
-            donor = Path(temp) / 'snow.nbd'
-            donor.write_bytes(b'gc')
-            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
-                                         gc_dir=temp)
-            chain = run_chain.Chain(args)
-            self.assertEqual(chain.gc_file('snow.nbd'), donor)
-            self.assertIsNone(chain.gc_file('missing.nbd'))
-
     def test_resets_courses_match_driver_manifest(self):
-        # Every manifest alias resolves to a course key, so the driver
-        # can drop rows for GC-resets-skipped courses.
+        # Every manifest alias resolves to a course key; the PS2-surface
+        # resets courses are the same four (tk-nogc-1: resets_pbd).
         driver = load('tk_build_tricky', TRICKY / 'build_tricky.py')
         for _event, alias, _name in driver.MANIFEST_ROWS:
             self.assertIn(alias, driver.MANIFEST_COURSE, alias)
         resets = {c for c, r in run_chain.COURSES.items()
-                  if r.get('resets_nbd')}
+                  if r.get('resets_pbd')}
         self.assertEqual(resets, {'snow', 'gari', 'mesa', 'aloha'})
 
 
@@ -334,6 +312,93 @@ class SceneryTmpTest(unittest.TestCase):
         self.assertIn('--tmp', cmd)
         tmp = cmd[cmd.index('--tmp') + 1]
         self.assertEqual(Path(tmp), Path(temp) / 'w-merq-sg' / 'tmp')
+
+
+def load_make_resets():
+    """Load make_resets with the chain's import layout (tk12 + shared)."""
+    import sys
+    for sub in ('tk12', 'shared'):
+        p = str(TRICKY / sub)
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    return load('tk_make_resets', TRICKY / 'tk12' / 'make_resets.py')
+
+
+def synthetic_pbd(surfaces):
+    """Minimal .pbd patch table: 448-byte patches, coeffs + tail surface."""
+    n = len(surfaces)
+    start, inst = 144, 144 + 448 * n
+    raw = bytearray(inst + 64)
+    struct.pack_into('<I', raw, 8, n)
+    struct.pack_into('<I', raw, 68, start)
+    struct.pack_into('<I', raw, 72, inst)
+    for i, surface in enumerate(surfaces):
+        at = start + 448 * i
+        for j in range(16):
+            struct.pack_into('<4f', raw, at + 80 + 16 * j,
+                             float(i), float(j), 0.5, 1.0)
+        struct.pack_into('<I4h', raw, at + 424, surface, 0, 0, 1, 2)
+    return bytes(raw)
+
+
+class PbdSurfacesTest(unittest.TestCase):
+    """The PS2 surface reader (tk-nogc-1 resets source)."""
+
+    def test_surfaces_come_from_the_pbd_tail(self):
+        make_resets = load_make_resets()
+        src = make_resets.pbd_surfaces(synthetic_pbd([0, 5, 0]))
+        self.assertEqual([s for _, s in src], [0, 5, 0])
+        self.assertEqual(len(src[0][0]), 16)
+
+    def test_garbage_and_stub_tables_refused(self):
+        make_resets = load_make_resets()
+        with self.assertRaises(ValueError):
+            make_resets.pbd_surfaces(b'\0' * 200)
+        # ps2_as_gc stub shape: valid GC magic, no terrain section
+        # (count word stays 0) — never a resets source.
+        stub = bytearray(160)
+        struct.pack_into('>I', stub, 0, 0x00161b03)
+        with self.assertRaises(ValueError):
+            make_resets.pbd_surfaces(bytes(stub))
+
+    def test_tool_takes_pbd_not_nbd(self):
+        make_resets = load_make_resets()
+        self.assertIn('DONOR.pbd', make_resets.__doc__)
+        source = (TRICKY / 'tk12' / 'make_resets.py').read_text()
+        self.assertNotIn('gamecube_surfaces', source)
+
+
+class PublicInputsTest(unittest.TestCase):
+    """Pins are an optional comparison input; the workdir wins by default."""
+
+    def test_pins_absent_falls_back_fail_closed(self):
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         pins=None)
+            chain = run_chain.Chain(args)
+            self.assertIsNone(chain.pin_file('donor', 'mesa', 'mesa.pbd'))
+            with self.assertRaises(SystemExit):
+                chain.need(None, 'test input')
+
+
+class NoGameCubeTest(unittest.TestCase):
+    """No GameCube code path stays reachable from the public chain."""
+
+    def test_no_gc_keys_in_recipes(self):
+        for course, recipe in run_chain.COURSES.items():
+            for key in ('race_aip', 'resets_nbd', 'routes_ref',
+                        'routes_ref_sha'):
+                self.assertNotIn(key, recipe, course)
+            for value in recipe.values():
+                if isinstance(value, str):
+                    self.assertFalse(value.startswith('gc/'), course)
+
+    def test_no_gc_plumbing_in_driver(self):
+        source = (TRICKY / 'run_chain.py').read_text()
+        for token in ('self.a.gc_dir', 'self.a.routes_ref_dir',
+                      'gamecube_surfaces', '--gc-dir', '--routes-ref-dir'):
+            self.assertNotIn(token, source)
 
 
 class WorkdirGoldenTest(unittest.TestCase):
