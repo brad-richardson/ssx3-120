@@ -2809,9 +2809,9 @@ TRICKY_DRIVER = Path(__file__).resolve().parent / 'tricky' / 'build_tricky.py'
 def tricky_supported():
     """Whether this checkout can consume a Tricky disc.
 
-    True once the Tricky converter port lands its driver at
-    tools/ssx3/tricky/build_tricky.py (tk-port-1/tk-port-2); until then
-    --tricky-iso validates cheaply and stops with TRICKY_LATER.
+    True when the converter driver exists at
+    tools/ssx3/tricky/build_tricky.py; otherwise --tricky-iso validates
+    cheaply and stops with TRICKY_LATER.
     """
     return ((ROOT / 'games' / 'tricky').is_dir() or TRICKY_DRIVER.is_file())
 

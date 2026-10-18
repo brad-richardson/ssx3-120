@@ -443,4 +443,5 @@ PS2X_NETSYNC_GHOST_SLOT	diag	netsync-spike-1	netsync-spike-1 Part 1: AI roster s
 PS2X_NETSYNC_LIVE	diag	netsync-spike-1	netsync-spike-1 Part 2: live UDP state streaming master switch (1/on), default off	keep
 PS2X_SSX3_TRICKY_LAUNCHMAP	active-lane	tk-modes-1	Part 3 spike: one <event>:<archive>:<name> launch mapping (host launchMap, Tricky-gated, unset = no-op)	keep
 PS2X_SSX3_TRICKY_MC	active-lane	tk-announcer-1	tk-announcer-1 Part 2: queue-time Tricky MC translator at 0x2B1458 (remap/gate + prob/age/rep/prio/Silence rules, takeoff/landing triggers); default off	keep
+PS2X_SSX3_TRICKY_MUSIC_INF	active-lane	tk-banner-1	tk-banner-1 §3B bootBannerFromEnv() in ps2_ssx3_course_manifest.h (fork tk-banner-1 @ 3a8f1799): with TRICKY_MENU=1 + MUSIC_INF set, installs the MUSIC.INF alias at ELF-load; default off	keep
 PS2X_TK_MUSIC_VOICE_LOG	diag	tk-music-1	tk-music-1 per-voice SPU2 state + tag-1 music energy log + tag-1/final-mix WAV window dumps (output-only, default off)	keep

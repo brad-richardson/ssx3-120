@@ -23,7 +23,7 @@ sha = lambda b: hashlib.sha256(b).hexdigest()
 
 TARGETS = ["Wipeout_Amateur_mac.dat", "Wipeout_Pro_mac.dat", "Wipeout_Expert_mac.dat",
            "Arcade_Uber.dat", "Big_Air_Amateur_mac.dat", "Big_Air_Pro_mac.dat",
-           "Big_Air_Expert_mac.dat"]
+           "Big_Air_Expert_mac.dat", "Arcade_Power_Ups.dat", "Arcade_Icons.dat"]
 
 def iso_find(f, path):
     f.seek(16 * SEC + 156)

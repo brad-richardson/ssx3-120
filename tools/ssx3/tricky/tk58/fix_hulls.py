@@ -35,10 +35,13 @@ DONOR = Path('/Users/brad/dev/ssx3-work/pinned/tricky/donor')
 
 
 def main():
+    global ISO
     ap = argparse.ArgumentParser(description=__doc__); ap.add_argument('input'); ap.add_argument('output')
     ap.add_argument('--course', required=True, choices=sorted(CONFIG)); ap.add_argument('--receipt')
     ap.add_argument('--donor-dir', default=str(DONOR))
+    ap.add_argument('--ssx3-iso', default=str(ISO), help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)')
     a = ap.parse_args(); src = Path(a.input); out = Path(a.output); assert not out.exists(); out.parent.mkdir(parents=True, exist_ok=True)
+    ISO = Path(a.ssx3_iso); sys.modules['patch_source_bridge'].ISO = ISO
     inputs = [sha(src.read_bytes()) for _ in range(2)]; assert inputs[0] == inputs[1]
     G, scen, stem = CONFIG[a.course]
     D = Path(a.donor_dir) / stem; pbd = PBD((D / (stem + '.pbd')).read_bytes()); colls = read_tricky_collision(ssf_to_gsf((D / (stem + '.ssf')).read_bytes()))

@@ -423,5 +423,118 @@ class OneCommandTrickyTest(unittest.TestCase):
             tricky.assert_not_called()
 
 
+DRIVER_SPEC = importlib.util.spec_from_file_location(
+    'tricky_driver', HERE / 'tricky' / 'build_tricky.py')
+driver = importlib.util.module_from_spec(DRIVER_SPEC)
+DRIVER_SPEC.loader.exec_module(driver)
+
+
+class BuildTrickyDriverTest(unittest.TestCase):
+    def test_every_course_has_a_golden(self):
+        for c in driver.BUILD_COURSES:
+            self.assertIn(c, set(driver.ROUTES_COURSES) | set(driver.S5_FINALS))
+
+    def test_final_paths_split_routes_and_s5(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work)
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            for c in driver.BUILD_COURSES:
+                path, want = b.world_final_path(c)
+                if c in driver.ROUTES_COURSES:
+                    self.assertEqual(path, work / f'w-{c}-routes' / f'{c.upper()}.BIG')
+                else:
+                    self.assertEqual(path, work / f'w-{c}-s5' / f'{c.upper()}.BIG')
+                self.assertRegex(want, r'^[0-9a-f]{64}$')
+
+    def test_refuses_an_existing_work_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            with self.assertRaisesRegex(SystemExit, 'refusing existing'):
+                driver.Build(tricky_args(work))
+
+    def test_layout_writes_manifest_env_and_skip_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            built = {'worlds': {}, 'courspit': work / 'COURSPIT.BIG',
+                     'speech-tricky-big': work / 'sp', 'music-tricky-big': work / 'm1',
+                     'music2-tricky-big': work / 'm2', 'music-inf-tricky-big': work / 'mi',
+                     'english-silent-big': None,
+                     'trickyhud.bin': work / 'hud',
+                     'tricky-song.wav': work / 'song', 'tricky-gems.tsv': work / 'gems',
+                     'tricky-resetvol.tsv': work / 'reset'}
+            for c in ('gari', 'snow'):
+                final = work / f'{c.upper()}.BIG'
+                final.write_bytes(c.encode())
+                built['worlds'][c] = final
+            for key in ('courspit', 'speech-tricky-big', 'music-tricky-big',
+                        'music2-tricky-big', 'music-inf-tricky-big',
+                        'trickyhud.bin', 'tricky-song.wav',
+                        'tricky-gems.tsv', 'tricky-resetvol.tsv'):
+                built[key].write_bytes(b'x')
+            menu = work / 'menu' / 'DATA' / 'UI'
+            menu.mkdir(parents=True)
+            (menu / 'TPABC1.SSH').write_bytes(b'pane')
+            args = tricky_args(work)
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {'mega': 'no ref', 'english': 'no base'}
+            b.a = args
+            lay = b.phase_layout(built)
+            manifest = (lay / 'm-tricky.txt').read_text()
+            self.assertIn('mode = Tricky', manifest)
+            self.assertEqual(manifest.count('row = '), 9)
+            self.assertNotIn('MEGA', manifest)
+            self.assertIn('com.ssx3.recomp', manifest)
+            self.assertNotIn('com.ps2x.runner', manifest)
+            env = (lay / 'tricky.env').read_text()
+            self.assertIn('PS2X_SSX3_COURSE_MANIFEST=/storage/emulated/0/Android/data/com.ssx3.recomp/files/m-tricky.txt', env)
+            self.assertIn('PS2X_SSX3_TRICKY_MUSIC_INF=', env)
+            self.assertIn('PS2X_SSX3_TRICKY_MC=1', env)
+            for dead in ('PS2X_SSX3_TRICKY_COURSES', 'PS2X_SSX3_GEM_TSV',
+                         'PS2X_ATRAC_NATIVE', 'PS2X_VAG_Q4',
+                         'PS2X_CDVD_IOP_ASYNC', 'PS2X_CDVD_EXTRA_OPEN_SLACK'):
+                self.assertNotIn(dead, env)
+            self.assertIn('com.ssx3.recomp', env)
+            record = (lay / 'SKIPPED.txt').read_text()
+            self.assertIn('mega', record)
+            self.assertTrue((lay / 'tricky-ov/DATA/WORLDS/GARI.BIG').is_file())
+
+    def test_layout_adds_the_mega_row_when_built(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            mega = work / 'MEGA.BIG'
+            mega.write_bytes(b'm')
+            built = {'worlds': {'mega': mega}, 'courspit': work / 'c',
+                     'speech-tricky-big': work / 'a', 'music-tricky-big': work / 'b',
+                     'music2-tricky-big': work / 'd', 'music-inf-tricky-big': work / 'i',
+                     'english-silent-big': work / 'j',
+                     'trickyhud.bin': work / 'e',
+                     'tricky-song.wav': work / 'f', 'tricky-gems.tsv': work / 'g',
+                     'tricky-resetvol.tsv': work / 'h'}
+            for key in ('courspit', 'speech-tricky-big', 'music-tricky-big',
+                        'music2-tricky-big', 'music-inf-tricky-big', 'english-silent-big',
+                        'trickyhud.bin', 'tricky-song.wav',
+                        'tricky-gems.tsv', 'tricky-resetvol.tsv'):
+                built[key].write_bytes(b'x')
+            (work / 'menu' / 'DATA' / 'UI').mkdir(parents=True)
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, tricky_args(work)
+            lay = b.phase_layout(built)
+            manifest = (lay / 'm-tricky.txt').read_text()
+            self.assertEqual(manifest.count('row = '), 10)
+            self.assertIn('row = 15:MEGA:Tokyo Megaplex', manifest)
+            self.assertFalse((lay / 'SKIPPED.txt').exists())
+
+    def test_speech_decisions_cover_all_targets(self):
+        decisions = driver.T / 'data' / 'speech-decisions'
+        for t in driver.SPEECH_TARGETS:
+            self.assertTrue((decisions / (t + '.dat.decisions.tsv')).is_file())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,5 @@
 new_path	origin	old_path	sha256	bytes	status
-.github/workflows/product-checks.yml	authored:ci	-	82bd231cfb9e9592d1560cf485ad94998301a8aa334708cd395fcb024226563c	2627	new
+.github/workflows/product-checks.yml	authored:ci	-	18aee96604aaea3bb3527865269e901ceab298c8f9112744ea9bf6791efeae97	2742	new
 .gitignore	authored:hygiene	-	39e9ef752d52f193bc1fc8784ce3e9bba7654ee7f5b0bdef1a8e061c5376d6eb	319	new
 .gitmodules	authored:submodule	-	3cf65aaa52a079c243f72602d7b6633e0689a32ee1ab71e8012754e56765cba4	108	new
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
@@ -38,7 +38,7 @@ apps/android/settings.gradle	fork@f7a96f23	android/settings.gradle	2f4f5b2d5b58a
 build	authored:builder-ux-1	-	3e152ca7d4cdd6bcb9416d07989b7c51eb2a94f9dd6fd836c3c2d356f79392ee	741	new
 build.py	authored:product-entrypoint	-	f4fa82d6935f6ec3acf5d43c21590c57580897719675226ae2367686f10d1058	795	new
 cmake/EnginePin.cmake	authored:composition	-	dd6a37b0c7d5238c3cc5c561ecbcb5b9f9f823058152b9bfd94c1f4b29cbcc15	1364	new
-deps.lock.json	authored:pins	-	3ae0d099567fc38f176f90132ebd027a7f47b9b86ee36db6090cb42a69824f80	4001	new
+deps.lock.json	authored:pins	-	f6992ea2e9f73325a44378b361458d154bb13446b29a037c8e5f2bf5fd2d4b01	4893	new
 docs/advantages.md	lab@ed718e09	docs/advantages.md	fb69467a2eeb8747aa1e4dc482787e80d27bce1842919da2957c1c1886fc0b91	2890	composition:curated-evidence-grades
 docs/facts.md	lab@ed718e09	docs/facts.md	4ea59fed4164d9fb4707408ca6659d805a7601e920d3286a9927ef3236c3f312	10189	composition:curated-public-reference
 docs/research/gamecube-learnings.md	lab@ed718e09	docs/research/gamecube-learnings.md	109e880d1684b14ced746b8aac305d5b3ff2111ffd1765a54ff6804b38dad582	37013	composition:public-safe-archive-pointers
@@ -103,7 +103,7 @@ tests/det/keys/fe5b4b8-play120-native-arm64-fr1r1-t4800-snd1-1x-531408ff/manifes
 tests/det/keys/fe5b4b8-play120-native-arm64-fr1r1-t4800-snd1-1x-531408ff/snd.txt	authored:key-extraction	-	bf1a774f817df90dacbe8f2d2013449e3beadbe0e71f07a94dc56065242669bf	6027	new
 tests/det/knob_matrix.py	lab@ed718e09	local/tooling/knob_matrix.py	df3fea1c9988baa850087fd78c7b9ff67a80b5baac54a600899dec7138a53d48	29869	composition:generalized-profiles-and-sources
 tests/det/knob_registry.py	lab@ed718e09	local/tooling/knob_registry.py	a27e08cbca241da0fed93b40b8851f2af333a2fe21ea33142f5d61b9eb011f2a	5196	composition:dual-root-scan
-tests/det/knob_registry.tsv	lab@0ac8b01f	local/tooling/knob_registry.tsv	2c09af9e4ccf7779a70e67a6d730e569ed259c886990f877c8af30fae0ac607e	51619	composition:scrubbed-evidence-paths
+tests/det/knob_registry.tsv	lab@0ac8b01f	local/tooling/knob_registry.tsv	3d4323ddf4d0d3107c2cd23403746802a87d8ff03925cd3f16beccde77ab867d	51863	composition:scrubbed-evidence-paths
 tests/det/mac_gate.sh	lab@ed718e09	local/tooling/mac_gate.sh	7fa7cf436d92246c16dbe6fe08e47a8e1bbb5242496efe696fb83a9ed3a7222c	10811	composition:rewritten-public-gate
 tests/provenance/check_manifest.py	authored:manifest-check	-	148526d238c7b8c030d4ccdde0195414e27e412b380e78432555a59169af61aa	2882	new
 tests/test_contract_stable.py	authored:composition-test	-	dfae24c6ba7d1ca81856eaa348f540d2802e9f36db0470e36b663e634d17c6b0	1612	new
@@ -121,7 +121,7 @@ tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	17
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
 tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	d4647f70eef0e68bf2ed306afbcb4a2836b0bcfd3a11549763da2715b51c95c3	24791	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	67037da97feaa149ddbe17dfd549ef0ebc1be1c3cfff87092d964a9f0166ca40	159105	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
+tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	3faa5e2bb91ceb99059005c1f936832564e1f3d900873a29029bad8655d19798	159067	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
 tools/ssx3/knobs.tsv	fork@b9bf530a	tools/ssx3/knobs.tsv	c84fb700dc1057a71764d112030e9b8694b7a8d376ce353426fe09a468f9015b	7528	verbatim
@@ -137,7 +137,7 @@ tools/ssx3/prebuilt.py	fork@b9bf530a	tools/ssx3/prebuilt.py	f111d5937aee42c45ae6
 tools/ssx3/remaster_font.py	fork@f7a96f23	tools/ssx3/remaster_font.py	c8ad4cf729002ff19a2671eb93f1a77d243d22964c039e68be6baecb2f199366	14254	verbatim
 tools/ssx3/test_prebuilt.py	fork@b9bf530a	tools/ssx3/test_prebuilt.py	45508b4fa21d716e794c58c94b7e5f21daa0619f7abc3ef5b1107381867c4f5f	23276	composition:contract-tests-read-the-engine-checkout
 tools/ssx3/tests/test_android_source_default.py	fork@5235b114	tools/ssx3/tests/test_android_source_default.py	3c8d58dbcff4bb1ddabcd4f3265c836aa47919c9abe572dadb7edcbf9f48649f	2538	verbatim
-tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	87cacced4657f81b773fb4918d2a2de3f53aa9d26105dd1c4446a44f114672b3	9237	new
+tools/ssx3/tests/test_build_onecmd.py	authored:builder-ux-1	-	548d69fab8ec4b59d77015cb4220c7fc6a0c855dc22c6445cfd3bdd94fdc2e34	9696	new
 tools/ssx3/tests/test_public_install_stage.py	fork@f7a96f23	tools/ssx3/tests/test_public_install_stage.py	813fa2b912e0a259226f2451fdac0206f4f974c17b7b3f56dae553f830d66fe5	3715	composition:product-apps-layout-apk-path
 tools/ssx3/tests/test_remaster_font.py	fork@f7a96f23	tools/ssx3/tests/test_remaster_font.py	618c6f3e7df4c5cebb3909cc157f255295c9cda081cb6bc31dcac88d8996b43c	7875	verbatim
 tools/ssx3/tests/test_slim.py	fork@f7a96f23	tools/ssx3/tests/test_slim.py	a7525057ba5003705f95729d5d273d3ba8c8b43634672822525b8d3a5f3a2368	1242	verbatim
@@ -145,7 +145,7 @@ tools/ssx3/tests/test_stage_fonts.py	fork@f7a96f23	tools/ssx3/tests/test_stage_f
 tools/ssx3/tests/test_toolchain.py	authored:builder-ux-1	-	c46f97fe50e3c7c981329a8b3b1c6ee6210aae5597eef7f9a199a449cac09da7	9828	new
 tools/ssx3/tests/test_turnip_driver.py	fork@5235b114	tools/ssx3/tests/test_turnip_driver.py	eb0a7e1b4774b854e8c99f1912b5df8799c45c4cb3f6e1efad9d8632196848d2	2878	verbatim
 tools/ssx3/tests/test_vu0_stage.py	authored:build-parity-fix-1	-	5ce8350d633b9e5cbef49c87de24d870d88113dbe7759414d7912a70a2aaf1e1	19719	new
-tools/ssx3/tests/test_tricky_step.py	authored:tk-build-1	-	f1880d935aeadd4376b7233f7571f4d0fa4511f3b308d1eddc44b01a0f550708	18347	new
+tools/ssx3/tests/test_tricky_step.py	authored:tk-build-1	-	ebbbe328dc36f027dbc46accaaeda887fa1bbd1aa11b6a1402a8c457892be41a	24155	new
 tools/ssx3/tfx-selectors.json	fork@f7a96f23	tools/ssx3/tfx-selectors.json	6eae6449260a386cacf951c91eecd81d7cc9b54b3895ac5e291cd053537092b6	32756	verbatim
 tools/ssx3/toolchain.py	authored:builder-ux-1	-	7be9a5135a412cd9c4ba01d0d1edeea219a4060f3b25c4fecd6db9ee556548d7	19476	new
 tools/ssx3/turnip.json	fork@5235b114	tools/ssx3/turnip.json	2dfef0ad5e708d9f0a670dd112e2cce61e5557e2c21e44d613d0c45f22aa71f7	1047	verbatim

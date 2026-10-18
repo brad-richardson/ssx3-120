@@ -244,6 +244,45 @@ class ResetsRungTest(unittest.TestCase):
                                           Path(temp), Path(temp)),
                         sentinel)
 
+    def test_missing_gc_donor_raises_skip_token(self):
+        # Public default: no workdir substitute exists (the PS2 -ps2.nbd
+        # fails the GC terrain extent check), so the rung fails loudly
+        # with a driver-caught token instead of guessing.
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         gc_dir=None)
+            chain = run_chain.Chain(args)
+            for course, recipe in run_chain.COURSES.items():
+                if not recipe.get('resets_nbd'):
+                    continue
+                with self.assertRaises(SystemExit, msg=course) as ctx:
+                    chain.rung_resets(course, recipe, Path(temp) / 'r.BIG',
+                                      Path(temp), Path(temp))
+                self.assertIn('gc-resets-missing', str(ctx.exception),
+                              course)
+
+    def test_gc_file_resolves_donor(self):
+        import types
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            donor = Path(temp) / 'snow.nbd'
+            donor.write_bytes(b'gc')
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp,
+                                         gc_dir=temp)
+            chain = run_chain.Chain(args)
+            self.assertEqual(chain.gc_file('snow.nbd'), donor)
+            self.assertIsNone(chain.gc_file('missing.nbd'))
+
+    def test_resets_courses_match_driver_manifest(self):
+        # Every manifest alias resolves to a course key, so the driver
+        # can drop rows for GC-resets-skipped courses.
+        driver = load('tk_build_tricky', TRICKY / 'build_tricky.py')
+        for _event, alias, _name in driver.MANIFEST_ROWS:
+            self.assertIn(alias, driver.MANIFEST_COURSE, alias)
+        resets = {c for c, r in run_chain.COURSES.items()
+                  if r.get('resets_nbd')}
+        self.assertEqual(resets, {'snow', 'gari', 'mesa', 'aloha'})
+
 
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""

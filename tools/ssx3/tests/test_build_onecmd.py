@@ -71,8 +71,17 @@ class WrapperTest(unittest.TestCase):
 
 
 class TrickyIsoTest(unittest.TestCase):
-    def test_tricky_unsupported_in_this_checkout(self):
-        self.assertFalse(build.tricky_supported())
+    def test_tricky_supported_with_the_driver_in_checkout(self):
+        self.assertTrue(build.tricky_supported())
+
+    def test_missing_driver_reports_the_later_version_message(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            iso = Path(tmp) / 'tricky.iso'
+            iso.write_bytes(b'\x00' * (16 * 2048) + b'\x01CD001\x01')
+            with patch.object(build, 'TRICKY_DRIVER', Path(tmp) / 'missing.py'):
+                self.assertFalse(build.tricky_supported())
+                with self.assertRaisesRegex(ValueError, 'later version'):
+                    build.validate_tricky_iso(iso)
 
     def test_missing_tricky_iso_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -86,12 +95,11 @@ class TrickyIsoTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'not an ISO9660'):
                 build.validate_tricky_iso(iso)
 
-    def test_valid_iso_fails_with_the_later_version_message(self):
+    def test_valid_iso_passes_cheap_validation_with_the_driver(self):
         with tempfile.TemporaryDirectory() as tmp:
             iso = Path(tmp) / 'tricky.iso'
             make_iso(iso)
-            with self.assertRaisesRegex(ValueError, 'later version'):
-                build.validate_tricky_iso(iso)
+            self.assertEqual(build.validate_tricky_iso(iso), iso)
 
 
 class ResumeTest(unittest.TestCase):

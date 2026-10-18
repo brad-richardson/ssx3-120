@@ -56,7 +56,9 @@ def model_bytes(oid,model):
  out+=bytes(-len(out)%16);struct.pack_into('<I',out,36,len(out));return bytes(out)
 
 def main():
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');ap.add_argument('--census',default=str(R/'data'/'tk51-hidden-census.json'));ap.add_argument('--scenery-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery');ap.add_argument('--donor-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/donor');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
+ global ISO
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('input');ap.add_argument('output');ap.add_argument('--course',required=True,choices=['mesa','snow','aloha','merq','untrack','gari','alaska','elys','pipe']);ap.add_argument('--only-source',type=int,help='Authorized diagnostic subset; donor instance ID');ap.add_argument('--census',default=str(R/'data'/'tk51-hidden-census.json'));ap.add_argument('--scenery-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/scenery-effects/scenery');ap.add_argument('--donor-dir',default='/Users/brad/dev/ssx3-work/pinned/tricky/donor');ap.add_argument('--ssx3-iso',default=str(ISO),help='stock SSX3 ISO (sector source for PS2XCMP1 + composite reference)');a=ap.parse_args();src=Path(a.input);out=Path(a.output);assert not out.exists();out.parent.mkdir(parents=True,exist_ok=True)
+ ISO=Path(a.ssx3_iso);sys.modules['patch_source_bridge'].ISO=ISO
  inputs=[sha(src.read_bytes()) for _ in range(2)];assert inputs[0]==inputs[1]
  census=json.loads(Path(a.census).read_text());donor_stem={'merq':'merquer','elys':'elysium'}.get(a.course,a.course);census=next(r for r in census if r['course']==donor_stem);eligible={x['source'] for x in census['hidden'] if x['solid_proxy_candidate']}
  if a.only_source is not None:

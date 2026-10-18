@@ -175,7 +175,7 @@ def main(argv=None):
         want[int(idx)] = src
     for line in open(map_path):
         line = line.rstrip("\n")
-        if not line:
+        if not line or line.startswith("slot\t"):
             continue
         idx, _, rest = line.partition("\t")
         cands[int(idx)] = [c for c in rest.split(",") if c]

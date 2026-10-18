@@ -20,10 +20,11 @@ import struct
 import subprocess
 import sys
 
-TRICKY = ["Wipeout.dat", "MS_Wipeout.dat", "Uber.dat", "Big_Air.dat", "MS_Big_Air.dat"]
+TRICKY = ["Wipeout.dat", "MS_Wipeout.dat", "Uber.dat", "Big_Air.dat", "MS_Big_Air.dat",
+          "Tricky.dat", "Turbo.dat", "Boost_Icon.dat", "Bonus.dat"]
 SSX3 = ["Wipeout_Amateur_mac.dat", "Wipeout_Pro_mac.dat", "Wipeout_Expert_mac.dat",
         "Arcade_Uber.dat", "Big_Air_Amateur_mac.dat", "Big_Air_Pro_mac.dat",
-        "Big_Air_Expert_mac.dat"]
+        "Big_Air_Expert_mac.dat", "Arcade_Power_Ups.dat", "Arcade_Icons.dat"]
 
 
 def streams_of(path):

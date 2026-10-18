@@ -72,11 +72,16 @@ def encode_ps2(spline, rid, track, first_global, matrix, translation, hdr_templa
 
 def main():
     base_p, exp_p, nbd_p, gsf_p, stem, out_p = sys.argv[1:7]
+    # Optional 7th positional: workdir scratch dir (public default keeps
+    # the lane path so 6-arg lane invocations are unchanged). The scratch
+    # copy is write-only (no later step reads it back).
+    tmpdir = Path(sys.argv[7]) if len(sys.argv) > 7 else Path.home() / 'dev/ssx3-work/TK16/tmp'
     base_bytes = Path(base_p).read_bytes()
     tmp = None
     if W(base_p).stem != 'bam':  # probe_ssx3/assemble_archive read data/worlds/bam.*: rename in a scratch copy
-        tmp = str(Path.home() / 'dev/ssx3-work/TK16/tmp' / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
+        tmp = str(tmpdir / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
         base_bytes = gdir.rename_world_members(base_bytes, 'bam')
+        Path(tmp).parent.mkdir(parents=True, exist_ok=True)
         Path(tmp).write_bytes(base_bytes)
     base = W(tmp or base_p)
     exp = json.loads(Path(exp_p).read_text())

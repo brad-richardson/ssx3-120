@@ -70,6 +70,15 @@
       }
     }
   },
+  "tricky_tools": {
+    "vgmstream": {
+      "repo": "https://github.com/vgmstream/vgmstream.git",
+      "pin": "1abc049db00beca137c8e43f797ccdc5093cf94a",
+      "purpose": "Tricky MicroTalk speech decode only (build_tricky.py --vgmstream; EA-XA is lane-ported Python); CLI-only build, optional codecs OFF",
+      "license": "COPYING: permissive ISC-style (use/copy/modify/distribute with notice); build-time tool, not shipped",
+      "note": "tk-build-1: May-2026 decode commit (master @ 2026-05-20; avoids post-May EA-SCHl changes). Residual arch drift: ARM64/Mac builds of this commit decode MicroTalk takes byte-identical to the lane toolchain (brew r2117 May 19 2026), but the x86_64 gate build (Ubuntu clang 18 vs Mac clang 23) drifts +-6 LSB on ~2% of samples, so container speech composites cannot byte-match PB70 (see REPORT 2.3 gap); binary never enters the repo or APK"
+    }
+  },
   "archive_identity": {
     "contract": "f7aec34491c4d0826df2a48529524024e905920516a2b9b79ec7a23c4e6a94c2",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"

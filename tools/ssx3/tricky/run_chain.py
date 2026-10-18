@@ -552,7 +552,7 @@ COURSES = {
                    '--race-line-kind', 'slopestyle',
                    '--markers', '0.275798,0.653856', '--chain-tolerance', '1500'],
         resets_nbd=None,
-        route_tol=['1500', '{lane}/TK18/routes/alaska3d-b.txt', '--z'],
+        route_tol=['1500', '{data}/alaska3d-b.txt', '--z'],
         # TK18 build_course.sh alaska-b: TK16 make_scenery16 + rails16, no
         # extras (route files are boot inputs; copies in data/).
         scenery_tool='tk16/make_scenery16.py',
@@ -689,7 +689,7 @@ class Chain:
         self.a = a
         self.W = Path(a.workdir)
         self.T = HERE
-        self.lane = Path(a.lane_dir)
+        self.lane = Path(a.lane_dir) if a.lane_dir else None
         self.donor = self.W / 'donor'
         (self.W / 'logs').mkdir(parents=True, exist_ok=True)
 
@@ -746,7 +746,12 @@ class Chain:
         out = self.W / f'{c}-r.BIG'
         if aip is None:
             if r.get('race_aip', '').startswith('gc/'):
-                aip = Path(self.a.gc_dir) / r['race_aip'][3:]
+                # Public default: the workdir donor .aip (extract output).
+                # The race oracle judges the substitution fail-closed.
+                aip = self.gc_file(r['race_aip'][3:])
+                if aip is None:
+                    aip = ddir / f"{r['donor']}.aip"
+                    print(f"race[{c}]: no GameCube donor, using workdir {aip.name}")
             else:
                 aip = ddir / f"{r['donor']}.aip"
         run('race', sys.executable, self.T / r['race_tool'],
@@ -766,11 +771,20 @@ class Chain:
     def rung_resets(self, c, r, rbig, bdir, ddir):
         if not r.get('resets_nbd'):
             return rbig
-        # Reset surfaces come from the GameCube originals (local/source),
-        # not from the PS2-derived donor tree.
+        # Reset surfaces come from the GameCube originals only: the PS2
+        # -ps2.nbd is not a valid source (fails the GC terrain extent
+        # check in shared/gamecube_surfaces.py), so there is no workdir
+        # fallback. A 2-ISO public build skips these courses with record
+        # (driver catches the gc-resets-missing token, mega precedent);
+        # pass --gc-dir with the GameCube donor for the full 10 worlds.
+        nbd = self.gc_file(r['resets_nbd'])
+        if nbd is None:
+            raise SystemExit(
+                f'{c}: gc-resets-missing: resets need the GameCube donor '
+                f"{r['resets_nbd']} (pass --gc-dir); no workdir substitute")
         out = self.W / f'ov-s-{c.upper()}.BIG'
         run('resets', sys.executable, self.T / 'tk12' / 'make_resets.py',
-            rbig, bdir / 'experiment.json', Path(self.a.gc_dir) / r['resets_nbd'],
+            rbig, bdir / 'experiment.json', nbd,
             c, out, cwd=self.W, log=self.log(c, 'resets'))
         if r.get('oracle_ovs'):
             check(out, r['oracle_ovs'], f'{c} ov-s')
@@ -804,10 +818,14 @@ class Chain:
             if r.get('oracle_b'):
                 check(sc, r['oracle_b'], f'{c} -b')
             return sc
+        # Workdir scratch for the rails bam-rename copy (public default;
+        # the tools keep the lane path when the 7th positional is absent).
+        tmpdir = self.W / 'tmp'
+        tmpdir.mkdir(parents=True, exist_ok=True)
         run('rails', sys.executable, self.T / r['rails_tool'],
             sc, bdir / 'experiment.json',
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
-            stem, out, cwd=self.W, log=self.log(c, 'rails'))
+            stem, out, str(tmpdir), cwd=self.W, log=self.log(c, 'rails'))
         if r.get('oracle_b'):
             check(out, r['oracle_b'], f'{c} -b')
         if r.get('oracle_f'):
@@ -922,6 +940,48 @@ class Chain:
             check(tout, r['oracle_candt'], f'{c} candt')
         return tout
 
+    # -- public-input helpers -------------------------------------------------
+    # Pins/GC dirs are optional lane inputs; the workdir build always wins
+    # when present. Every substitution below is judged fail-closed by the
+    # rung oracles (recorded pins), so a wrong default can only fail loudly.
+    def pin_file(self, *parts):
+        if not self.a.pins:
+            return None
+        p = Path(self.a.pins).joinpath(*parts)
+        return p if p.is_file() else None
+
+    def gc_file(self, name):
+        if not self.a.gc_dir:
+            return None
+        p = Path(self.a.gc_dir) / name
+        return p if p.is_file() else None
+
+    # -- effects census (public default) --------------------------------------
+    # The pinned donor effects census (pins/scenery-effects/effects) wins
+    # when present; otherwise regenerate it in-workdir with the ported
+    # tk18/tricky_effects.py from the extract+ps2 rung outputs. Either way
+    # the bind oracle judges the result fail-closed.
+    def effects_json(self, c, r, ddir):
+        wanted = self.pin_file('scenery-effects', 'effects',
+                               f"{r.get('effects', r['donor'])}.json")
+        if wanted is not None:
+            return wanted
+        out = self.W / 'effects' / f"{r.get('effects', r['donor'])}.json"
+        if not out.is_file():
+            # Donor files live in the stem subdir (donor/<stem>/); ddir is
+            # the donor root when bind/finalw omit it, or the stem dir
+            # itself from the extract return. Prefer whichever layout
+            # actually holds the ps2 rung outputs.
+            sdir = ddir / r['donor']
+            if not (sdir / f"{r['donor']}-ps2.gsf").is_file():
+                sdir = ddir
+            out.parent.mkdir(parents=True, exist_ok=True)
+            run('effects', sys.executable, self.T / 'tk18' / 'tricky_effects.py',
+                sdir / f"{r['donor']}-ps2.gsf", sdir / f"{r['donor']}.map",
+                sdir / f"{r['donor']}.pbd", out,
+                cwd=self.W, log=self.log(c, 'effects'))
+        return out
+
     # -- rung: finalw variant (mesa) ------------------------------------------
     # Rebuilds scenery from the ov-s base with the candidate flags plus
     # --show-hidden-instance (start gate) and --unprotect-instance (bridge
@@ -974,8 +1034,7 @@ class Chain:
         fdir = self.W / f'w-{c}-finalw'
         fdir.mkdir(parents=True, exist_ok=True)
         fout = fdir / f'{c.upper()}.BIG'
-        effects = Path(self.a.pins) / 'scenery-effects' / 'effects' / \
-            f"{r.get('effects', r['donor'])}.json"
+        effects = self.effects_json(c, r, ddir)
         run('finalw-bind', sys.executable, self.T / 'tk24c' / 'bind_effects.py',
             tout, w / 'scenery.json', effects, fout,
             '--names', *r['finalw_bind_names'], '--kind0-as-trigger',
@@ -989,11 +1048,10 @@ class Chain:
     # bind_effects.py on the candidate (or sgt) world with the pinned donor
     # effects census + by-name sign binds. Proven on gari (sgt -> 58897da8)
     # and snow (candt -> 4eae7401).
-    def rung_bind(self, c, r, world, scenery_json):
+    def rung_bind(self, c, r, world, scenery_json, ddir=None):
         out = self.W / f'w-{c}-bound' / f'{c.upper()}.BIG'
         out.parent.mkdir(parents=True, exist_ok=True)
-        effects = Path(self.a.pins) / 'scenery-effects' / 'effects' / \
-            f"{r.get('effects', r['donor'])}.json"
+        effects = self.effects_json(c, r, ddir or self.donor)
         run('bind', sys.executable, self.T / 'tk24c' / 'bind_effects.py',
             world, scenery_json, effects, out,
             '--names', *r['bind_names'], '--kind0-as-trigger',
@@ -1086,13 +1144,22 @@ class Chain:
         w = self.W / f'w-{c}-s1'
         w.mkdir(parents=True, exist_ok=True)
         out = w / f'{c.upper()}.BIG'
-        pins = Path(self.a.pins)
+        # Public default: the workdir donor + our own finalw receipt. The s1
+        # oracle judges the substitution fail-closed.
+        mesa_pbd = self.donor / 'mesa' / 'mesa.pbd'
+        if not mesa_pbd.is_file():
+            mesa_pbd = self.need(self.pin_file('donor', 'mesa', 'mesa.pbd'),
+                                 's1 mesa donor')
+        mesa_sc = self.W / 'w-mesa-finalw' / 'scenery.json'
+        if not mesa_sc.is_file():
+            mesa_sc = self.need(self.pin_file('scenery-effects', 'scenery',
+                                              'mesa-final-scenery.json'),
+                                's1 mesa-final scenery')
         run('s1', sys.executable, self.T / 'tk53' / 'trigger_step.py',
             self.a.ssx3_iso, fix, out, '--group', str(r['fix_group']),
             '--rids', *[str(n) for n in r['tk53_rids']],
-            '--donor-pbd', pins / 'donor' / 'mesa' / 'mesa.pbd',
-            '--scenery', pins / 'scenery-effects' / 'scenery' /
-            'mesa-final-scenery.json',
+            '--donor-pbd', mesa_pbd,
+            '--scenery', mesa_sc,
             '--receipt', w / 's1.json', '--work', w / 'work',
             cwd=self.W, log=self.log(c, 's1'))
         if r.get('oracle_s1'):
@@ -1102,19 +1169,40 @@ class Chain:
     # -- rung: TK57 glass panes + blocks -----------------------------------------
     # Glass specs (scenery/donor/specs) come from data/tk57-glass-targets.json;
     # gari also passes --blocks. Proven: gari 3e714aca -> 51736b49.
+    def need(self, value, what):
+        if value is None:
+            raise SystemExit(f'no public input for {what}; pass --pins')
+        return value
+
     def rung_s2(self, c, r, base):
         w = self.W / f'w-{c}-s2'
         w.mkdir(parents=True, exist_ok=True)
         out = w / f'{c.upper()}.BIG'
-        pins = Path(self.a.pins)
         gt = json.loads((self.T / 'data' / 'tk57-glass-targets.json')
                         .read_text())[c]
+        # Public default: the workdir donor + our own run receipts, mapped
+        # from the pins-compatible scenery names. The s2 oracle judges
+        # every substitution fail-closed.
+        gt_scenery = {'gari-sg': self.W / 'w-gari-sg' / 'scenery.json',
+                      'snow-cand': self.W / 'w-snow-b' / 'scenery.json',
+                      'mesa-final': self.W / 'w-mesa-finalw' / 'scenery.json',
+                      'merq-cand': self.W / 'w-merq-b' / 'scenery.json',
+                      'aloha-b': self.W / 'w-aloha-b' / 'scenery.json',
+                      'elys-cand': self.W / 'w-elys-b' / 'scenery.json'}
+        scenery = gt_scenery.get(gt['scenery'])
+        if scenery is None or not scenery.is_file():
+            scenery = self.need(self.pin_file('scenery-effects', 'scenery',
+                                              f"{gt['scenery']}-scenery.json"),
+                                f"s2 {gt['scenery']} scenery")
+        donor_pbd = self.donor / gt['donor'] / f"{gt['donor']}.pbd"
+        if not donor_pbd.is_file():
+            donor_pbd = self.need(self.pin_file('donor', gt['donor'],
+                                                f"{gt['donor']}.pbd"),
+                                  f"s2 {gt['donor']} donor")
         cmd = [sys.executable, self.T / 'tk57' / 'interact_step.py',
                self.a.ssx3_iso, base, out, '--group', str(r['fix_group']),
-               '--scenery', pins / 'scenery-effects' / 'scenery' /
-               f"{gt['scenery']}-scenery.json",
-               '--donor-pbd', pins / 'donor' / gt['donor'] /
-               f"{gt['donor']}.pbd",
+               '--scenery', scenery,
+               '--donor-pbd', donor_pbd,
                '--stock-bam', self.a.host_bam]
         if r.get('tk57_blocks'):
             cmd += ['--blocks', *[str(b) for b in r['tk57_blocks']]]
@@ -1132,16 +1220,43 @@ class Chain:
         w = self.W / f'w-{c}-s3'
         w.mkdir(parents=True, exist_ok=True)
         out = w / f'{c.upper()}.BIG'
-        pins = Path(self.a.pins)
         stem = {'merq': 'merquer'}.get(c, r['donor'])
-        ddir = pins / 'donor'
+        ddir = self.donor
         if not (ddir / stem / f'{stem}.pbd').exists():
-            ddir = self.donor
+            ddir = Path(self.a.pins) / 'donor' if self.a.pins else self.donor
+        # Public default: our own run receipts under pins-compatible names
+        # (s3 reads <name>-scenery.json for the course's own entry; mesa
+        # borrows aloha-b, so aloha must run first). The s3 oracle judges.
+        compat = self.W / 'scenery-compat'
+        compat.mkdir(parents=True, exist_ok=True)
+        need = {'gari': ('gari-f', 'w-gari-b'), 'snow': ('snow-f', 'w-snow-b'),
+                'aloha': ('aloha-b', 'w-aloha-b'), 'merq': ('merq-d', 'w-merq-b'),
+                'mesa': ('aloha-b', 'w-aloha-b')}.get(c)
+        scenery_dir = Path(self.a.pins) / 'scenery-effects' / 'scenery' \
+            if self.a.pins else None
+        if need is not None:
+            own = self.W / need[1] / 'scenery.json'
+            link = compat / f'{need[0]}-scenery.json'
+            if own.is_file() and (scenery_dir is None or
+                                  not (scenery_dir / f'{need[0]}-scenery.json').is_file()):
+                if link.is_symlink() or link.exists():
+                    link.unlink()
+                link.symlink_to(own)
+                scenery_dir = compat
+        if scenery_dir is None:
+            if c == 'untrack':
+                # tk51 config gates the only scenery-dir read on a truthy
+                # scenery name; untrack's entry is None, so the dir is
+                # never read. The (empty) compat dir is behavior-identical.
+                scenery_dir = compat
+            else:
+                raise SystemExit(f'{c}: no s3 scenery receipt; pass --pins')
         run('s3', sys.executable, self.T / 'tk51' / 'patch_hidden_colliders.py',
             base, out, '--course', c,
             '--census', self.T / 'data' / 'tk51-hidden-census.json',
-            '--scenery-dir', pins / 'scenery-effects' / 'scenery',
+            '--scenery-dir', scenery_dir,
             '--donor-dir', ddir,
+            '--ssx3-iso', self.a.ssx3_iso,
             cwd=self.W, log=self.log(c, 's3'))
         if r.get('oracle_s3'):
             check(out, r['oracle_s3'], f'{c} s3')
@@ -1153,9 +1268,10 @@ class Chain:
         w = self.W / f'w-{c}-s4'
         w.mkdir(parents=True, exist_ok=True)
         out = w / f'{c.upper()}.BIG'
-        pins = Path(self.a.pins)
         stem = {'merq': 'merquer', 'elys': 'elysium'}.get(c, r['donor'])
-        ddir = pins / 'donor'
+        ddir = self.donor
+        if not (ddir / stem).is_dir():
+            ddir = Path(self.a.pins) / 'donor' if self.a.pins else self.donor
         if c == 'untrack':
             shutil.copy(base, out)
             assert sha256(out) == sha256(base), 'untrack s4 copy'
@@ -1163,6 +1279,7 @@ class Chain:
             return out
         run('s4', sys.executable, self.T / 'tk58' / 'fix_hulls.py',
             base, out, '--course', c, '--donor-dir', ddir,
+            '--ssx3-iso', self.a.ssx3_iso,
             '--receipt', w / 's4.json',
             cwd=self.W, log=self.log(c, 's4'))
         if r.get('oracle_s4'):
@@ -1211,6 +1328,10 @@ class Chain:
     # input, input-SHA-gated before use. Outputs are the post-routes golden.
     def rung_routes(self, c, r, base):
         if r.get('routes_ref'):
+            if not self.a.routes_ref_dir:
+                raise SystemExit(
+                    f'{c}: routes base needs --routes-ref-dir (pending mega-h/u2/c tail); '
+                    f'expecting {r["routes_ref"]} SHA {r.get("routes_ref_sha")}')
             ref = Path(self.a.routes_ref_dir) / r['routes_ref']
             if r.get('routes_ref_sha'):
                 check(ref, r['routes_ref_sha'], f'{c} routes-ref')
@@ -1256,7 +1377,9 @@ class Chain:
                 cwd=self.W, log=self.log('preview', c))
             cur = out
         check(cur, TKP5_COURSPIT, 'courspit final')
-        print(f'preview done {cur}', flush=True)
+        agg = cp / 'COURSPIT.BIG'
+        shutil.copy2(cur, agg)
+        print(f'preview done {agg}', flush=True)
 
     def run_course(self, c, upto='all'):
         assert c in COURSES, c
@@ -1418,12 +1541,16 @@ def main():
     ap.add_argument('--workdir', required=True)
     ap.add_argument('--course', default='pipe')
     ap.add_argument('--rung', default='all')
-    ap.add_argument('--lane-dir', default='/Users/brad/dev/ssx3/local/research')
-    ap.add_argument('--pins', default='/Users/brad/dev/ssx3-work/pinned/tricky')
-    ap.add_argument('--gc-dir',
-                    default='/Users/brad/dev/ssx3/local/source/gamecube/tricky')
-    ap.add_argument('--routes-ref-dir',
-                    default='/Users/brad/dev/ssx3-work/tk-routes-1/inputs/tricky/ov-base/DATA/WORLDS')
+    ap.add_argument('--lane-dir', default=None,
+                    help='legacy lane recipe dir (unused: recipes live in tools/ssx3/tricky/data)')
+    ap.add_argument('--pins', default=None,
+                    help='optional pinned lane inputs; the workdir build wins when present')
+    ap.add_argument('--gc-dir', default=None,
+                    help='optional GameCube donor dir (race .aip falls back '
+                         'to the workdir donor; resets rungs REQUIRE it, '
+                         'else those courses skip with record)')
+    ap.add_argument('--routes-ref-dir', default=None,
+                    help='required for the mega routes base (pending mega-h/u2/c tail)')
     a = ap.parse_args()
     ch = Chain(a)
     ensure_world_report(ch)
