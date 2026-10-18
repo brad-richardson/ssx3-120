@@ -51,5 +51,4 @@ jobs:
             if head -1 "$s" | grep -q bash; then bash -n "$s"; else sh -n "$s"; fi
           done
           sh -n build
-<<<<<<< HEAD
           python3 -m py_compile build.py tools/ssx3/build.py tools/ssx3/toolchain.py tools/ssx3/prebuilt.py tools/ssx3/test_prebuilt.py tools/ssx3/tests/test_build_onecmd.py tools/ssx3/tests/test_toolchain.py tools/ssx3/tests/test_tricky_step.py tools/ssx3/tricky/build_tricky.py tools/ssx3/tricky/donor_inventory.py tools/ssx3/tricky/run_chain.py tools/bench/bench-android.py tools/replay/padrec_complete.py tools/replay/padrec_replay_env.py tests/det/boot/baseline.py tests/det/knob_registry.py tests/det/knob_matrix.py tests/test_symbols_map.py
