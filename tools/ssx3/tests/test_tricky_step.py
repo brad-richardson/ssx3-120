@@ -530,6 +530,51 @@ class BuildTrickyDriverTest(unittest.TestCase):
             self.assertIn('row = 15:MEGA:Tokyo Megaplex', manifest)
             self.assertFalse((lay / 'SKIPPED.txt').exists())
 
+    def test_speech_slots_get_per_target_work_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work, tricky_iso=work / 't.iso',
+                               ssx3_iso=work / 's.iso',
+                               vgmstream='vgmstream-cli')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, args
+            b.logs = work / 'logs'
+            calls = []
+
+            def fake_big_member(iso, big, want, out):
+                out = Path(out)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes(b'x')
+                return out
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                calls.append((name, list(argv)))
+                return Path(logdir) / f'{name}.log'
+
+            def fake_copy(src, dst):
+                dst = Path(dst)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(b'x')
+                return dst
+
+            with patch.object(driver, 'big_member', side_effect=fake_big_member), \
+                 patch.object(driver, 'run', side_effect=fake_run), \
+                 patch.object(driver, 'check', return_value=None), \
+                 patch.object(driver.shutil, 'copy2', side_effect=fake_copy):
+                out = b.phase_speech()
+            sp = work / 'speech'
+            slots = {name: argv for name, argv in calls
+                     if name.startswith('speech-slot-')}
+            self.assertEqual(len(slots), len(driver.SPEECH_TARGETS))
+            for t in driver.SPEECH_TARGETS:
+                argv = slots[f'speech-slot-{t}']
+                self.assertIn('--work-dir', argv)
+                self.assertEqual(
+                    Path(argv[argv.index('--work-dir') + 1]),
+                    sp / ('work-' + t))
+            self.assertEqual(out, work / 'speech-tricky-big')
+
     def test_speech_decisions_cover_all_targets(self):
         decisions = driver.T / 'data' / 'speech-decisions'
         for t in driver.SPEECH_TARGETS:

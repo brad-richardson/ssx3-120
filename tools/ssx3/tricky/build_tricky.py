@@ -334,7 +334,7 @@ class Build:
             run(self.logs, f'speech-slot-{t}', sys.executable, T / 'speech_slots.py',
                 str(ex / 'ssx3' / (t + '.dat')), str(dec), str(mapping), str(out),
                 '--target', t, '--loudrows', sp / 'loud.tsv',
-                '--tk25b-work', sp, '--work-dir', sp / 'work-' + t,
+                '--tk25b-work', sp, '--work-dir', sp / ('work-' + t),
                 cwd=self.W)
             run(self.logs, f'speech-check-{t}', sys.executable, T / 'check_slots.py',
                 str(ex / 'ssx3' / (t + '.dat')), str(out), str(dec),
