@@ -420,7 +420,11 @@ class IosTfxStagingTest(unittest.TestCase):
             (work / name).write_bytes(b'disc-bytes')
         (work / 'ios-libs.json').write_text(json.dumps({'ge1_dir': str(work / 'ge1'),
                                                          'om1_dir': str(work / 'om1'),
-                                                         'om1_vendor': 'v'}))
+                                                         'ge1_vendor': build.GE1_VENDOR_PIN,
+                                                         'om1_vendor': build.OM1_VENDOR_PIN,
+                                                         'sdl2_tarball_sha256': build.SDL2_TARBALL_SHA,
+                                                         'ffmpeg_tarball_sha256': build.FFMPEG_TARBALL_SHA,
+                                                         'ios_dep_pins': {n: c for n, _, _, c in build.IOS_DEPS}}))
         (work / 'ge1').mkdir()
         (work / 'om1').mkdir()
         (work / 'ios-libs/MoltenVK.framework').mkdir(parents=True)

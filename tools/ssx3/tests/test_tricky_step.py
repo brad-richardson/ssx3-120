@@ -411,7 +411,9 @@ class OneCommandTrickyTest(unittest.TestCase):
             tricky.write_bytes(b'tricky')
             args = tricky_args(work, ssx3_iso=iso, tricky_iso=tricky, install=False)
             calls = []
-            with patch.object(build, 'ensure_android_toolchain'), \
+            with patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
                  patch.object(build, 'validate_tricky_iso', return_value=tricky), \
                  patch.object(build, 'prepare_current', return_value=False), \
@@ -429,7 +431,9 @@ class OneCommandTrickyTest(unittest.TestCase):
             iso = Path(tmp) / 'SSX3.iso'
             iso.write_bytes(b'ssx3')
             args = tricky_args(work, ssx3_iso=iso, tricky_iso=None, install=False)
-            with patch.object(build, 'ensure_android_toolchain'), \
+            with patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                 patch.object(build, 'preflight_host_tools', return_value=True), \
+                 patch.object(build, 'ensure_android_toolchain'), \
                  patch.object(build, 'doctor'), \
                  patch.object(build, 'prepare_current', return_value=True), \
                  patch.object(build, 'android_libs_current', return_value=True), \

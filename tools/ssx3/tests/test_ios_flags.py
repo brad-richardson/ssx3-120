@@ -74,7 +74,11 @@ def make_work(root, register_text='register-fresh'):
     om1 = work / 'om1-lib'
     om1.mkdir()
     (work / 'ios-libs.json').write_text(json.dumps(
-        {'ge1_dir': str(ge1), 'om1_dir': str(om1), 'om1_vendor': 'v'}))
+        {'ge1_dir': str(ge1), 'om1_dir': str(om1),
+         'ge1_vendor': build.GE1_VENDOR_PIN, 'om1_vendor': build.OM1_VENDOR_PIN,
+         'sdl2_tarball_sha256': build.SDL2_TARBALL_SHA,
+         'ffmpeg_tarball_sha256': build.FFMPEG_TARBALL_SHA,
+         'ios_dep_pins': {n: c for n, _, _, c in build.IOS_DEPS}}))
     return work
 
 

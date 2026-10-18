@@ -126,9 +126,14 @@ class ResumeTest(unittest.TestCase):
             slim.write_bytes(b'slim')
             (work / 'SLUS_207.72').write_bytes(b'elf')
             (work / 'codegen').mkdir()
-            (work / 'inputs.json').write_text(json.dumps(
-                {'iso_sha256': build.ISO_SHA, 'slim_iso': str(slim)}))
+            pins = build.recorded_prepare_pins()
+            record = {'iso': str((Path(tmp) / 'SSX3.iso').resolve()), 'iso_sha256': build.ISO_SHA,
+                      'slim_iso': str(slim)}
+            record.update(pins)
+            (work / 'inputs.json').write_text(json.dumps(record))
             self.assertTrue(build.prepare_current(work))
+            self.assertTrue(build.prepare_current(work, Path(tmp) / 'SSX3.iso'))
+            self.assertEqual(build.prepare_plan(work, Path(tmp) / 'SSX3.iso'), ('skip', []))
             jni = work / 'jniLibs/arm64-v8a'
             jni.mkdir(parents=True)
             (jni / 'libge1_gs.so').write_bytes(b'gs')
@@ -300,6 +305,99 @@ class DryRunGateTest(unittest.TestCase):
     def test_documented_first_command_is_one_command_dry_run(self):
         text = (ROOT / 'docs/agent-setup.md').read_text()
         self.assertIn('./build ios --ssx3-iso ~/SSX3.iso --dry-run --team <TEAM10> --work ~/ssx3-work', text)
+
+
+class ResumePinsTest(unittest.TestCase):
+    """F16/F17: resume compares pins and inputs; reruns recover."""
+
+    def current_work(self, tmp):
+        work = Path(tmp)
+        slim = work / 'SSX3.iso'
+        slim.write_bytes(b'slim')
+        (work / 'SLUS_207.72').write_bytes(b'elf')
+        (work / 'codegen').mkdir()
+        record = {'iso': str((Path(tmp) / 'SSX3.iso').resolve()), 'iso_sha256': build.ISO_SHA,
+                  'slim_iso': str(slim)}
+        record.update(build.recorded_prepare_pins())
+        (work / 'inputs.json').write_text(json.dumps(record))
+        return work
+
+    def test_generator_drift_regenerates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self.current_work(tmp)
+            record = json.loads((work / 'inputs.json').read_text())
+            record['generator'] = '0' * 40
+            (work / 'inputs.json').write_text(json.dumps(record))
+            self.assertFalse(build.prepare_current(work))
+            plan, stale = build.prepare_plan(work, Path(tmp) / 'SSX3.iso')
+            self.assertEqual(plan, 'regenerate')
+            self.assertIn(work / 'codegen', stale)
+            self.assertIn(work / 'inputs.json', stale)
+
+    def test_config_drift_regenerates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self.current_work(tmp)
+            record = json.loads((work / 'inputs.json').read_text())
+            record['toml_sha256'] = '0' * 64
+            (work / 'inputs.json').write_text(json.dumps(record))
+            self.assertFalse(build.prepare_current(work))
+
+    def test_interrupted_run_regenerates_without_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / 'codegen').mkdir()
+            (work / 'SLUS_207.72').write_bytes(b'partial-elf')
+            self.assertFalse(build.prepare_current(work))
+            plan, stale = build.prepare_plan(work, Path(tmp) / 'SSX3.iso')
+            self.assertEqual(plan, 'regenerate')
+            self.assertIn(work / 'codegen', stale)
+            self.assertIn(work / 'SLUS_207.72', stale)
+
+    def test_atomic_write_leaves_no_tmp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'inputs.json'
+            build.atomic_write_text(target, '{"a": 1}\n')
+            build.atomic_write_text(target, '{"a": 2}\n')
+            self.assertEqual(target.read_text(), '{"a": 2}\n')
+            self.assertFalse(Path(str(target) + '.tmp').exists())
+
+    def test_android_libs_vendor_drift_rebuilds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            jni = work / 'jniLibs/arm64-v8a'
+            jni.mkdir(parents=True)
+            (jni / 'libge1_gs.so').write_bytes(b'gs')
+            (jni / 'libmv2_microvu.so').write_bytes(b'mv2')
+            (work / 'android-resources').mkdir()
+            pins = {name: commit for name, _, _, commit in build.ANDROID_DEPS}
+            (work / 'deps-build').mkdir()
+            (work / 'deps-build' / 'android-dependency-pins.json').write_text(json.dumps(pins))
+            self.assertTrue(build.android_libs_current(work))
+            pins['libpng'] = '0' * 40
+            (work / 'deps-build' / 'android-dependency-pins.json').write_text(json.dumps(pins))
+            self.assertFalse(build.android_libs_current(work))
+
+    def test_ios_libs_receipt_drift_rebuilds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            libs = work / 'ios-libs'
+            libs.mkdir()
+            for name in ('libge1_gs.a', 'libPCSX2.a', 'libcommon.a', 'libSDL2.a'):
+                (libs / name).write_bytes(b'x')
+            (libs / 'om1/pcsx2').mkdir(parents=True)
+            (libs / 'om1/pcsx2/libPCSX2.a').write_bytes(b'x')
+            (libs / 'MoltenVK.framework').mkdir()
+            (work / 'ios-ffmpeg/lib').mkdir(parents=True)
+            (work / 'ios-ffmpeg/lib/libavcodec.a').write_bytes(b'x')
+            receipt = {'ge1_vendor': build.GE1_VENDOR_PIN, 'om1_vendor': build.OM1_VENDOR_PIN,
+                       'sdl2_tarball_sha256': build.SDL2_TARBALL_SHA,
+                       'ffmpeg_tarball_sha256': build.FFMPEG_TARBALL_SHA,
+                       'ios_dep_pins': {n: c for n, _, _, c in build.IOS_DEPS}}
+            (work / 'ios-libs.json').write_text(json.dumps(receipt))
+            self.assertTrue(build.ios_libs_current(work))
+            receipt['om1_vendor'] = '0' * 40
+            (work / 'ios-libs.json').write_text(json.dumps(receipt))
+            self.assertFalse(build.ios_libs_current(work))
 
 
 class CapacityTest(unittest.TestCase):

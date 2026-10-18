@@ -479,6 +479,36 @@ def prepare_generator(a):
     return build
 
 
+def prepare_plan(work, iso, symbol_names=None):
+    """F16/F17: 'skip' when the receipt matches, else ('regenerate', stale).
+
+    A rerun after an interruption lands in 'regenerate' with every derived
+    output listed (all regenerable from the ISO; signing keys, cards and
+    the keystore live elsewhere and are never touched). Stale inputs.json
+    pins (generator/toml/map) regenerate instead of being silently reused.
+    """
+    work = Path(work)
+    if (work / 'inputs.json').is_file() and prepare_current(work, iso):
+        inputs = json.loads((work / 'inputs.json').read_text())
+        want_symbols = sha(symbol_names) if symbol_names else None
+        if inputs.get('symbol_names_sha256') != want_symbols:
+            print('prepare: symbol-names sidecar changed, regenerating')
+        else:
+            return 'skip', []
+    stale = [work / name for name in ('codegen', 'codegen.new', 'SSX3.iso',
+                                      'SSX3.iso.holes', 'SLUS_207.72',
+                                      'generation.toml', 'inputs.json')]
+    return 'regenerate', [p for p in stale if p.is_symlink() or p.exists()]
+
+
+def _drop_paths(paths):
+    for path in paths:
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+
+
 def prepare(a):
     # F03: the one-command paths reach here without the step-by-step
     # main() mkdir, so prepare owns its work directory before writing
@@ -488,33 +518,41 @@ def prepare(a):
         prepare_generator(a)
         print('Native generator prepared; no disc read and no game sources generated.')
         return
-    iso = a.iso.resolve()
-    if sha(iso) != ISO_SHA:
-        raise ValueError('unsupported disc SHA256; see docs/ssx3-inputs.md')
+    # F12: clear disc errors in the step-by-step route too.
+    iso = validate_ssx3_iso(a.iso)
+    if getattr(a, 'symbol_names', None) and not Path(a.symbol_names).is_file():
+        raise ValueError('missing optional symbol names sidecar: ' + str(a.symbol_names))
+    # F16/F17: resume when current; otherwise drop stale derived outputs so
+    # `re-run the same command` recovers from an interruption.
+    plan, stale = prepare_plan(a.work, iso, getattr(a, 'symbol_names', None))
+    if plan == 'skip':
+        print('prepare: outputs current for this disc, skipping')
+        return
+    _drop_paths(stale)
     elf = a.work / 'SLUS_207.72'
     extract_elf(iso, elf)
     if sha(elf) != ELF_SHA:
         raise ValueError('extracted ELF SHA256 mismatch')
     slim = write_slim(iso, a.work / 'SSX3.iso', slim_holes(iso), ISO_SHA)
     build = prepare_generator(a)
-    output = a.work / 'codegen'
-    if output.exists():
-        raise ValueError('refusing existing codegen; choose a fresh --work directory')
+    new = a.work / 'codegen.new'
+    _drop_paths([new])
     config = (ROOT / 'games/ssx3/ssx3.toml').read_text()
     # All local paths are anchored absolute in the private work directory.
-    paths = {'input': elf, 'ghidra_output': ROOT / 'games/ssx3/ssx3-functions.sweep.csv', 'output': output}
+    paths = {'input': elf, 'ghidra_output': ROOT / 'games/ssx3/ssx3-functions.sweep.csv', 'output': new}
     for key, value in paths.items():
         config = re.sub(r'^' + key + r' = .*$', key + ' = ' + json.dumps(str(value)), config, flags=re.M)
-    if a.symbol_names and not a.symbol_names.is_file():
-        raise ValueError('missing optional symbol names sidecar: ' + str(a.symbol_names))
     if a.symbol_names:
         config = config.replace('[general]\n',
-            '[general]\nsymbol_names = ' + json.dumps(str(a.symbol_names.resolve())) + '\n', 1)
+            '[general]\nsymbol_names = ' + json.dumps(str(Path(a.symbol_names).resolve())) + '\n', 1)
     toml = a.work / 'generation.toml'
-    toml.write_text(config)
+    atomic_write_text(toml, config)
     run(build / 'ps2xRecomp/ps2_recomp', toml)
-    register_sha = sha(output / 'register_functions.cpp')
-    (a.work / 'inputs.json').write_text(json.dumps({'iso': str(iso), 'iso_sha256': ISO_SHA,
+    register_sha = sha(new / 'register_functions.cpp')
+    # F17: publish the finished codegen atomically; an interruption before
+    # this line leaves no inputs.json, so the next run regenerates.
+    new.replace(a.work / 'codegen')
+    atomic_write_text(a.work / 'inputs.json', json.dumps({'iso': str(iso), 'iso_sha256': ISO_SHA,
         'slim_iso': str(slim), 'slim_sha256': sha(slim),
         'slim_table_sha256': sha(Path(str(slim) + '.holes')),
         'elf_sha256': ELF_SHA, 'generator': GENERATOR, 'register_sha256': register_sha,
@@ -1893,14 +1931,35 @@ def prune_om1_copy(build_dir, dest):
 
 
 def ios_libs_current(work):
-    """Whether ios-libs' staged archives are present (resume skip)."""
+    """Whether ios-libs' staged archives are present (resume skip).
+
+    F16: the ios-libs.json receipt pins must also match; a drifted pin
+    rebuilds instead of silently reusing stale archives.
+    """
     libs = work / 'ios-libs'
-    return ((libs / 'libge1_gs.a').is_file() and (libs / 'libPCSX2.a').is_file()
+    if not ((libs / 'libge1_gs.a').is_file() and (libs / 'libPCSX2.a').is_file()
             and (libs / 'libcommon.a').is_file()
             and (libs / 'om1/pcsx2/libPCSX2.a').is_file()
             and (libs / 'libSDL2.a').is_file()
             and (libs / 'MoltenVK.framework').is_dir()
-            and (work / 'ios-ffmpeg/lib/libavcodec.a').is_file())
+            and (work / 'ios-ffmpeg/lib/libavcodec.a').is_file()):
+        return False
+    try:
+        receipt = json.loads((work / 'ios-libs.json').read_text())
+    except (OSError, ValueError):
+        return True
+    for key, want in (('ge1_vendor', GE1_VENDOR_PIN), ('om1_vendor', OM1_VENDOR_PIN),
+                      ('sdl2_tarball_sha256', SDL2_TARBALL_SHA),
+                      ('ffmpeg_tarball_sha256', FFMPEG_TARBALL_SHA)):
+        if key in receipt and receipt[key] != want:
+            print('ios-libs: ' + key + ' changed, rebuilding')
+            return False
+    recorded_deps = receipt.get('ios_dep_pins') or {}
+    for name, _, _, commit in IOS_DEPS:
+        if name in recorded_deps and recorded_deps[name] != commit:
+            print('ios-libs: dependency ' + name + ' pin changed, rebuilding')
+            return False
+    return True
 
 
 def ios_libs(a):
@@ -2690,7 +2749,7 @@ def ios_onecmd(a):
     if a.dry_run:
         ios(a)
         return
-    if prepare_current(a.work):
+    if prepare_current(a.work, a.iso):
         print('prepare: outputs current for this disc, skipping')
     else:
         prepare(a)
@@ -3175,23 +3234,80 @@ def preflight_host_tools():
     return True
 
 
-def prepare_current(work):
-    """Whether prepare's outputs are current (same disc, ELF, slim, codegen)."""
+def atomic_write_text(path, text):
+    """F17: crash-safe receipt write (temp file + os.replace, same dir)."""
+    path = Path(path)
+    tmp = Path(str(path) + '.tmp')
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
+def recorded_prepare_pins():
+    """Pins prepare() records in inputs.json: generator + config/map content."""
+    return {'generator': GENERATOR,
+            'toml_sha256': sha(ROOT / 'games/ssx3/ssx3.toml'),
+            'map_sha256': sha(ROOT / 'games/ssx3/ssx3-functions.sweep.csv')}
+
+
+def prepare_current(work, iso=None):
+    """Whether prepare's outputs are current (same disc, pins, ELF, codegen).
+
+    F16: beyond existence, the recorded generator/config/map pins must
+    match this checkout; a newly supplied ISO path re-records (its bytes
+    are hashed only when the path differs from the receipt).
+    """
     try:
         inputs = json.loads((work / 'inputs.json').read_text())
     except (OSError, ValueError):
         return False
     if inputs.get('iso_sha256') != ISO_SHA:
         raise ValueError('work dir prepared from a different disc; use a fresh --work directory')
+    for key, want in recorded_prepare_pins().items():
+        if inputs.get(key) != want:
+            print('prepare: ' + key + ' changed since prepare, regenerating')
+            return False
+    if iso is not None and str(Path(iso).resolve()) != inputs.get('iso'):
+        try:
+            same_pressing = sha(iso) == ISO_SHA
+        except OSError:
+            return False
+        if not same_pressing:
+            raise ValueError('work dir prepared from a different disc; use a fresh --work directory')
+        print('prepare: ISO path changed, re-recording')
+        return False
     return ((work / 'SLUS_207.72').is_file() and (work / 'codegen').is_dir()
             and Path(inputs.get('slim_iso') or '').is_file())
 
 
 def android_libs_current(work):
-    """Whether android-libs' staged libraries and resources are current."""
+    """Whether android-libs' staged libraries and resources are current.
+
+    F16: recorded dependency/vendor pins must also match; a drifted pin
+    rebuilds instead of silently reusing stale libraries.
+    """
     jni = work / 'jniLibs/arm64-v8a'
-    return ((jni / 'libge1_gs.so').is_file() and (jni / 'libmv2_microvu.so').is_file()
-            and (work / 'android-resources').is_dir())
+    if not ((jni / 'libge1_gs.so').is_file() and (jni / 'libmv2_microvu.so').is_file()
+            and (work / 'android-resources').is_dir()):
+        return False
+    try:
+        recorded = json.loads((work / 'deps-build' / 'android-dependency-pins.json').read_text())
+    except (OSError, ValueError):
+        recorded = {}
+    for name, _, _, commit in ANDROID_DEPS:
+        if name in recorded and recorded[name] != commit:
+            print('android-libs: dependency ' + name + ' pin changed, rebuilding')
+            return False
+    vendor = work / 'android-assembly/vendor-pcsx2'
+    if (vendor / '.git').exists():
+        try:
+            actual = subprocess.check_output(['git', '-C', str(vendor), 'rev-parse', 'HEAD'],
+                                             text=True).strip()
+        except (OSError, subprocess.CalledProcessError):
+            return False
+        if actual != ANDROID_GE1_VENDOR_PIN:
+            print('android-libs: GE1 vendor pin changed, rebuilding')
+            return False
+    return True
 
 
 TRICKY_ELF_NAME = 'SLUS_203.26'
@@ -3572,7 +3688,7 @@ def android_onecmd(a):
     ensure_android_toolchain(a)
     a.target = 'android'
     doctor(a)
-    if prepare_current(a.work):
+    if prepare_current(a.work, a.iso):
         print('prepare: outputs current for this disc, skipping')
     else:
         prepare(a)
