@@ -178,6 +178,16 @@ struct LimitsCfg {
     idle_probe_secs: u64,
     #[serde(default = "d_idle_close")]
     idle_close_secs: u64,
+    /// Buddy presence TCP (13505) idle lifetime for an authenticated
+    /// session with no inbound bytes (lobby-buddy-1: was hardcoded
+    /// 300 s in handle_buddy). Paired cover (below) still applies.
+    #[serde(default = "d_buddy_close")]
+    buddy_close_secs: u64,
+    /// Grace after a pair's relay task ends during which the ex-pair's
+    /// buddy and game links keep their paired cover (results screen
+    /// and rematch browsing send nothing on either TCP).
+    #[serde(default = "d_paired_grace")]
+    paired_grace_secs: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -417,6 +427,12 @@ const fn d_idle_probe() -> u64 {
 const fn d_idle_close() -> u64 {
     240
 }
+const fn d_buddy_close() -> u64 {
+    300
+}
+const fn d_paired_grace() -> u64 {
+    300
+}
 fn d_auth_mode() -> String {
     "open".into()
 }
@@ -525,6 +541,8 @@ impl Default for LimitsCfg {
             waiter_timeout_secs: d_waiter_timeout(),
             idle_probe_secs: d_idle_probe(),
             idle_close_secs: d_idle_close(),
+            buddy_close_secs: d_buddy_close(),
+            paired_grace_secs: d_paired_grace(),
         }
     }
 }
@@ -637,6 +655,9 @@ struct State {
     buddies: Mutex<HashMap<String, BuddySession>>,        // user -> session
     queue: Mutex<VecDeque<String>>,                       // waiter personas, oldest first
     pairs: Mutex<HashMap<String, Pair>>,                  // session name -> pair
+    /// Persona -> wall time its pair's relay task ended (lobby-buddy-1).
+    /// Grants post-pair grace cover; pruned on every access.
+    pair_ended: Mutex<HashMap<String, Instant>>,
     conns_per_ip: Mutex<HashMap<IpAddr, usize>>,
     pending_addrs: Mutex<HashMap<SocketAddr, (String, String)>>,
     /// Actual bound game/buddy ports (may differ from config when ephemeral).
@@ -1019,6 +1040,18 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                 // A partial frame has an absolute body deadline. An
                 // actually idle connection survives until configured close.
                 if !buf.is_empty() || last_active.elapsed() >= idle_close {
+                    // Paired cover (lobby-buddy-1): racing clients send
+                    // nothing here (race traffic is UDP), and stock
+                    // clients only answer PNG from the lobby pump, which
+                    // does not run mid-race — so idle_close would reap
+                    // live races. Skip the reap while covered.
+                    if persona
+                        .as_deref()
+                        .map(|p| state.pair_cover(p))
+                        .unwrap_or(false)
+                    {
+                        continue;
+                    }
                     break;
                 }
                 if last_active.elapsed() >= idle_probe
@@ -1416,7 +1449,11 @@ async fn handle_buddy(state: Arc<State>, mut stream: TcpStream, peer: SocketAddr
         owner,
     };
     loop {
-        let deadline = if user.is_none() { 10 } else { 300 };
+        let deadline = if user.is_none() {
+            10
+        } else {
+            state.cfg.limits.buddy_close_secs
+        };
         let msg = match tokio::time::timeout(
             Duration::from_secs(deadline),
             read_msg(&mut stream, &mut buf, &state, peer.ip()),
@@ -1424,7 +1461,21 @@ async fn handle_buddy(state: Arc<State>, mut stream: TcpStream, peer: SocketAddr
         .await
         {
             Ok(Ok(m)) => m,
-            _ => break,
+            Ok(Err(_)) => break,
+            Err(_) => {
+                // Read timeout (not a protocol error). Paired cover
+                // (lobby-buddy-1): racing clients send nothing on the
+                // buddy link, so the close would fire mid-race and the
+                // guest raises opponent-lost at results time.
+                if user
+                    .as_deref()
+                    .map(|u| state.pair_cover(u))
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
+                break;
+            }
         };
         let t = typ_str(&msg);
         // Per-message at debug (see game path: no journal amplification
@@ -2005,6 +2056,42 @@ impl State {
         let cap = self.cfg.relay.monthly_egress_cap_bytes;
         cap > 0 && self.egress_bytes_total.load(Ordering::Relaxed) >= cap
     }
+
+    /// Paired cover (lobby-buddy-1): a persona whose pair relay is live
+    /// — the pairs record exists exactly while the relay task runs, and
+    /// the task reaps itself `idle_timeout_secs` after its last
+    /// forwarded datagram — or whose pair ended within
+    /// `paired_grace_secs`. Racing clients send nothing on either TCP,
+    /// so without cover the 300 s buddy / 240 s game reaps fire
+    /// mid-race and the guest raises opponent-lost at results time.
+    /// Lock order: pairs, then pair_ended; never nested with others.
+    fn pair_cover(&self, persona: &str) -> bool {
+        if self
+            .pairs
+            .lock()
+            .unwrap()
+            .values()
+            .any(|p| p.a == persona || p.b == persona)
+        {
+            return true;
+        }
+        let grace = Duration::from_secs(self.cfg.limits.paired_grace_secs);
+        let now = Instant::now();
+        let mut ended = self.pair_ended.lock().unwrap();
+        ended.retain(|_, t| now.duration_since(*t) <= grace);
+        ended.contains_key(persona)
+    }
+
+    /// Record a pair's end for post-pair grace cover (relay task exit).
+    fn note_pair_ended(&self, members: &[String; 2]) {
+        let now = Instant::now();
+        let grace = Duration::from_secs(self.cfg.limits.paired_grace_secs);
+        let mut ended = self.pair_ended.lock().unwrap();
+        for m in members {
+            ended.insert(m.clone(), now);
+        }
+        ended.retain(|_, t| now.duration_since(*t) <= grace);
+    }
 }
 
 fn build_state(cfg: Config, ports: Vec<u16>, server_key: String) -> Arc<State> {
@@ -2021,6 +2108,7 @@ fn build_state(cfg: Config, ports: Vec<u16>, server_key: String) -> Arc<State> {
         buddies: Mutex::new(HashMap::new()),
         queue: Mutex::new(VecDeque::new()),
         pairs: Mutex::new(HashMap::new()),
+        pair_ended: Mutex::new(HashMap::new()),
         conns_per_ip: Mutex::new(HashMap::new()),
         pending_addrs: Mutex::new(HashMap::new()),
         game_port: Mutex::new(game_port),
@@ -3212,6 +3300,129 @@ mod tests {
             .await
             .expect("timeout waiting for unknown-user close");
         assert_eq!(n.unwrap(), 0);
+    }
+
+    /// lobby-buddy-1: the buddy close was hardcoded 300 s; it is now a
+    /// `[limits]` knob next to the grace for post-pair cover.
+    #[test]
+    fn buddy_close_and_grace_knobs() {
+        let cfg = Config::default();
+        assert_eq!(cfg.limits.buddy_close_secs, 300);
+        assert_eq!(cfg.limits.paired_grace_secs, 300);
+        let cfg: Config = toml::from_str(
+            "[lobby]\nadvertise_ip = \"127.0.0.1\"\n[limits]\nbuddy_close_secs = 7\npaired_grace_secs = 9\n",
+        )
+        .unwrap();
+        assert_eq!(cfg.limits.buddy_close_secs, 7);
+        assert_eq!(cfg.limits.paired_grace_secs, 9);
+        assert_eq!(cfg.limits.idle_close_secs, 240);
+    }
+
+    /// lobby-buddy-1: cover holds while the pair record is live,
+    /// survives the relay task's end through the grace, then lapses.
+    #[test]
+    fn pair_cover_live_pair_then_grace_then_expiry() {
+        let (mut cfg, _) = test_cfg("off");
+        cfg.limits.paired_grace_secs = 1;
+        let state = build_state(cfg, vec![], "testkey".into());
+        assert!(!state.pair_cover("solo"));
+        state.pairs.lock().unwrap().insert(
+            "s1".into(),
+            Pair {
+                name: "s1".into(),
+                a: "cov-a".into(),
+                b: "cov-b".into(),
+                host: "cov-a".into(),
+                seed: 1,
+                when: "t".into(),
+                token: None,
+                relay_tokens: None,
+                relay_port: None,
+                a_ip: "127.0.0.1".parse().unwrap(),
+                b_ip: "127.0.0.1".parse().unwrap(),
+            },
+        );
+        assert!(state.pair_cover("cov-a"));
+        assert!(state.pair_cover("cov-b"));
+        assert!(!state.pair_cover("solo"));
+        state.pairs.lock().unwrap().remove("s1");
+        state.note_pair_ended(&["cov-a".to_string(), "cov-b".to_string()]);
+        assert!(state.pair_cover("cov-a"));
+        assert!(state.pair_cover("cov-b"));
+        std::thread::sleep(Duration::from_millis(1100));
+        assert!(!state.pair_cover("cov-a"));
+        assert!(!state.pair_cover("cov-b"));
+    }
+
+    /// lobby-buddy-1: a paired buddy session survives past
+    /// buddy_close_secs of total silence, while an unpaired bystander
+    /// is still reaped on the same deadline.
+    #[tokio::test]
+    async fn paired_buddy_survives_close_while_unpaired_reaped() {
+        let (mut cfg, _) = test_cfg("always");
+        cfg.limits.buddy_close_secs = 2;
+        // Localhost clients share one IP: lift the per-IP caps to
+        // isolate the close behavior.
+        cfg.limits.max_pairs_per_ip = 100;
+        cfg.limits.max_queue_per_ip = 100;
+        let rport = free_udp_port().await;
+        cfg.relay.port_start = rport;
+        cfg.relay.port_end = rport;
+        let (state, lp, gp, bp) = boot_cfg(cfg, vec![rport]).await;
+        let (mut ga, mut ba) = login(&state, lp, gp, bp, "bud-a").await;
+        let (mut gb, _bb) = login(&state, lp, gp, bp, "bud-b").await;
+        let (_gc, mut bc) = login(&state, lp, gp, bp, "bud-c").await;
+        pair_up(&mut ga, &mut gb).await;
+        // Past the 2 s close with total buddy-TCP silence.
+        tokio::time::sleep(Duration::from_millis(3000)).await;
+        // Paired side still answers...
+        ba.send(types::PING, &[]).await;
+        let r = ba.recv().await;
+        ba.expect(&r, "PING");
+        // ...while the unpaired bystander was reaped.
+        let mut tmp = [0u8; 64];
+        let n = tokio::time::timeout(Duration::from_secs(5), bc.stream.read(&mut tmp))
+            .await
+            .expect("unpaired buddy still open past buddy_close_secs");
+        assert_eq!(n.unwrap(), 0, "unpaired buddy got bytes instead of close");
+    }
+
+    /// lobby-buddy-1: a paired game session survives past
+    /// idle_close_secs of TCP silence (stock answers the PNG probe only
+    /// from the lobby pump, which does not run mid-race), while an
+    /// unpaired bystander is still reaped.
+    #[tokio::test]
+    async fn paired_game_survives_idle_close_while_unpaired_reaped() {
+        let (mut cfg, _) = test_cfg("always");
+        cfg.limits.idle_close_secs = 2;
+        // No PNG probes: the reap under test is the silence close, and
+        // queued probes would sit ahead of the rank echo below.
+        cfg.limits.idle_probe_secs = 3600;
+        cfg.limits.max_pairs_per_ip = 100;
+        cfg.limits.max_queue_per_ip = 100;
+        let rport = free_udp_port().await;
+        cfg.relay.port_start = rport;
+        cfg.relay.port_end = rport;
+        let (state, lp, gp, bp) = boot_cfg(cfg, vec![rport]).await;
+        let (mut ga, _ba) = login(&state, lp, gp, bp, "gam-a").await;
+        let (mut gb, _bb) = login(&state, lp, gp, bp, "gam-b").await;
+        let (mut gc, _bc) = login(&state, lp, gp, bp, "gam-c").await;
+        pair_up(&mut ga, &mut gb).await;
+        // Past the 30 s authenticated read quantum with total game-TCP
+        // silence: paired sides keep cover, the bystander is reaped.
+        tokio::time::sleep(Duration::from_secs(36)).await;
+        ga.send(
+            types::RANK,
+            &[("WHEN", "2026.10.18 00:00:00"), ("REPT", "gam-a")],
+        )
+        .await;
+        let r = ga.recv().await;
+        ga.expect(&r, "rank");
+        let mut tmp = [0u8; 64];
+        let n = tokio::time::timeout(Duration::from_secs(5), gc.stream.read(&mut tmp))
+            .await
+            .expect("unpaired game conn still open past idle_close_secs");
+        assert_eq!(n.unwrap(), 0, "unpaired game conn got bytes instead of close");
     }
 }
 

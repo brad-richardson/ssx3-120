@@ -294,6 +294,11 @@ pub fn spawn(
             forwarded, forwarded_bytes, dropped, registered, "relay down"
         );
         state.pairs.lock().unwrap().remove(&pair_name);
+        // Post-pair grace cover (lobby-buddy-1): results screen and
+        // rematch browsing send nothing on either TCP.
+        if let Some(m) = &members {
+            state.note_pair_ended(m);
+        }
         state.relay_ports.lock().unwrap().push(port);
         // Release the port BEFORE re-pairing: try_pair binds it for the
         // next pair, and the bind fails while this socket is still open.

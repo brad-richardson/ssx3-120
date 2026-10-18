@@ -45,6 +45,11 @@ max_sessions_per_ip = 6
 waiter_timeout_secs = 600
 idle_probe_secs = 90
 idle_close_secs = 240
+# Buddy presence TCP idle lifetime (lobby-buddy-1: was hardcoded 300 s).
+# Paired cover keeps racing pairs past both reaps; paired_grace_secs
+# covers the results screen after the relay task ends.
+buddy_close_secs = 300
+paired_grace_secs = 300
 
 [auth]
 # Anonymous names; PASS is accepted only as a stock protocol field.
