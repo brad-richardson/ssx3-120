@@ -149,6 +149,7 @@ def ndk_root(explicit=None):
 
 def doctor(a):
     """Check actual executability, including translated SDK tools on Linux arm64."""
+    import toolchain
     failures = []
 
     def check(label, ok, detail, fix):
@@ -194,7 +195,6 @@ def doctor(a):
         if getattr(a, 'work', None):
             # A managed toolchain under --work counts as found (read-only;
             # doctor never downloads). Explicit environment still wins.
-            import toolchain
             found_jdk, found_sdk, _, _ = toolchain.discover(
                 a.work, getattr(a, 'jdk', None), getattr(a, 'ndk', None))
             if found_jdk is not None:

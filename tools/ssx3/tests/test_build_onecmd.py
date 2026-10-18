@@ -791,6 +791,16 @@ class AdbResolutionTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'adb not found'):
                     build.adb(args, 'version')
 
+    def test_doctor_without_work_reaches_adb_check(self):
+        import toolchain
+        args = onecmd_args(None)
+        with patch.dict(os.environ, {'PATH': '/usr/bin:/bin'}, clear=True), \
+             patch.object(toolchain, '_common_jdk_dirs', return_value=[]), \
+             patch.object(toolchain, '_common_sdk_dirs', return_value=[]), \
+             patch.object(toolchain, 'find_adb', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'adb'):
+                build.doctor(args)
+
     def test_doctor_reports_missing_adb(self):
         import toolchain
         with tempfile.TemporaryDirectory() as tmp:
