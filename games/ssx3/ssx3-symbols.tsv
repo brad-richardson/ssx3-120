@@ -1296,7 +1296,7 @@ address	kind	name	role	source	evidence	confidence
 0x3e3b00	code	audio_archive_cd_reader	sceCdRead caller for audio-archive disc reads (SNDDRV has no cdvdman)	labels.tsv:AU1 [trace] (NM1)	AU1 notes	inferred
 0x3e3d78	code	audio_archive_cd_reader	sceCdRead caller for audio-archive disc reads (SNDDRV has no cdvdman)	labels.tsv:AU1 [trace] (NM1)	AU1 notes	inferred
 0x3e4040	code	cdfs_build_toc	walks the disc ISO9660 tree at boot; one sector each into 0x519C80; maxFiles 500, 163 files	TK2/TK3	docs/facts.md:174	verified
-0x3e4508	code	file_lookup	TOC lookup returning index+1	TK2/TK3	docs/facts.md:176	verified
+0x3e4508	code	file_lookup	TOC lookup returning index+1; preserve-fix-1 overlay-only wrapper entry (stock function delegated)	TK2/TK3	docs/facts.md:176; preserve-fix-1 notes	verified
 0x3e4648	code	cdfs_read(handle, …)	[read] + [measured] FH1 count args	TK3 §Labels	TK3 notes	verified
 0x3e4c24	code	mmio_site_3e4c24	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:709	inferred
 0x3e4c78	code	mmio_site_3e4c78	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:790	inferred
@@ -2019,6 +2019,7 @@ address	kind	name	role	source	evidence	confidence
 0x43d994	data	event0.archive (event record +68)	[measured] manifest log "BAM" -> "GARI"	TK2 §Labels	TK2 notes	verified
 0x442168	data	location_slot_table	{i, sdbIndex, state, flag} x 50 alt: location slot table {i, sdbIndex, state, flag} × 50 (TK5) engine: constexpr kSlotBase (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_course_manifest.h:657)	labels.tsv:TK5 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x442488	data	topo_base	engine hook/const kTopoBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_course_manifest.h:72	inferred
+0x442710	data	event16_sky	event-16 sky value (stock 48; Tricky overlay 46 at boot)	preserve-fix-1 §Labels	preserve-fix-1 notes	inferred
 0x442820	data	disc_base	engine hook/const kDiscBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_course_manifest.h:74	inferred
 0x442950	data	event_pic_table	RAM table: GL:99QPEvent picks the loading-screen picture by event index (event >= 17 maps to Snow Jam)	TK8/TK9	docs/facts.md:186	verified
 0x446990	data	anim_table	Animation metadata records: stride0x1c; word0 is class consumed by311ae8 (e.g. ID0x48 -> class0x12), not the input animation ID	astra-input-1	codegen sub_003115C8_0x3115c8.cpp; sub_00311AE8_0x311ae8.cpp:76	verified
@@ -2073,6 +2074,8 @@ address	kind	name	role	source	evidence	confidence
 0x512b80	data	tag1_dma_buffer	DMA buffer holding the tag-1 record	AU2/AU4	docs/facts.md:15	verified
 0x512e40	data	tag1_record	planar tag-1 record: 384 s16 right channel then 384 left; first block feeds SPU2 right input	AU2/AU4	docs/facts.md:15	verified
 0x519c40	data	cdfs state: +4 count (164), +0x18 seed, +0x38 hash table (0x5E3980)	[measured]	TK3 §Labels	TK3 notes	verified
+0x519c44	data	file_table_live_count	sorted guest CD table live file count (163 stock + 20 overlay) engine: constexpr kCount (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:10)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:10	inferred
+0x519c78	data	file_table_base_ptr	sorted guest CD table base pointer (live 0x5e3980) engine: constexpr kBase (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:11)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:11	inferred
 0x519c80	data	toc_sector_buf	one-sector TOC read buffer	TK2/TK3	docs/facts.md:175	verified
 0x52be04	data	ssx3_sregs1_addr	engine hook/const kSsx3Sregs1Addr	engine	deps/PS2Recomp/games/ssx3/module/src/sif_handshake.cpp:105	inferred
 0x535538	data	stat_bank_base	live stat bank: 0x535538 + player*70 + char*7, seven attribute bytes per rider (raw 5..55, level=raw/5); physics getters read it live every mode	netsync-spike-1	netsync-spike-1 notes	verified
@@ -2090,7 +2093,12 @@ address	kind	name	role	source	evidence	confidence
 0x5c2400	data	score/trick object (slots +0x1b0, count +0x1b4, rider +0x1ac)	score/trick object (slots +0x1b0, count +0x1b4, rider +0x1ac) (dumps)	FH23 §Labels	FH23 notes	verified
 0x5c5c10	data	the node armed at the wipeout	ee-at; watches	FH24 §Labels	FH24 notes	verified
 0x6214d4	data	render_frame_count	render device frame count (sway reads +0x5a74 of it)	FH13	docs/facts.md:160	verified
+0xad0c80	data	cmnamer_base	loaded CMNAMER.LOC copy base in RAM (menu strings; Previews entry relabeled to Tricky Courses (Alpha))	preserve-fix-1 §Labels	preserve-fix-1 notes	inferred
+0xae50dc	data	tricky_menu_label	Tricky Courses (Alpha) menu label string (CMNAMER Previews entry rewrite)	preserve-fix-1 §Labels	preserve-fix-1 notes	inferred
+0xaf054c	data	banner_album_table	35x100B NUL-padded race-song ALBUMs in MUSIC.INF section order (Tricky albums all empty)	tk-banner-2 §Labels	tk-banner-2 notes	verified
 0xbafca0	data	0x13c878 normal-velocity damper (not 60)	stock RAM dump	JMP2 §Labels	JMP2 notes	verified
+0xc7b400	data	feamer_base	loaded FEAMER.LOC copy base in RAM (menu help strings)	preserve-fix-1 §Labels	preserve-fix-1 notes	inferred
+0xc87422	data	previews_help_string	Previews help string (FEAMER index 672; rewritten at menu build)	preserve-fix-1 §Labels	preserve-fix-1 notes	inferred
 0x1448754	data	event_score (All-Peak state)	FIND 3200; writer 0x26d73c at landing	FH1 §Labels	FH1 notes	verified
 0x144a1f0	data	wipeout body B (vel +0x10)	dumps; watches	FH23 §Labels	FH23 notes	verified
 0x144a800	data	unknown countdown (writer 0x2e6d00 in sub_0x2e6c08, not C_jump)	WATCH; ee-func	FH19 §Labels	FH19 notes	verified
