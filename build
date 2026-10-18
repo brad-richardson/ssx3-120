@@ -1,9 +1,12 @@
 #!/bin/sh
 # ssx3-120 one-command builder (builder-ux-1).
 #
-# The only prerequisite is `uv`. Everything else (Python, the font-pack
-# libraries, and -- with the android one-command -- the JDK and Android
-# SDK/NDK) is provisioned by the builder itself:
+# Prerequisites: `uv` plus a host toolchain (git, CMake, Ninja,
+# pkg-config, a C/C++ compiler, make, bison and flex). `doctor` checks
+# the toolchain and prints the exact install line when something is
+# missing. Everything else (Python, the font-pack libraries, and -- with
+# the android one-command -- the JDK and Android SDK/NDK) is provisioned
+# by the builder itself:
 #
 #   ./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
 #

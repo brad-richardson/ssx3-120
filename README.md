@@ -17,12 +17,15 @@ reported as such. An emulator's 2× speedhack is fast-forward, not 120.
 ## Build from your own disc
 
 Supported build hosts: macOS Apple silicon, Linux x86_64/arm64 (Windows
-users: Ubuntu in WSL2). Play targets: Android arm64, iOS. The only
-prerequisite is [`uv`](https://docs.astral.sh/uv/) (plus CMake, Ninja and a
-C compiler, which `doctor` checks):
+users: Ubuntu in WSL2). Play targets: Android arm64, iOS. Prerequisites:
+[`uv`](https://docs.astral.sh/uv/) (the `./build` wrapper runs the
+builder through it, provisioning Python plus the font-pack libraries,
+so no system Python setup) plus a host toolchain — git, CMake, Ninja,
+pkg-config, a C/C++ compiler, make, bison and flex. `doctor` checks
+every one and prints the exact install line when something is missing:
 
 ```sh
-git clone --recurse-submodules <this-repo> ssx3-120
+git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git ssx3-120
 cd ssx3-120
 ./build android --ssx3-iso ~/SSX3.iso --work ~/ssx3-work --accept-android-licenses
 ```
@@ -37,9 +40,10 @@ system install, no sudo). Google's SDK licence must be accepted:
 answer the prompt instead). Add `--install` to push to a connected device
 afterwards, `--prebuilt` to reuse a verified prebuilt support release when
 one matches, and `--tricky-iso <Tricky.iso>` to validate your Tricky disc
-and build the Tricky layer from it (needs the converter driver; without it
-the build stops after validation with that message). `make android
-ISO=~/SSX3.iso` wraps the same command. Supported Tricky discs:
+and build the Tricky layer from it with the in-tree converter driver
+(standalone step after prepare: `python3 build.py tricky --iso
+<Tricky.iso> --work <work>`). `make android ISO=~/SSX3.iso` wraps the
+same command. Supported Tricky discs:
 [docs/tricky-inputs.md](docs/tricky-inputs.md).
 
 Prefer your own toolchain? `--no-auto-download` never fetches: the builder
@@ -150,7 +154,7 @@ another lobby, set `PS2X_NET_SERVER=<hostname-or-IPv4>` in your env with
 `PS2X_NET=1`. The lobby source is vendored in `infra/lobby-rust/`, and
 this repo holds the operator side (`infra/`: one small cloud host, deploy,
 harden, backup, rollback). To play offline, just don't pick Online in the
-menu; the in-game settings panel also has an Online row that turns it off.
+menu; the in-game settings panel has no Online row.
 
 ## Provenance and licence
 

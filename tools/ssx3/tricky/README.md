@@ -1,12 +1,16 @@
 # tools/ssx3/tricky/ — Tricky world + audio/HUD/sidecar converters (tk-port-1, tk-port-2)
 
 Port of the private TK-lane converter scripts into the public
-bring-your-own-disc builder (`build.py tricky`, see the tk-public plan
+bring-your-own-disc builder (`python3 build.py tricky --iso <Tricky.iso>
+--work <work>` after prepare, or `./build android --ssx3-iso …
+--tricky-iso …` for the one-command build; see the tk-public plan
 `docs/research/tk-public-plan-2026-10-15.md` §1/§4 in the lab repo).
 Copy rule: **verbatim copies with re-rooted imports and no behaviour
 edits**, except hardcoded lane work paths, which became CLI args (listed
 per file below). No game data, converted assets or disc-derived bytes
-live here — only code plus two lane-authored data defaults.
+live here — only code plus lane-authored recipe data (fence/drop lists,
+blend specs, TSV defaults). Decoded census/glass tables are generated
+into the workdir at build time, never tracked.
 
 Provenance (lane source → this file):
 

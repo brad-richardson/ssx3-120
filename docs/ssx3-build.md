@@ -7,8 +7,8 @@ iOS. `doctor` verifies the toolchain before anything downloads.
 
 The public entry regenerates EE code and builds a Mac baseline without PGO
 or generated VU0; Android builds the support libraries from source by
-default (a verified game-free archive is tried first when one matches;
-checksum mismatch falls back to source). Prepare the
+default (`--prebuilt` opts into a verified game-free archive when one
+matches, with automatic fallback to source). Prepare the
 [exact supported inputs](ssx3-inputs.md) locally first. Library compilation
 and SSX 3 guest-code generation are separate steps.
 
@@ -18,7 +18,7 @@ and SSX 3 guest-code generation are separate steps.
 | --- | --- | --- |
 | macOS arm64 | Apple or Homebrew Clang, CMake, Ninja; engine + `armsx2` vendor pin (fetched by the recipe) | SSX 3 EE generation (your disc), GE1 dependency prefix (Homebrew + plutovg/plutosvg, fetched), renderer resources from the matching vendor build |
 | Android arm64 | JDK 17, SDK 34, NDK 28.2.13676358, CMake 3.22.1; Gradle/AGP; engine + matching GE1/microVU sources (or verified support archives) | EE/VU0 generated directories (your disc), JNI libraries, shader resources; optional Mesa Turnip (downloaded release or local build); your own signing keystore |
-| iOS arm64 / arm64 simulator | Xcode SDK/toolchain, CMake, Ninja | EE/VU0 generation, OM1 offline VU1 core + tables, signing setup; the portable iOS offline-VU1 recipe is still incomplete |
+| iOS arm64 / arm64 simulator | Xcode SDK/toolchain, CMake, Ninja | EE/VU0 generation, manifest-driven OM1 offline-VU1 stage from your disc (`work/om1-stage`), signing setup |
 
 Evidence: [engine CMake minimum](../deps/PS2Recomp/CMakeLists.txt#L1),
 [Android properties/toolchain](../apps/android/app/build.gradle#L5),
