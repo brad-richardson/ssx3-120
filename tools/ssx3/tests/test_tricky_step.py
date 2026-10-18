@@ -25,6 +25,9 @@ sys.path.insert(0, str(HERE))
 SPEC = importlib.util.spec_from_file_location('ssx3_build', HERE / 'build.py')
 build = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(build)
+# CI runners have ~13 GB free: stub the F15 disk preflight for flow tests
+# (test_build_onecmd.CapacityTest covers the real check).
+build.check_capacity = lambda *a, **k: True
 
 SECTOR = 2048
 

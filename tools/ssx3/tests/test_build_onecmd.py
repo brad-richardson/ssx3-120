@@ -21,6 +21,10 @@ sys.path.insert(0, str(HERE))
 SPEC = importlib.util.spec_from_file_location('ssx3_build', HERE / 'build.py')
 build = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(build)
+# CI runners have ~13 GB free: stub the F15 disk preflight for flow tests;
+# CapacityTest restores the real check.
+_REAL_CHECK_CAPACITY = build.check_capacity
+build.check_capacity = lambda *a, **k: True
 
 WRAPPER = ROOT / 'build'
 
@@ -541,6 +545,12 @@ class ResumePinsTest(unittest.TestCase):
 
 
 class CapacityTest(unittest.TestCase):
+    def setUp(self):
+        build.check_capacity = _REAL_CHECK_CAPACITY
+
+    def tearDown(self):
+        build.check_capacity = lambda *a, **k: True
+
     """F15: disk preflight with documented free-space numbers."""
 
     def test_full_disk_fails_with_numbers(self):
