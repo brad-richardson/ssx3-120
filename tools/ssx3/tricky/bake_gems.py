@@ -34,6 +34,51 @@ def f32bits(x):
     return struct.unpack('<I', struct.pack('<f', x))[0]
 
 
+def pair_course(arch, k3, src, names):
+    """Pair mapped world rids to donor names. Returns (gems, ignored).
+
+    k3: {world rid: kind-3 payload}; src: list where src[i] is the donor
+    instance for world rid i; names: {donor instance: name}.
+    Show-hidden lights appended downstream of scenery (gari sg_show
+    136/138, mesa finalw_show 63/64) have no scenery mapping: they are
+    ignored but reported, never baked. Fails closed when the world is
+    MISSING mapped records or a mapped gem rid. [tk-speed-1-gems]
+    """
+    if len(k3) < len(src):
+        raise SystemExit(f'{arch}: kind-3 {len(k3)} < scenery {len(src)} '
+                         f'(world is missing mapped records?)')
+    ignored = sorted(set(k3) - set(range(len(src))))
+    gems = []
+    for i, d in enumerate(src):
+        n = names.get(d, '')
+        if not n.startswith('Gem_TrickMultiplier'):
+            continue
+        p = k3.get(i)
+        if p is None:
+            raise SystemExit(f'{arch}: gem rid {i} has no kind-3 record')
+        R = struct.unpack_from('<16f', p, 16)
+        cx, cy, cz, rad = R[12], R[13], R[14], struct.unpack_from('<f', p, 92)[0]
+        if 'Yellow' in n:
+            val = 2
+        elif 'Orange' in n:
+            val = 3
+        elif 'Red' in n:
+            val = 5
+        else:
+            raise SystemExit(f'{arch}: rid {i} unknown gem colour {n}')
+        if not all(math.isfinite(v) for v in (cx, cy, cz, rad)) or rad <= 0:
+            raise SystemExit(f'{arch}: rid {i} bad sphere {(cx, cy, cz, rad)}')
+        # f32 round-trip through the TSV text form.
+        txt = [repr(float(v)) for v in (cx, cy, cz, rad)]
+        rt = [struct.unpack('<f', struct.pack('<f', float(t)))[0] for t in txt]
+        if [f32bits(v) for v in rt] != [f32bits(v) for v in (cx, cy, cz, rad)]:
+            raise SystemExit(f'{arch}: rid {i} f32 round-trip failed')
+        gems.append((i, txt[0], txt[1], txt[2], txt[3], val, n,
+                     (f32bits(cx), f32bits(cy), f32bits(cz)), (cx, cy, cz, rad)))
+    return gems, ignored
+    return struct.unpack('<I', struct.pack('<f', x))[0]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--course', action='append', required=True,
@@ -53,35 +98,7 @@ def main():
         src = sc['instance_source']
         fx = json.loads(Path(effects).read_bytes())
         names = {i['instance']: i['name'] for i in fx['instances']}
-        if len(k3) != len(src):
-            raise SystemExit(f'{arch}: kind-3 {len(k3)} != scenery {len(src)} (wrong pairing?)')
-        gems = []
-        for i, d in enumerate(src):
-            n = names.get(d, '')
-            if not n.startswith('Gem_TrickMultiplier'):
-                continue
-            p = k3.get(i)
-            if p is None:
-                raise SystemExit(f'{arch}: gem rid {i} has no kind-3 record')
-            R = struct.unpack_from('<16f', p, 16)
-            cx, cy, cz, rad = R[12], R[13], R[14], struct.unpack_from('<f', p, 92)[0]
-            if 'Yellow' in n:
-                val = 2
-            elif 'Orange' in n:
-                val = 3
-            elif 'Red' in n:
-                val = 5
-            else:
-                raise SystemExit(f'{arch}: rid {i} unknown gem colour {n}')
-            if not all(math.isfinite(v) for v in (cx, cy, cz, rad)) or rad <= 0:
-                raise SystemExit(f'{arch}: rid {i} bad sphere {(cx, cy, cz, rad)}')
-            # f32 round-trip through the TSV text form.
-            txt = [repr(float(v)) for v in (cx, cy, cz, rad)]
-            rt = [struct.unpack('<f', struct.pack('<f', float(t)))[0] for t in txt]
-            if [f32bits(v) for v in rt] != [f32bits(v) for v in (cx, cy, cz, rad)]:
-                raise SystemExit(f'{arch}: rid {i} f32 round-trip failed')
-            gems.append((i, txt[0], txt[1], txt[2], txt[3], val, n,
-                         (f32bits(cx), f32bits(cy), f32bits(cz)), (cx, cy, cz, rad)))
+        gems, ignored = pair_course(arch, k3, src, names)
         if not gems:
             raise SystemExit(f'{arch}: no gems baked')
         donor_gems = [i for i in fx['instances'] if i['name'].startswith('Gem_TrickMultiplier')]
@@ -91,7 +108,8 @@ def main():
         courses.append({'arch': arch, 'world_sha256': sha(wb), 'group': group,
                         'n_gems': len(gems),
                         'values': {str(v): sum(1 for g in gems if g[5] == v) for v in (2, 3, 5)},
-                        'donor_gems': len(donor_gems), 'dropped': dropped})
+                        'donor_gems': len(donor_gems), 'dropped': dropped,
+                        'ignored_extras': ignored})
         rows.extend([(arch,) + g[:7] for g in gems])
     # Stacked pairs (same center, intra-course): warn, don't fail (TK45 pair motif).
     seen = {}
