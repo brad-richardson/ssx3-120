@@ -401,6 +401,29 @@ class NoGameCubeTest(unittest.TestCase):
             self.assertNotIn(token, source)
 
 
+class MegaGatesTest(unittest.TestCase):
+    """tk-mega-1 step 1: lap/build/race byte gates, private scratch, pose helper."""
+
+    ORACLES = {
+        'oracle_lap': 'f54e4664db477b74663fd4bbf83c5ee816141217e624b1907db1688b23cb98ff',
+        'oracle_build': 'fc0cbf8843c0166df59cb54cd9793f803f9b2e3bc43e8417ba3e792767e34be6',
+        'oracle_r': '9f28fb1d5d680232246ea5bea71a58c8b7fad0fcc8e2aea39248dddb4ac546b2',
+    }
+
+    def test_mega_lap_build_race_oracles(self):
+        recipe = run_chain.COURSES['mega']
+        for key, want in self.ORACLES.items():
+            self.assertEqual(recipe.get(key), want, key)
+
+    def test_anim_dump_curves_and_value(self):
+        mod = load('tk_anim_dump', TRICKY / 'tk21' / 'anim_dump.py')
+        self.assertTrue(callable(mod.curves))
+        self.assertTrue(callable(mod.value))
+        rows = [(1.0, 2.0, 3.0, 4.0, 0.0, 10.0)]
+        self.assertAlmostEqual(mod.value(rows, 1.0), 10.0)
+        self.assertIsNone(mod.value(rows, 99.0))
+
+
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""
 

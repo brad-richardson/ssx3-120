@@ -601,6 +601,10 @@ COURSES = {
         big='MEGAPLE.BIG', donor='megaple', ps2_tool='tk16/ps2_as_gc.py',
         donor_extra=['megapl_L.ssh'],
         lap_patch=True,
+        # tk-mega-1 step 1: lap/build/race byte gates (Table H full SHAs).
+        oracle_lap='f54e4664db477b74663fd4bbf83c5ee816141217e624b1907db1688b23cb98ff',
+        oracle_build='fc0cbf8843c0166df59cb54cd9793f803f9b2e3bc43e8417ba3e792767e34be6',
+        oracle_r='9f28fb1d5d680232246ea5bea71a58c8b7fad0fcc8e2aea39248dddb4ac546b2',
         build_env={'TK10_SURFACE': '0', 'TK10_KEEP_RESET': '42'},
         build_args=build_world_args(
             'DBC2', 75, '1630.64453125,196.73287963867188,12.964978218078613',
@@ -770,6 +774,8 @@ class Chain:
         run('lap', sys.executable, self.T / 'tk18' / 'lap_start.py',
             ddir / f"{r['donor']}.aip", out, '12,13,14,15,13,15',
             cwd=self.W, log=self.log(c, 'lap'))
+        if r.get('oracle_lap'):
+            check(out, r['oracle_lap'], f'{c} lap')
         return out
 
     # -- rung: build -------------------------------------------------------
@@ -784,6 +790,8 @@ class Chain:
                self.a.host_bam, '--world-report', self.W / 'ssx3-world.json',
                '--pbd', ddir / f"{r['donor']}.pbd"] + args + ['--output', out]
         run('build', *cmd, env=r.get('build_env'), cwd=self.W, log=self.log(c, 'build'))
+        if r.get('oracle_build'):
+            check(out / 'BAM.BIG', r['oracle_build'], f'{c} build')
         return out
 
     # -- rung: race --------------------------------------------------------
@@ -874,6 +882,9 @@ class Chain:
         L = r['terrain_L']
         fmt = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
         extra = [a.format(**fmt) for a in r['terrain_extra']]
+        # Workdir scratch (same convention as the scenery rungs above):
+        # all terrain tools take --tmp, never the lane defaults.
+        extra += ['--tmp', str(out.parent / 'tmp')]
         run('terrain', sys.executable, self.T / r['terrain_tool'],
             bbig, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
