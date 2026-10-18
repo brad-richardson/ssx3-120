@@ -280,6 +280,40 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class SourceNoticesTest(unittest.TestCase):
+    """F21: default source builds stage the full notice inventory."""
+
+    def test_collection_mirrors_the_bundle_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = Path(tmp) / 'engine'
+            (engine / 'ps2xRuntime/third_party/ray').mkdir(parents=True)
+            (engine / 'ps2xRuntime/third_party/ray/LICENSE-ray').write_text('ray\n')
+            work = Path(tmp) / 'work'
+            vendor = work / 'android-assembly/vendor-pcsx2'
+            vendor.mkdir(parents=True)
+            (vendor / 'COPYING-vendor').write_text('vendor\n')
+            deps = work / 'deps-build/dep'
+            deps.mkdir(parents=True)
+            (deps / 'NOTICE-dep').write_text('dep\n')
+            (work / 'deps-build/android-dependency-pins.json').write_text(
+                json.dumps({'dep': 'abc123'}))
+            dest = Path(tmp) / 'notices'
+            build.collect_source_notices(work, engine, dest)
+            self.assertEqual((dest / 'PS2Recomp-LICENSE').read_text(),
+                             (build.ROOT / 'LICENSE').read_text())
+            self.assertEqual((dest / 'runtime/ray/LICENSE-ray').read_text(), 'ray\n')
+            self.assertEqual((dest / 'vendor/COPYING-vendor').read_text(), 'vendor\n')
+            self.assertEqual((dest / 'vendor-dependencies/dep/NOTICE-dep').read_text(), 'dep\n')
+            sources = json.loads((dest / 'SOURCES.json').read_text())
+            self.assertEqual(sources['dependencies'], {'dep': 'abc123'})
+            self.assertIn('PS2Recomp', sources)
+
+    def test_notices_doc_describes_apk_assets(self):
+        text = (ROOT / 'THIRD_PARTY_NOTICES.md').read_text()
+        self.assertIn('third_party/', text)
+        self.assertNotIn('No about/licenses asset ships inside the APK today', text)
+
+
 class EnginePinTest(unittest.TestCase):
     """F20: missing/stale submodules fail with the recovery command."""
 

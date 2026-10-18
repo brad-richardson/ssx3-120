@@ -8,10 +8,15 @@ every support bundle (`notices/` assembled by `tools/ssx3/prebuilt.py`
 from the paths below) and with source checkouts of the linked projects.
 Nothing here replaces those texts.
 
-No about/licenses asset ships inside the APK today: `apps/android` has
-no `assets/` directory and no About screen in its Java sources, so there
-is nowhere to mirror these notices on-device. The shipping records are
-this file (source tree) and each bundle's `notices/` directory.
+Every build stages these notices into the APK assets (`third_party/`
+under the generated notices dir, wired in as an assets source set):
+source builds collect the repo LICENSE, the runtime third-party tree,
+the GE1 vendor checkout and the dependency clones plus a `SOURCES.json`
+with the exact pins (same collector as the prebuilt bundles, which stage
+their fuller `notices/` instead); the Turnip notices join them whenever
+Turnip ships. There is no About screen rendering them on-device yet, so
+this file remains the human-readable record alongside each bundle's
+`notices/` directory.
 
 | Component | Source / pin | Licence |
 | --- | --- | --- |

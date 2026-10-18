@@ -1067,6 +1067,10 @@ def android(a):
     notices_dir.mkdir(parents=True, exist_ok=True)
     if bundle is not None:
         shutil.copytree(bundle / 'notices', notices_dir / 'third_party/support', dirs_exist_ok=True)
+    else:
+        # F21: the default source build stages the full notice inventory
+        # (previously only Turnip notices reached the APK assets).
+        collect_source_notices(a.work, ENGINE, notices_dir / 'third_party/support')
     turnip_included = False
     if a.no_turnip:
         turnip_path.unlink(missing_ok=True)
@@ -3014,6 +3018,41 @@ def check_install_device(a, check):
     else:
         check('Android device', False,
               'several devices connected (' + ', '.join(ready) + ')', fix)
+
+
+def collect_source_notices(work, engine, destination):
+    """F21: source builds stage the prebuilt notice inventory, not just Turnip.
+
+    Mirrors the prebuilt bundle collector (prebuilt.py notices()): the repo
+    LICENSE plus every license/notice/copying file under the runtime
+    third-party tree, the GE1 vendor checkout and the dependency build
+    clones, with a SOURCES.json recording the exact pins. Shares the
+    collector implementation so the two inventories cannot drift.
+    """
+    import prebuilt
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / 'LICENSE', destination / 'PS2Recomp-LICENSE')
+    prebuilt.notices(Path(engine) / 'ps2xRuntime/third_party', destination, 'runtime')
+    prebuilt.notices(Path(work) / 'android-assembly/vendor-pcsx2', destination, 'vendor')
+    prebuilt.notices(Path(work) / 'deps-build', destination, 'vendor-dependencies')
+
+    def head(path):
+        try:
+            return subprocess.check_output(['git', '-C', str(path), 'rev-parse', 'HEAD'],
+                                           text=True).strip()
+        except (OSError, subprocess.CalledProcessError):
+            return 'unknown'
+
+    pins_file = Path(work) / 'deps-build' / 'android-dependency-pins.json'
+    try:
+        pins = json.loads(pins_file.read_text())
+    except (OSError, ValueError):
+        pins = {}
+    (destination / 'SOURCES.json').write_text(json.dumps(
+        {'PS2Recomp': head(engine),
+         'armsx2': head(Path(work) / 'android-assembly/vendor-pcsx2'),
+         'dependencies': pins}, indent=2, sort_keys=True) + '\n')
 
 
 def adb(a, *args, capture=False):
