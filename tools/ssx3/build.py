@@ -243,6 +243,21 @@ def doctor(a):
         for tool in ('make', 'bison', 'flex'):
             ok, detail = probe([tool, '--version'])
             check(tool, ok, detail.splitlines()[0] if detail else 'missing', packages)
+        # F01: the install step shells adb, so the doctor checks it the
+        # same way install resolves it (managed SDK platform-tools first,
+        # then the selected SDK, then PATH) and fails with the fix.
+        adb_bin = toolchain.find_adb(getattr(a, 'work', None))
+        if adb_bin is not None:
+            ok, detail = probe([str(adb_bin), 'version'])
+            check('adb', ok, detail.splitlines()[0] if detail else str(adb_bin),
+                  'reinstall the SDK platform-tools package (' + ' '.join(
+                      '"' + package + '"' for package in SDK_PACKAGES if 'platform-tools' in package) +
+                  ') or put adb on PATH')
+        else:
+            check('adb', False, 'no adb in the selected SDK or on PATH',
+                  'run ./build android --ssx3-iso <ISO> --work <DIR> '
+                  '--accept-android-licenses to fetch the pinned toolchain '
+                  '(includes platform-tools), or put adb on PATH')
     if failures:
         raise ValueError('doctor: missing prerequisites: ' + ', '.join(failures))
     print('Doctor passed for ' + a.target + '. No files or devices changed.')
@@ -2741,8 +2756,26 @@ def stage(a):
     return files
 
 
+def resolve_adb(a):
+    """adb binary for install/device steps (F01): the selected SDK wins.
+
+    Order matches toolchain.find_adb: managed SDK under --work, then
+    ANDROID_HOME/ROOT, common installs, then PATH. Fails closed with the
+    fix (install the platform-tools package or put adb on PATH) instead
+    of an exec error from a bare `adb`.
+    """
+    import toolchain
+    adb = toolchain.find_adb(getattr(a, 'work', None))
+    if adb is None:
+        raise ValueError('adb not found: install the Android SDK platform-tools '
+                         'package (the one-command build fetches it into '
+                         'WORK/toolchain/android-sdk) or put adb on PATH')
+    return str(adb)
+
+
 def adb(a, *args, capture=False):
-    command = ['adb'] + (['-s', a.serial] if a.serial else []) + list(map(str, args))
+    binary = resolve_adb(a)
+    command = [binary] + (['-s', a.serial] if a.serial else []) + list(map(str, args))
     if capture:
         return subprocess.check_output(command, text=True).strip()
     run(*command)
@@ -2785,6 +2818,13 @@ def ensure_install_toolchain(a):
         os.environ.setdefault('JAVA_HOME', str(java_home))
     if sdk is not None:
         os.environ.setdefault('ANDROID_HOME', str(sdk))
+        # F01: install shells adb through resolve_adb, but child Gradle
+        # and user commands also expect it: the selected SDK's
+        # platform-tools joins PATH alongside the JDK bin.
+        platform_tools = str(Path(sdk, 'platform-tools'))
+        if Path(platform_tools).is_dir():
+            os.environ['PATH'] = (platform_tools + os.pathsep +
+                                  os.environ.get('PATH', ''))
     if ndk is not None:
         a.ndk = ndk
     java_env = str(java_home) if java_home is not None else os.environ.get('JAVA_HOME')
@@ -2851,9 +2891,10 @@ def install(a):
         # am start returns before Application.onCreate runs. Wait for the app
         # to create both directories before stopping its bootstrap process.
         deadline = time.monotonic() + 30
+        binary = resolve_adb(a)
         for directory in ('ge1-data', 'mc0'):
             remote = device + '/' + directory
-            while subprocess.run(['adb'] + (['-s', a.serial] if a.serial else []) +
+            while subprocess.run([binary] + (['-s', a.serial] if a.serial else []) +
                                  ['shell', 'test', '-d', remote], check=False).returncode:
                 if time.monotonic() >= deadline:
                     raise ValueError('app did not create ' + remote)
@@ -2867,7 +2908,8 @@ def install(a):
     for source_path, relative in sources:
         remote = device + '/' + relative
         expected = sha(source_path)
-        exists = subprocess.run(['adb'] + (['-s', a.serial] if a.serial else []) +
+        binary = resolve_adb(a)
+        exists = subprocess.run([binary] + (['-s', a.serial] if a.serial else []) +
                                 ['shell', 'test', '-f', shlex.quote(remote)], check=False).returncode == 0
         current = adb(a, 'shell', 'sha256sum', shlex.quote(remote), capture=True).split()[0] if exists else None
         if current == expected:

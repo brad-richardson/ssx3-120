@@ -217,6 +217,39 @@ def managed_sdk(work):
     return candidate if sdk_ok(candidate) else None
 
 
+def adb_path(sdk):
+    """The adb inside an SDK's platform-tools, or None when not executable."""
+    adb = Path(sdk) / 'platform-tools' / 'adb'
+    if adb.is_file() and os.access(adb, os.X_OK):
+        return adb
+    return None
+
+
+def find_adb(work=None):
+    """First usable adb: managed SDK, ANDROID_HOME/ROOT, common installs, PATH.
+
+    F01: the bootstrap installs platform-tools under the SDK but the
+    builder used to shell bare `adb`, failing on clean hosts where adb
+    was not already on PATH. Every adb call site resolves through here.
+    """
+    if work is not None:
+        adb = adb_path(Path(work, TOOLCHAIN_DIR, 'android-sdk'))
+        if adb is not None:
+            return adb
+    for var in ('ANDROID_HOME', 'ANDROID_SDK_ROOT'):
+        value = os.environ.get(var)
+        if value:
+            adb = adb_path(value)
+            if adb is not None:
+                return adb
+    for candidate in _common_sdk_dirs():
+        adb = adb_path(candidate)
+        if adb is not None:
+            return adb
+    found = shutil.which('adb')
+    return Path(found) if found else None
+
+
 def tool_dir(work):
     d = Path(work, TOOLCHAIN_DIR)
     d.mkdir(parents=True, exist_ok=True)
@@ -471,9 +504,16 @@ def resolve(work, jdk_explicit=None, ndk_explicit=None,
             json.dumps(record, indent=2, sort_keys=True) + '\n')
     except OSError:
         pass
+    # F01: the managed SDK ships platform-tools, so its adb joins PATH
+    # alongside the JDK bin (previously only the JDK bin was added and
+    # install shelled bare `adb`, failing on clean hosts).
+    path_entries = [str(Path(java_home) / 'bin')]
+    platform_tools = Path(sdk) / 'platform-tools'
+    if platform_tools.is_dir():
+        path_entries.append(str(platform_tools))
     return {'JAVA_HOME': str(java_home), 'ANDROID_HOME': str(sdk),
             'ANDROID_SDK_ROOT': str(sdk), 'ANDROID_NDK_HOME': str(ndk),
-            'PATH': str(Path(java_home) / 'bin') + os.pathsep + os.environ.get('PATH', ''),
+            'PATH': os.pathsep.join(path_entries) + os.pathsep + os.environ.get('PATH', ''),
             'managed_sdk': sdk_managed}
 
 

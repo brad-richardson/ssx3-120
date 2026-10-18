@@ -268,6 +268,62 @@ class OneCommandOrderTest(unittest.TestCase):
             self.assertIsNone(args.jnilibs)
 
 
+class AdbResolutionTest(unittest.TestCase):
+    """F01: install shells the selected SDK's adb, and the doctor checks it."""
+
+    def make_managed_adb(self, work):
+        import stat
+        adb = work / 'toolchain' / 'android-sdk' / 'platform-tools' / 'adb'
+        adb.parent.mkdir(parents=True, exist_ok=True)
+        adb.write_text('#!/bin/sh\necho "Android Debug Bridge version 1.0.41"\n')
+        adb.chmod(adb.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return adb
+
+    def test_adb_shells_the_managed_binary_with_serial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            managed = self.make_managed_adb(work)
+            args = onecmd_args(work, serial='XYZ123')
+            seen = {}
+            with patch.object(build, 'run',
+                              side_effect=lambda *a, **k: seen.setdefault('cmd', list(map(str, a)))):
+                build.adb(args, 'install', '-r', 'app.apk')
+            self.assertEqual(seen['cmd'][:4], [str(managed), '-s', 'XYZ123', 'install'])
+
+    def test_adb_without_serial_omits_selector(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            managed = self.make_managed_adb(work)
+            args = onecmd_args(work, serial=None)
+            seen = {}
+            with patch.object(build, 'subprocess') as proc:
+                proc.check_output.return_value = 'package:/x\n'
+                out = build.adb(args, 'shell', 'pm', 'path', 'com.ssx3.recomp', capture=True)
+            self.assertEqual(out, 'package:/x')
+            cmd = list(map(str, proc.check_output.call_args[0][0]))
+            self.assertEqual(cmd[:2], [str(managed), 'shell'])
+
+    def test_adb_missing_fails_closed(self):
+        import toolchain
+        with tempfile.TemporaryDirectory() as tmp:
+            args = onecmd_args(Path(tmp) / 'work', serial=None)
+            with patch.dict(os.environ, {'PATH': '/usr/bin:/bin'}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                with self.assertRaisesRegex(ValueError, 'adb not found'):
+                    build.adb(args, 'version')
+
+    def test_doctor_reports_missing_adb(self):
+        import toolchain
+        with tempfile.TemporaryDirectory() as tmp:
+            args = onecmd_args(Path(tmp) / 'work')
+            with patch.dict(os.environ, {'PATH': '/usr/bin:/bin'}, clear=True), \
+                 patch.object(toolchain, '_common_jdk_dirs', return_value=[]), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]), \
+                 patch.object(toolchain, 'find_adb', return_value=None):
+                with self.assertRaisesRegex(ValueError, 'adb'):
+                    build.doctor(args)
+
+
 class ManagedLicenceInInstallTest(unittest.TestCase):
     def test_managed_sdk_without_flag_fails_with_the_documented_path(self):
         import stat

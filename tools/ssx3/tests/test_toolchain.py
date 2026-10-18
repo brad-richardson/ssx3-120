@@ -211,5 +211,59 @@ class LicenceGateTest(unittest.TestCase):
             toolchain.require_licenses(sdk, False, Path(tmp))  # must not raise
 
 
+def make_adb(sdk):
+    adb = sdk / 'platform-tools' / 'adb'
+    adb.parent.mkdir(parents=True, exist_ok=True)
+    adb.write_text('#!/bin/sh\necho "Android Debug Bridge version 1.0.41"\n')
+    adb.chmod(adb.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return adb
+
+
+class AdbResolutionTest(unittest.TestCase):
+    """F01: adb resolves from the selected SDK, not just PATH."""
+
+    def test_managed_sdk_adb_beats_path(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            managed = make_adb(make_sdk(work / 'toolchain' / 'android-sdk'))
+            path_adb = make_adb(make_sdk(Path(tmp) / 'path-sdk'))
+            with patch.dict(os.environ, {'PATH': str(path_adb.parent)}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                self.assertEqual(toolchain.find_adb(work), managed)
+
+    def test_env_sdk_adb_used_when_no_managed_sdk(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            env_adb = make_adb(make_sdk(Path(tmp) / 'env-sdk'))
+            with patch.dict(os.environ, CLEAN_ENV, clear=True), \
+                 patch.dict(os.environ, {'ANDROID_HOME': str(env_adb.parents[1])}), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                self.assertEqual(toolchain.find_adb(Path(tmp) / 'work'), env_adb)
+
+    def test_path_fallback_and_absent_adb(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path_adb = make_adb(make_sdk(Path(tmp) / 'path-sdk'))
+            with patch.dict(os.environ, {'PATH': str(path_adb.parent)}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                self.assertEqual(toolchain.find_adb(Path(tmp) / 'work'), path_adb)
+            with patch.dict(os.environ, CLEAN_ENV, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                self.assertIsNone(toolchain.find_adb(Path(tmp) / 'work'))
+
+    def test_non_executable_platform_tools_adb_is_skipped(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk = make_sdk(Path(tmp) / 'sdk')
+            adb = sdk / 'platform-tools' / 'adb'
+            adb.parent.mkdir(parents=True, exist_ok=True)
+            adb.write_bytes(b'not-executable')
+            adb.chmod(0o644)
+            with patch.dict(os.environ, {'ANDROID_HOME': str(sdk)}, clear=True), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]):
+                self.assertIsNone(toolchain.find_adb(Path(tmp) / 'work'))
+
+
 if __name__ == '__main__':
     unittest.main()
