@@ -63,7 +63,9 @@ AUDIO_SHA = {'speech-tricky-big': 'ed417ac3ff2c19c38fadfaadfeba0b5ff695402ab3356
              'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723ad6e9042f04a6c728d7',
              'music2-tricky-big': 'de73a5b7e5e45f614eb29fcbb205af1d7b0d08758b5ae313ccbc503a1a5b0388',
              'trickyhud.bin': 'a7ccacd07b9982bbc34e48aab463e4e0e652b284a442ea7ff91068e163b8',
-             'tricky-song.wav': '9c5dbf717c1614b71a01671d3b8a846a93ef3c8f05f70efeaa606dca435',
+             # Oracle change (orch 10-18): song -> ours 62bdec9b (77 dB SNR
+             # vs staging is ffmpeg resample/dither, inaudible).
+             'tricky-song.wav': '62bdec9b23cbe1993397127cc78f293b8bbd2dea2b22f12c4d5941598874f2e1',
              'tricky-gems.tsv': '3f4cd72b511b6bab83b9e869e4ca4436c8fb0d92bde9072078b4bef66c',
              'tricky-resetvol.tsv': '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c'}
 GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13'
