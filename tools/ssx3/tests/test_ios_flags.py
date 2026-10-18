@@ -103,10 +103,16 @@ class IosCompilerPlumbingTest(unittest.TestCase):
         a = ios_args(work, om1_stage=stage, **over)
         calls = []
         seen_env = []
+        real_run = build.run
 
         def fake_run(*args, **kwargs):
             calls.append(list(map(str, args)))
             seen_env.append(('CC' in os.environ, 'CXX' in os.environ))
+            # The TFX coverage writer is stdlib-only: let it run for real so
+            # the staged bundle under test carries the file the preset knob
+            # points at (same pass-through as the VU0/TFX lane tests use).
+            if any('write_prewarm.py' in str(x) for x in args):
+                return real_run(*args, **kwargs)
             if args[0] == 'cmake' and args[1] == '--build':
                 built = work / 'ios-app-build/ps2xRuntime/Release-iphoneos/ps2EntryRunner.app'
                 built.mkdir(parents=True)
@@ -139,8 +145,11 @@ class IosCompilerPlumbingTest(unittest.TestCase):
             self.assertTrue(any('-mcpu=apple-a15' in c for c in configure))
             self.assertFalse(any('fprofile-use' in c for c in configure))
             self.assertIn('iOS compilers: /fake/clang / /fake/clang++', text)
-            # CC/CXX cleared for configure AND build, restored after.
-            self.assertEqual(seen_env, [(False, False), (False, False)])
+            # CC/CXX cleared for configure AND build, restored after
+            # (the TFX coverage writer runs under the ambient env; only the
+            # cmake driver calls carry the cleared-env contract).
+            cmake_env = [e for c, e in zip(calls, seen_env) if c[0] == 'cmake']
+            self.assertEqual(cmake_env, [(False, False), (False, False)])
             self.assertEqual(restored, ('bogus-cc', 'bogus-cxx'))
 
     def test_receipt_records_versions_and_flags(self):
@@ -164,6 +173,7 @@ class IosCompilerPlumbingTest(unittest.TestCase):
             prof = Path(tmp) / 'own.profdata'
             prof.write_bytes(b'p')
             a = ios_args(work, om1_stage=stage, pgo_profile=prof)
+            real_run = build.run
             with patch.object(build, 'pgo_manifest', return_value=manifest), \
                  patch.object(build, 'run') as run_mock, \
                  patch.object(build, 'sign_staged_app', return_value='fake-id'), \
@@ -175,6 +185,8 @@ class IosCompilerPlumbingTest(unittest.TestCase):
                      'c_compiler_version': 'Apple clang 21', 'xcode_version': 'Xcode 27.0',
                      'iphoneos_sdk_version': '27.0'}):
                 def fake_run(*args, **kwargs):
+                    if any('write_prewarm.py' in str(x) for x in args):
+                        return real_run(*args, **kwargs)
                     if args[0] == 'cmake' and args[1] == '--build':
                         built = work / 'ios-app-build/ps2xRuntime/Release-iphoneos/ps2EntryRunner.app'
                         built.mkdir(parents=True, exist_ok=True)
