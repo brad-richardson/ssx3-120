@@ -59,10 +59,11 @@ PREVIEW_PIN = '3332b0af708d'
 # outputs 26125d2a/de73a5b7 (play == public; arrangement/events match
 # staging exactly, only remus audio differs; quality receipt REPORT
 # §20: min 37.6 dB, median 39.6 dB, nothing below 30 dB).
-AUDIO_SHA = {'speech-tricky-big': 'ed417ac3ff2c19c38fadfaadfeba0b5ff695402ab335655952a4e3dcb861a1',
-             'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723ad6e9042f04a6c728d7',
+# NOTE: AUDIO_SHA holds ONLY pins consumed by check() below. Stale
+# speech/HUD entries (62/60-char speech-tricky-big, trickyhud.bin) were
+# removed: the speech gate uses SPEECH7_SHA, the HUD gate HUD_ATLAS_SHA.
+AUDIO_SHA = {'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723ad6e9042f04a6c728d7',
              'music2-tricky-big': 'de73a5b7e5e45f614eb29fcbb205af1d7b0d08758b5ae313ccbc503a1a5b0388',
-             'trickyhud.bin': 'a7ccacd07b9982bbc34e48aab463e4e0e652b284a442ea7ff91068e163b8',
              # Oracle change (orch 10-18): song -> ours 62bdec9b (77 dB SNR
              # vs staging is ffmpeg resample/dither, inaudible).
              'tricky-song.wav': '62bdec9b23cbe1993397127cc78f293b8bbd2dea2b22f12c4d5941598874f2e1',
@@ -125,6 +126,13 @@ MANIFEST_COURSE = {'GARI': 'gari', 'SNOW': 'snow', 'MESA': 'mesa',
                    'UNTRACK': 'untrack', 'PIPE': 'pipe',
                    'ALOHA': 'aloha', 'ELYS': 'elys', 'MEGA': 'mega'}
 MANIFEST_HEAD = '# build_tricky.py: course rows for the built courses only.\nmode = Tricky\n'
+# The ENGLISH alias is emitted only when english-silent-big was actually
+# built; otherwise an explicit omission comment names the missing recipe
+# (never a dangling alias at a file the layout did not produce).
+ENGLISH_ALIAS = ('alias = /DATA/AUDIO/ENGLISH.BIG:/storage/emulated/0/Android/data/'
+                 f'{APP_ID}/files/english-silent-big')
+ENGLISH_OMITTED = ('# ENGLISH.BIG omitted: english-silent-big not built '
+                   '(english-base missing; lost tk-audio-2 merge recipe)')
 MANIFEST_ALIASES = [
     'alias = /DATA/AUDIO/SPEECH.BIG:/storage/emulated/0/Android/data/'
     f'{APP_ID}/files/speech-tricky-big',
@@ -132,8 +140,7 @@ MANIFEST_ALIASES = [
     f'{APP_ID}/files/music-tricky-big',
     'alias = /DATA/AUDIO/MUSIC2.BIG:/storage/emulated/0/Android/data/'
     f'{APP_ID}/files/music2-tricky-big',
-    'alias = /DATA/AUDIO/ENGLISH.BIG:/storage/emulated/0/Android/data/'
-    f'{APP_ID}/files/english-silent-big',
+    ENGLISH_ALIAS,
     'alias = /DATA/CONFIG/MUSIC.INF:/storage/emulated/0/Android/data/'
     f'{APP_ID}/files/music-inf-tricky-big',
 ]
@@ -176,6 +183,29 @@ def check(path, want, what):
     if got != want:
         raise SystemExit(f'{what}: SHA mismatch\n  got  {got}\n  want {want}')
     print(f'{what}: {got[:12]} OK', flush=True)
+
+
+def exact_pins():
+    """Every pin check() compares with equality (PREVIEW_PIN is the only
+    intentional prefix pin and is compared with startswith)."""
+    pins = dict(AUDIO_SHA)
+    pins.update({'gems-345.tsv': GEMS_345_SHA,
+                 'tricky-resetvol.tsv': RESETVOL_SHA,
+                 'speech7': SPEECH7_SHA,
+                 'hud-atlas': HUD_ATLAS_SHA,
+                 'music-inf': MUSIC_INF_SHA})
+    return pins
+
+
+def validate_pins():
+    """Fail fast on malformed exact pins (a 63-char pin can never match a
+    64-char SHA-256; find out before the multi-hour phases, not after)."""
+    bad = {k: v for k, v in exact_pins().items()
+           if len(v) != 64 or any(c not in '0123456789abcdef' for c in v)}
+    if bad:
+        detail = ', '.join(f'{k}={v!r}' for k, v in sorted(bad.items()))
+        raise SystemExit(f'malformed exact SHA pins (want 64 hex): {detail}')
+    return True
 
 
 def run(logdir, name, *argv, cwd=None):
@@ -335,6 +365,9 @@ class Build:
             self.world_final(c)
         # Gems/resetvol inputs for the non-skipped gem courses (phase_gems
         # reads w-*-f11, w-*-b/scenery.json, effects/ and donor/).
+        # gem_step ALWAYS runs (pipe/alaska rows) and also needs
+        # w-alaska-b/scenery.json, which is outside GEM_COURSES: require
+        # it here instead of failing late inside gem-step.
         for arch, _group in GEM_COURSES:
             c = arch.lower()
             if f'resets-{c}' in self.skipped:
@@ -345,6 +378,14 @@ class Build:
         for tree in ('effects', 'donor'):
             if (reuse / tree).is_dir():
                 shutil.copytree(reuse / tree, self.W / tree)
+        alb = reuse / 'w-alaska-b' / 'scenery.json'
+        if not alb.is_file():
+            raise SystemExit(
+                f'reuse worlds lack {alb} (gem-step --alaska-scenery); '
+                f're-run the resume from a finished run with Alaska rung B')
+        dest_alb = self.W / 'w-alaska-b' / 'scenery.json'
+        dest_alb.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(alb, dest_alb)
         print(f'worlds reused from {reuse}; skipped: {sorted(self.skipped)}',
               flush=True)
 
@@ -557,9 +598,13 @@ class Build:
             shutil.copy2(self.W / f'w-{c}-s5' / f'{c.upper()}.BIG',
                          worlds / f'{c.upper()}.BIG')
         out = ge / 'gems-483.tsv'
+        # gem_step reads <donor>/<course>/(pbd|gsf|ssf) and cross-checks
+        # their SHAs against the inventory receipt: that is the generated
+        # donor-bindings tree (pipe.gsf et al.), NOT the world adapter's
+        # W/donor tree (pipe-ps2.gsf — different bytes, fails closed).
         run(self.logs, 'gem-step', sys.executable, T / 'gem_step.py',
             '--worlds', worlds, '--iso', self.a.ssx3_iso,
-            '--donor', self.W / 'donor', '--donor-bindings', bindings,
+            '--donor', ge / 'donor-bindings', '--donor-bindings', bindings,
             '--sidecar', sidecar, '--work', ge / 'work52',
             '--out', out, '--receipt', ge / 'gems-483-receipt.json',
             '--alaska-scenery', self.W / 'w-alaska-b' / 'scenery.json',
@@ -607,12 +652,20 @@ class Build:
             src = built.get(name)
             if src is None:
                 continue
-            shutil.copy2(src, lay / name)
+            dst = lay / name
+            if Path(src).resolve() == dst.resolve():
+                # already in layout (phase outputs land at the top of
+                # --work); the phase's check() validated these bytes.
+                continue
+            shutil.copy2(src, dst)
         rows = [row for row in MANIFEST_ROWS
                 if f"resets-{MANIFEST_COURSE[row[1]]}" not in self.skipped]
         if 'mega' not in self.skipped:
             rows.append(('15', 'MEGA', 'Tokyo Megaplex'))
-        lines = [MANIFEST_HEAD] + MANIFEST_ALIASES + \
+        aliases = [ENGLISH_OMITTED if a == ENGLISH_ALIAS else a
+                   for a in MANIFEST_ALIASES] \
+            if built.get('english-silent-big') is None else MANIFEST_ALIASES
+        lines = [MANIFEST_HEAD] + aliases + \
             [f'row = {e}:{a}:{n}' for e, a, n in rows] + \
             [MANIFEST_POKE.rstrip('\n')]
         (lay / 'm-tricky.txt').write_text('\n'.join(lines) + '\n')
@@ -646,6 +699,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.from_phase == 'speech' and not a.reuse_worlds:
         raise SystemExit('--from-phase speech needs --reuse-worlds <dir>')
+    validate_pins()
     b = Build(a)
     t0 = time.time()
     if a.from_phase == 'speech':

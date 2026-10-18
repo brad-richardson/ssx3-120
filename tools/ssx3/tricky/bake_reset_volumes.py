@@ -13,8 +13,11 @@ import sys
 from pathlib import Path
 
 # Port: the lane repo-rooted its imports; here the helpers are package
-# siblings (tricky_pbd comes from the world-pipeline port).
-sys.path[:0] = [str(Path(__file__).resolve().parent)]
+# siblings (same 5-dir prepend as the gem tools: the driver runs tools
+# with cwd=<workdir> and a stripped PYTHONPATH).
+_HERE = Path(__file__).resolve().parent
+sys.path[:0] = [str(_HERE / d) for d in ('tk12', 'tk13', 'tk30',
+                                        'shared')] + [str(_HERE)]
 from tricky_pbd import PBD
 from mapnames import map_names
 

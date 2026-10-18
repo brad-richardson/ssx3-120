@@ -2870,8 +2870,12 @@ TRICKY_DISCS = {
 TRICKY_MARKERS = ('DATA/MODELS/GARI.BIG', 'DATA/AUDIO/MUSIC.BIG')
 # Device-bound Tricky payload the stage step copies from <work>/tricky/:
 # top-level files push beside ps2x.env; tricky-ov/ pushes as one tree.
+# music-inf-tricky-big is always built; english-silent-big only when the
+# english base is supplied (stage skips absent allowlist files, and the
+# driver manifest names the omission instead of a dangling alias).
 TRICKY_DEVICE_FILES = ('speech-tricky-big', 'music-tricky-big',
-                       'music2-tricky-big', 'm-tricky.txt', 'tricky.env',
+                       'music2-tricky-big', 'music-inf-tricky-big',
+                       'english-silent-big', 'm-tricky.txt', 'tricky.env',
                        'trickyhud.bin', 'tricky-song.wav',
                        'tricky-gems.tsv', 'tricky-resetvol.tsv')
 TRICKY_DEVICE_TREES = ('tricky-ov',)

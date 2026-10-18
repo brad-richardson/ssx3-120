@@ -587,6 +587,8 @@ class BuildTrickyDriverTest(unittest.TestCase):
             (reuse / 'w-pipe-s5' / 'PIPE.BIG').write_bytes(b'pipe')
             (reuse / 'w-merq-routes').mkdir(parents=True)
             (reuse / 'w-merq-routes' / 'MERQ.BIG').write_bytes(b'merq')
+            (reuse / 'w-alaska-b').mkdir(parents=True)
+            (reuse / 'w-alaska-b' / 'scenery.json').write_bytes(b'{}')
             work = Path(tmp) / 'w'
             work.mkdir()
             b = driver.Build.__new__(driver.Build)
@@ -624,6 +626,8 @@ class BuildTrickyDriverTest(unittest.TestCase):
             (reuse / 'effects' / 'merquer.json').write_bytes(b'{}')
             (reuse / 'donor').mkdir(parents=True)
             (reuse / 'donor' / 'x').write_bytes(b'd')
+            (reuse / 'w-alaska-b').mkdir(parents=True)
+            (reuse / 'w-alaska-b' / 'scenery.json').write_bytes(b'{}')
             work = Path(tmp) / 'w'
             work.mkdir()
             b = driver.Build.__new__(driver.Build)
@@ -747,6 +751,13 @@ class BuildTrickyDriverTest(unittest.TestCase):
             db = gem_argv[gem_argv.index('--donor-bindings') + 1]
             self.assertTrue(str(db).endswith('donor-receipt.json'),
                             f'gem-step must read the JSON receipt, not the bindings dir: {db}')
+            # F03: gem_step reads <donor>/<course>/(pbd|gsf|ssf) and
+            # cross-checks their SHAs against the receipt: that is the
+            # generated donor-bindings tree, not the adapter's W/donor
+            # tree (pipe-ps2.gsf there has different bytes).
+            donor = gem_argv[gem_argv.index('--donor') + 1]
+            self.assertTrue(str(donor).endswith('donor-bindings'),
+                            f'gem-step --donor must be the inventory tree: {donor}')
             # listdir, not exists(): this Mac's APFS is case-insensitive
             # but the gate container is not; the entry name must match.
             entries = os.listdir(work / 'gems' / 'worlds')
@@ -783,6 +794,158 @@ class BuildTrickyDriverTest(unittest.TestCase):
         decisions = driver.T / 'data' / 'speech-decisions'
         for t in driver.SPEECH_TARGETS:
             self.assertTrue((decisions / (t + '.dat.decisions.tsv')).is_file())
+
+    def _layout_built(self, work, english=True):
+        # Mix of already-in-layout outputs (top of --work) and nested
+        # intermediates, mirroring main()'s built dict.
+        (work / 'speech-tricky-big').write_bytes(b'speech')
+        (work / 'music-inf-tricky-big').write_bytes(b'musicinf')
+        (work / 'tricky-song.wav').write_bytes(b'song')
+        (work / 'tricky-resetvol.tsv').write_bytes(b'resetvol')
+        pool = work / 'pool'
+        pool.mkdir()
+        (pool / 'music1-tkp4b').write_bytes(b'music1')
+        (pool / 'music2-tkp4b').write_bytes(b'music2')
+        hud = work / 'hud' / 'atlas'
+        hud.mkdir(parents=True)
+        (hud / 'trickyhud.bin').write_bytes(b'hud')
+        gems = work / 'gems'
+        gems.mkdir()
+        (gems / 'gems-483.tsv').write_bytes(b'gems')
+        (work / 'cp').mkdir()
+        (work / 'cp' / 'COURSPIT.BIG').write_bytes(b'courspit')
+        (work / 'menu' / 'DATA' / 'UI').mkdir(parents=True)
+        eng = None
+        if english:
+            (work / 'english-silent-big').write_bytes(b'english')
+            eng = work / 'english-silent-big'
+        return {'worlds': {}, 'courspit': work / 'cp' / 'COURSPIT.BIG',
+                'speech-tricky-big': work / 'speech-tricky-big',
+                'music-tricky-big': pool / 'music1-tkp4b',
+                'music2-tricky-big': pool / 'music2-tkp4b',
+                'music-inf-tricky-big': work / 'music-inf-tricky-big',
+                'english-silent-big': eng,
+                'trickyhud.bin': hud / 'trickyhud.bin',
+                'tricky-song.wav': work / 'tricky-song.wav',
+                'tricky-gems.tsv': gems / 'gems-483.tsv',
+                'tricky-resetvol.tsv': work / 'tricky-resetvol.tsv'}
+
+    def _manifest_alias_targets(self, work):
+        text = (work / 'm-tricky.txt').read_text()
+        return [line.rsplit('/files/', 1)[1]
+                for line in text.splitlines()
+                if line.startswith('alias = ')]
+
+    def test_layout_skips_same_file_copies(self):
+        # F02: phases return paths already at the top of --work; copying
+        # them onto themselves raised SameFileError. Small fixtures here.
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, None
+            built = self._layout_built(work)
+            lay = b.phase_layout(built)
+            self.assertEqual(lay, work)
+            # nested intermediates land beside the in-place payloads
+            self.assertEqual((work / 'music-tricky-big').read_bytes(), b'music1')
+            self.assertEqual((work / 'music2-tricky-big').read_bytes(), b'music2')
+            self.assertEqual((work / 'trickyhud.bin').read_bytes(), b'hud')
+            self.assertEqual((work / 'tricky-gems.tsv').read_bytes(), b'gems')
+            # in-place payloads survive with their bytes
+            self.assertEqual((work / 'speech-tricky-big').read_bytes(), b'speech')
+            self.assertTrue((work / 'm-tricky.txt').is_file())
+            self.assertTrue((work / 'tricky.env').is_file())
+
+    def test_layout_english_alias_matches_payload(self):
+        # F07: the ENGLISH alias is emitted only when english-silent-big
+        # was built; otherwise an explicit omission names the gap.
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, None
+            b.phase_layout(self._layout_built(work, english=True))
+            self.assertIn('english-silent-big',
+                          self._manifest_alias_targets(work))
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, None
+            b.phase_layout(self._layout_built(work, english=False))
+            targets = self._manifest_alias_targets(work)
+            self.assertNotIn('english-silent-big', targets)
+            text = (work / 'm-tricky.txt').read_text()
+            self.assertIn('ENGLISH.BIG omitted', text)
+
+    def test_layout_aliases_are_staged_payloads(self):
+        # F07 shared schema: every manifest alias target must be a file
+        # the stage step actually installs (TRICKY_DEVICE_FILES).
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, None
+            b.phase_layout(self._layout_built(work, english=True))
+            for target in self._manifest_alias_targets(work):
+                self.assertIn(target, build.TRICKY_DEVICE_FILES,
+                              f'manifest alias {target} is never staged')
+
+    def test_resume_requires_alaska_scenery(self):
+        # F04: gem_step always runs and reads w-alaska-b/scenery.json,
+        # which is outside GEM_COURSES. Resume copies it, or fails fast.
+        with tempfile.TemporaryDirectory() as tmp:
+            reuse = Path(tmp) / 'reuse'
+            (reuse / 'host-bam').mkdir(parents=True)
+            (reuse / 'host-bam' / 'BAM.BIG').write_bytes(b'bam')
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, None
+            b.logs = work / 'logs'
+            for c in driver.BUILD_COURSES:
+                rel, _want = b.world_final_rel(c)
+                src = reuse / rel
+                src.parent.mkdir(parents=True, exist_ok=True)
+                src.write_bytes(b'final-' + c.encode())
+            for tree in ('effects', 'donor'):
+                (reuse / tree).mkdir()
+            (reuse / 'w-alaska-b').mkdir()
+            (reuse / 'w-alaska-b' / 'scenery.json').write_text('{"alaska": 1}')
+            with patch.object(driver, 'check', return_value=None):
+                b.resume_worlds(reuse)
+            self.assertEqual(
+                (work / 'w-alaska-b' / 'scenery.json').read_text(),
+                '{"alaska": 1}')
+            # without Alaska rung B the resume refuses up front
+            b2 = driver.Build.__new__(driver.Build)
+            work2 = Path(tmp) / 'w2'
+            work2.mkdir()
+            b2.W, b2.skipped, b2.a = work2, {}, None
+            b2.logs = work2 / 'logs'
+            reuse2 = Path(tmp) / 'reuse2'
+            (reuse2 / 'host-bam').mkdir(parents=True)
+            (reuse2 / 'host-bam' / 'BAM.BIG').write_bytes(b'bam')
+            for c in driver.BUILD_COURSES:
+                rel, _want = b2.world_final_rel(c)
+                src = reuse2 / rel
+                src.parent.mkdir(parents=True, exist_ok=True)
+                src.write_bytes(b'x')
+            with patch.object(driver, 'check', return_value=None):
+                with self.assertRaises(SystemExit) as ctx:
+                    b2.resume_worlds(reuse2)
+            self.assertIn('w-alaska-b', str(ctx.exception))
+
+    def test_malformed_pins_fail_fast(self):
+        # F01: a truncated pin can never match; reject before world work.
+        with patch.object(driver, 'GEMS_345_SHA', 'c8407f43'):
+            with self.assertRaises(SystemExit) as ctx:
+                driver.validate_pins()
+            self.assertIn('gems-345.tsv', str(ctx.exception))
+        with patch.dict(driver.AUDIO_SHA, {'bogus': 'zzzz'}):
+            with self.assertRaises(SystemExit):
+                driver.validate_pins()
 
 
 if __name__ == '__main__':

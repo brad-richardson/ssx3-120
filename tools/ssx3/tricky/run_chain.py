@@ -803,11 +803,15 @@ class Chain:
             for n in (self.T / 'data' / ff).read_text().split():
                 extra += ['--no-collision-instance', n]
         stem = r.get('stem_scenery', c)
+        # All scenery tools take --tmp (default: a lab home path): keep
+        # scratch in this run's per-course workdir (read-only HOME safe,
+        # unique across concurrent builds, inside disk accounting).
         run('scenery', sys.executable, self.T / r['scenery_tool'],
             rbig, bdir / 'experiment.json',
             ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
-            stem, sc, '--receipt', w / 'scenery.json', *extra,
+            stem, sc, '--receipt', w / 'scenery.json',
+            '--tmp', str(w / 'tmp'), *extra,
             cwd=self.W, log=self.log(c, 'scenery'))
         if r.get('oracle_sc'):
             check(sc, r['oracle_sc'], f'{c} sc')
@@ -871,7 +875,8 @@ class Chain:
             ddir / f"{r['donor']}.pbd", ddir / f"{r['donor']}.ssh",
             ddir / f"{r['donor']}-ps2.nbd", ddir / f"{r['donor']}-ps2.gsf",
             r.get('stem_scenery', c), sc, '--receipt', w / 'scenery.json',
-            *extra, cwd=self.W, log=self.log(c, 'sg-scenery'))
+            '--tmp', str(w / 'tmp'), *extra,
+            cwd=self.W, log=self.log(c, 'sg-scenery'))
         if r.get('oracle_sg_scenery'):
             check(sc, r['oracle_sg_scenery'], f'{c} sg-sc')
         run('sg-rails', sys.executable, self.T / r['rails_tool'],

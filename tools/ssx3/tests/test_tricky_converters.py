@@ -7,6 +7,7 @@ are documented in tools/ssx3/tricky/README.md and run in-lane, not here.
 import importlib.util
 import json
 import math
+import os
 import struct
 import subprocess
 import sys
@@ -306,12 +307,77 @@ class BannerTest(unittest.TestCase):
             self.assertTrue(title and '"' not in title)
 
 
+class RemusScratchTest(unittest.TestCase):
+    # music_remus must never write predictable /tmp/tk41_* names (two
+    # builds under one account share them; symlinks redirect them).
+    # Segments live in a private per-invocation dir under the output dir.
+    def _one_sample_mpf(self):
+        b = bytearray(64)
+        b[0:4] = b'xDFP'
+        b[4] = 3
+        b[5] = 1
+        struct.pack_into('<H', b, 0x12, 1)      # N = 1 node
+        struct.pack_into('<H', b, 0x24, 10)      # node at 10*4 = 40
+        # node at 40: 12 zero hdr bytes, n = b[51] = 0 (no play/nxt)
+        struct.pack_into('<I', b, 52, 14)        # tptr -> st = 56
+        struct.pack_into('<I', b, 56, 0)         # sample 0: mus offset 0
+        struct.pack_into('<I', b, 60, 1234)      # sample 0: dur 1234 ms
+        return bytes(b)
+
+    def test_segments_stay_out_of_tmp(self):
+        import glob
+        with tempfile.TemporaryDirectory() as tmp:
+            mus = bytes(range(256)) * 2
+            (Path(tmp) / 's.mus').write_bytes(mus)
+            (Path(tmp) / 's.mpf').write_bytes(self._one_sample_mpf())
+            (Path(tmp) / 't.sch').write_bytes(b'template')
+            out, tsv = Path(tmp) / 'o.mus', Path(tmp) / 'o.tsv'
+            before = set(glob.glob('/tmp/tk41_*'))
+            r = subprocess.run(
+                [sys.executable, str(TRICKY / 'music_remus.py'),
+                 str(Path(tmp) / 's.mus'), str(Path(tmp) / 's.mpf'),
+                 str(Path(tmp) / 't.sch'), str(out), str(tsv),
+                 'only=0', 'jobs=1'],
+                cwd=tmp, capture_output=True, text=True, timeout=300)
+            self.assertEqual(r.returncode, 0, r.stderr[-800:])
+            after = set(glob.glob('/tmp/tk41_*'))
+            self.assertEqual(after - before, set(),
+                             'segment files escaped to /tmp')
+            # only=0 copies the source segment verbatim at offset 0
+            self.assertEqual(out.read_bytes(), mus)
+            self.assertEqual(tsv.read_text().splitlines(),
+                             ['i\toff\tdur', '0\t0\t1234'])
+            # default scratch cleaned itself: only inputs + outputs remain
+            names = sorted(p.name for p in Path(tmp).iterdir())
+            self.assertEqual(names, ['o.mus', 'o.tsv', 's.mpf', 's.mus',
+                                     't.sch'])
+
+    def test_seg_scratch_shapes(self):
+        remus = load('music_remus')
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'o.mus'
+            out.write_bytes(b'x')
+            with remus.seg_scratch(str(out)) as d:
+                self.assertEqual(os.path.dirname(os.path.abspath(d)),
+                                 os.path.abspath(tmp))
+                Path(d, 'probe').write_bytes(b'p')
+            self.assertFalse(os.path.exists(d), 'default scratch not cleaned')
+            custom = os.path.join(tmp, 'mine')
+            with remus.seg_scratch(str(out), custom) as d2:
+                self.assertEqual(d2, os.path.abspath(custom))
+            with self.assertRaises(SystemExit):
+                with remus.seg_scratch(str(out), '/tmp'):
+                    pass
+
+
 class GemToolImportTest(unittest.TestCase):
     # bake_gems/gem_step import wlib, which lives in tricky/tk12 — not the
     # script dir. The driver runs tools with cwd=<workdir> and a stripped
     # PYTHONPATH, so each tool must put tk12 on sys.path itself. Run every
     # gem tool's --help from a bare temp dir: import failure fails here.
-    TOOLS = ('bake_gems.py', 'gem_step.py', 'bake_mega_gems.py')
+    # bake_reset_volumes has the same constraint (tricky_pbd in tk13).
+    TOOLS = ('bake_gems.py', 'gem_step.py', 'bake_mega_gems.py',
+             'bake_reset_volumes.py')
 
     def test_gem_tools_import_away_from_tree(self):
         with tempfile.TemporaryDirectory() as tmp:

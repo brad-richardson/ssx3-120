@@ -14,6 +14,8 @@ import os
 import struct
 import subprocess
 import sys
+import tempfile
+from contextlib import contextmanager
 from multiprocessing import Pool
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +50,27 @@ def snr_db(ref_ch, got_ch):
     return 10 * math.log10(ss / (se + 1e-9))
 
 
+@contextmanager
+def seg_scratch(out_p, tmpdir=None):
+    """Private per-invocation scratch dir for segment files.
+
+    Defaults to a fresh TemporaryDirectory under the output's own
+    directory (same volume as the accounted workdir; auto-removed).
+    An explicit tmpdir is honored but never /tmp (predictable global
+    names there collide between builds and admit symlink redirects).
+    """
+    if tmpdir is not None and os.path.abspath(tmpdir) == '/tmp':
+        raise SystemExit('tmpdir=/tmp refused: use a workdir-scoped dir')
+    if tmpdir is None:
+        with tempfile.TemporaryDirectory(
+                prefix='tk41-',
+                dir=os.path.dirname(os.path.abspath(out_p))) as d:
+            yield d
+    else:
+        os.makedirs(tmpdir, exist_ok=True)
+        yield os.path.abspath(tmpdir)
+
+
 def enc_one(args):
     (i, segfile, template, rate_src) = args
     # resample 44.1k -> 32k stereo (swr; this ffmpeg has no soxr), pad to %28
@@ -63,9 +86,13 @@ def enc_one(args):
         pcm[0].append(0)
         pcm[1].append(0)
     stream = eaxa.build_stream(template, pcm, S_BLOCK)
-    # verify: decode back, SNR vs the resampled source
-    open(f"/tmp/tk41_re_{os.getpid()}_{i}.sch", "wb").write(stream)
-    got = decode(f"/tmp/tk41_re_{os.getpid()}_{i}.sch", 32000)
+    # verify: decode back, SNR vs the resampled source. The re-encode
+    # probe lives beside its segment (per-invocation scratch dir), never
+    # under a predictable global path.
+    reprobe = os.path.join(os.path.dirname(os.path.abspath(segfile)),
+                           f"re-{os.getpid()}_{i}.sch")
+    open(reprobe, "wb").write(stream)
+    got = decode(reprobe, 32000)
     q = snr_db(pcm, got)
     return i, stream, q, len(pcm[0])
 
@@ -74,12 +101,15 @@ def main():
     mus_p, mpf_p, tmpl_p, out_p, tsv_p = sys.argv[1:6]
     only = None
     jobs = os.cpu_count() or 8
+    tmpdir = None
     for kv in sys.argv[6:]:
         k, v = kv.split("=", 1)
         if k == "only":
             only = int(v)
         elif k == "jobs":
             jobs = int(v)
+        elif k == "tmpdir":
+            tmpdir = v
         else:
             raise SystemExit("unknown arg " + kv)
     mus = open(mus_p, "rb").read()
@@ -89,26 +119,37 @@ def main():
     total = len(offs)
     template = open(tmpl_p, "rb").read()
     # split segments to files (bounded: we only need `only` for validation,
-    # but offsets for ALL must exist; unencoded ones copy source bytes)
-    segfiles = []
-    for i in range(total):
-        e = offs[i + 1] if i + 1 < total else len(mus)
-        fp = f"/tmp/tk41_src_{i}.sch"
-        open(fp, "wb").write(mus[offs[i]:e])
-        segfiles.append(fp)
-    todo = total if only is None else min(only, total)
-    print(f"encoding {todo}/{total} segments, jobs={jobs}", flush=True)
-    with Pool(jobs) as pool:
-        res = pool.map(enc_one,
-                       [(i, segfiles[i], template, 44100)
-                        for i in range(todo)])
+    # but offsets for ALL must exist; unencoded ones copy source bytes).
+    # Segments live in a private per-invocation scratch dir (default: fresh
+    # TemporaryDirectory under the output dir), never predictable /tmp
+    # names (two builds under one account must not share segment files).
+    with seg_scratch(out_p, tmpdir) as scratch:
+        segfiles = []
+        for i in range(total):
+            e = offs[i + 1] if i + 1 < total else len(mus)
+            fp = os.path.join(scratch, f"seg-{i}.sch")
+            open(fp, "wb").write(mus[offs[i]:e])
+            segfiles.append(fp)
+        todo = total if only is None else min(only, total)
+        print(f"encoding {todo}/{total} segments, jobs={jobs}", flush=True)
+        with Pool(jobs) as pool:
+            res = pool.map(enc_one,
+                           [(i, segfiles[i], template, 44100)
+                            for i in range(todo)])
+        return finish(res, segfiles, durs, total, out_p, tsv_p)
+
+
+def finish(res, segfiles, durs, total, out_p, tsv_p):
     streams = {}
     for i, st, q, ns in res:
         streams[i] = st
         if q < 20.0:
             print(f"WARN seg {i}: SNR {q:.1f} dB < 20", flush=True)
     qs = [q for _, _, q, _ in res]
-    print(f"SNR min {min(qs):.1f} mean {sum(qs)/len(qs):.1f} dB", flush=True)
+    if qs:
+        print(f"SNR min {min(qs):.1f} mean {sum(qs)/len(qs):.1f} dB", flush=True)
+    else:
+        print("no segments encoded (only=0 or empty pool)", flush=True)
     out = bytearray()
     rows = []
     for i in range(total):

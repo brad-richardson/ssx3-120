@@ -284,6 +284,58 @@ class ResetsRungTest(unittest.TestCase):
         self.assertEqual(resets, {'snow', 'gari', 'mesa', 'aloha'})
 
 
+class SceneryTmpTest(unittest.TestCase):
+    """Scenery scratch stays in the run's workdir (regression cover).
+
+    All scenery tools default --tmp to a lab home path; the driver must
+    pass a per-course dir under --workdir (read-only HOME safe, unique
+    across concurrent builds, inside disk accounting). Covers the b
+    rung and the alternate sg rung.
+    """
+
+    def _capture_scenery_argv(self, rung, course='merq'):
+        import types
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix='tk-chain-') as temp:
+            args = types.SimpleNamespace(workdir=temp, lane_dir=temp)
+            chain = run_chain.Chain(args)
+            seen = []
+
+            def stop(step, *cmd, **kw):
+                seen.append((step, list(cmd)))
+                raise SystemExit('stop-after-capture')
+
+            recipe = run_chain.COURSES[course]
+            with patch.object(run_chain, 'run', side_effect=stop):
+                with self.assertRaises(SystemExit) as ctx:
+                    if rung == 'b':
+                        chain.rung_scenery(course, recipe,
+                                           Path(temp) / 'race.BIG',
+                                           Path(temp), Path(temp))
+                    else:
+                        chain.rung_sg(course, recipe,
+                                      Path(temp) / 's.BIG',
+                                      Path(temp), Path(temp))
+                self.assertIn('stop-after-capture', str(ctx.exception))
+            return temp, seen
+
+    def test_scenery_b_rung_passes_workdir_tmp(self):
+        temp, seen = self._capture_scenery_argv('b')
+        step, cmd = seen[0]
+        self.assertEqual(step, 'scenery')
+        self.assertIn('--tmp', cmd)
+        tmp = cmd[cmd.index('--tmp') + 1]
+        self.assertEqual(Path(tmp), Path(temp) / 'w-merq-b' / 'tmp')
+
+    def test_scenery_sg_rung_passes_workdir_tmp(self):
+        temp, seen = self._capture_scenery_argv('sg')
+        step, cmd = seen[0]
+        self.assertEqual(step, 'sg-scenery')
+        self.assertIn('--tmp', cmd)
+        tmp = cmd[cmd.index('--tmp') + 1]
+        self.assertEqual(Path(tmp), Path(temp) / 'w-merq-sg' / 'tmp')
+
+
 class WorkdirGoldenTest(unittest.TestCase):
     """Per-rung golden SHAs against a finished --workdir (skips if absent)."""
 
