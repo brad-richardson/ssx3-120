@@ -65,10 +65,18 @@ SPEECH7_SHA = '07dcb666f9e20a1791f16dec7eb57bb27677c9069a0346e3d927b62a2e7c0877'
 SPEECH_TARGETS = ['Arcade_Uber', 'Big_Air_Amateur_mac', 'Big_Air_Expert_mac',
                   'Big_Air_Pro_mac', 'Wipeout_Amateur_mac', 'Wipeout_Expert_mac',
                   'Wipeout_Pro_mac', 'Arcade_Power_Ups', 'Arcade_Icons']
-TRICKY_SPEECH_MEMBERS = ['mc\\Wipeout.dat', 'mc\\MS_Wipeout.dat', 'mc\\Uber.dat',
-                         'mc\\Big_Air.dat', 'mc\\MS_Big_Air.dat',
-                         'mc\\Tricky.dat', 'mc\\Turbo.dat',
-                         'mc\\Boost_Icon.dat', 'mc\\Bonus.dat']
+# Full BIG paths (data\speech\mc\...), as the standalone lane job used;
+# big_member takes the basename for the output name (split on '\').
+TRICKY_SPEECH_MEMBERS = ['data\\speech\\mc\\Wipeout.dat',
+                         'data\\speech\\mc\\MS_Wipeout.dat',
+                         'data\\speech\\mc\\Uber.dat',
+                         'data\\speech\\mc\\Big_Air.dat',
+                         'data\\speech\\mc\\MS_Big_Air.dat',
+                         'data\\speech\\mc\\Tricky.dat',
+                         'data\\speech\\mc\\Turbo.dat',
+                         'data\\speech\\mc\\Boost_Icon.dat',
+                         'data\\speech\\mc\\Bonus.dat']
+SSX3_SPEECH_DIR = 'data\\speech\\char\\'
 GEM_COURSES = (('GARI', 33), ('SNOW', 56), ('MESA', 80),
                ('MERQ', 148), ('ALOHA', 22), ('ELYS', 135))
 GEM_DONOR_STEM = {'MERQ': 'merquer', 'ELYS': 'elysium'}
@@ -205,7 +213,9 @@ def big_member(iso, big_iso_path, want, out):
         _, members = big_members(sub)
         norm = want.upper().replace('/', '\\')
         if '\\' in norm:
-            hits = [m for m in members if m['path'].upper() == norm]
+            # big_members stores forward slashes; normalize both sides.
+            hits = [m for m in members
+                    if m['path'].upper().replace('/', '\\') == norm]
         else:
             hits = [m for m in members
                     if m['path'].upper().replace('\\', '/').split('/')[-1] == norm]
@@ -305,7 +315,8 @@ class Build:
                        m, ex / 'tricky' / m.split('\\')[-1])
         for t in SPEECH_TARGETS:
             big_member(self.a.ssx3_iso, 'DATA/AUDIO/SPEECH.BIG',
-                       t + '.dat', ex / 'ssx3' / (t + '.dat'))
+                       SSX3_SPEECH_DIR + t + '.dat',
+                       ex / 'ssx3' / (t + '.dat'))
         run(self.logs, 'speech-catalog', sys.executable, T / 'speech_catalog.py',
             '--vgm', self.a.vgmstream, '--extract-dir', ex,
             '--streams-dir', sp / 'streams', '--wav-dir', sp / 'wav',
