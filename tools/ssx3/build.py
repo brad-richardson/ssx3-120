@@ -561,6 +561,23 @@ def codegen_register_sha(work):
     return sha(candidate)
 
 
+def pgo_fresh(manifest, actual_register):
+    """Whether the bundled profile applies to this codegen.
+
+    Fresh when the register matches the trained SHA, or when it names a
+    probe-validated codegen in the manifest's validated_registers list
+    (D18: public unnamed codegen differs from the trained named codegen in
+    symbol names only; game bodies are identical, so the lab stale probe
+    reads 0 mismatches and the profile applies).
+    """
+    if not manifest or not actual_register:
+        return False
+    if actual_register == manifest.get('trained_codegen_register_sha256'):
+        return True
+    return any(entry.get('register_sha256') == actual_register
+               for entry in manifest.get('validated_registers', []))
+
+
 def resolve_pgo(work, platform, explicit=None, disabled=False):
     """Resolve a .profdata path for platform, or '' for a no-PGO build.
 
@@ -587,7 +604,7 @@ def resolve_pgo(work, platform, explicit=None, disabled=False):
     if not expected_register or not actual_register:
         print('PGO profile freshness unknown (no codegen register SHA); building without PGO.')
         return ''
-    if actual_register != expected_register:
+    if not pgo_fresh(manifest, actual_register):
         print('PGO profile stale for this codegen (register ' + actual_register[:12]
               + ' != trained ' + str(expected_register)[:12] + '); building without PGO.')
         return ''

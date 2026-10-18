@@ -102,6 +102,36 @@ class ResolvePgoTest(unittest.TestCase):
             self.assertEqual(result, '')
             self.assertIn('without PGO', out.getvalue())
 
+    def test_fresh_on_trained_register(self):
+        manifest = {'trained_codegen_register_sha256': 'abc'}
+        self.assertTrue(build.pgo_fresh(manifest, 'abc'))
+        self.assertFalse(build.pgo_fresh(manifest, 'other'))
+        self.assertFalse(build.pgo_fresh(manifest, None))
+        self.assertFalse(build.pgo_fresh(None, 'abc'))
+
+    def test_fresh_on_validated_register(self):
+        manifest = {'trained_codegen_register_sha256': 'abc',
+                    'validated_registers': [{'register_sha256': 'public123'}]}
+        self.assertTrue(build.pgo_fresh(manifest, 'public123'))
+        self.assertFalse(build.pgo_fresh(manifest, 'unknown'))
+
+    def test_validated_register_applies_bundled_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = {'trained_codegen_register_sha256': 'trained1',
+                        'profile_sha256': 'prof1',
+                        'validated_registers': [{'register_sha256': 'public1'}]}
+            work = make_work(tmp)
+            with patch.object(build, 'pgo_manifest', return_value=manifest), \
+                 patch.object(build, 'codegen_register_sha', return_value='public1'), \
+                 patch.object(build, 'sha', return_value='prof1'):
+                dest = work / 'pgo-android.profdata'
+                dest.write_bytes(b'x')
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    result = build.resolve_pgo(work, 'android')
+                self.assertEqual(result, str(dest))
+                self.assertIn('PGO profile applied', out.getvalue())
+
     def test_bundled_manifests_match_archives(self):
         for platform in ('android', 'ios'):
             manifest = build.pgo_manifest(platform)
@@ -110,6 +140,10 @@ class ResolvePgoTest(unittest.TestCase):
             self.assertTrue(archive.is_file(), platform)
             self.assertRegex(manifest.get('profile_sha256', ''), r'^[0-9a-f]{64}$')
             self.assertRegex(manifest.get('trained_codegen_register_sha256', ''), r'^[0-9a-f]{64}$')
+            for entry in manifest.get('validated_registers', []):
+                self.assertRegex(entry.get('register_sha256', ''), r'^[0-9a-f]{64}$')
+                self.assertTrue(entry.get('method'))
+                self.assertTrue(entry.get('receipt'))
 
 
 class AndroidPgoWiringTest(unittest.TestCase):
