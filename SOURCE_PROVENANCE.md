@@ -79,7 +79,7 @@ reviewable diffs on top).
 `tools/ssx3/pgo/android/` (PB58) and `tools/ssx3/pgo/ios/` (IPB30) hold
 gzip-compressed LLVM indexed profiles (`.profdata.gz`, ~1.7/1.6 MB; 32 MB
 uncompressed) plus `MANIFEST.json` provenance. Both were trained against fork
-`84b9ece9` and codegen register `ad96edb6…` (SPR1 ABI-v2); the manifests record
+`84b9ece9` and codegen register `ad96edb6…` (ABI-v2 codegen); the manifests record
 the uncompressed SHA256, trained fork/routes and the register SHA the builder
 gates on. Profiles contain IR function names, hashes and counters only (for
 example `_Z21sub_…_0x…`, `ps2_mtvu`, `ps2_snd_spu` symbols); they carry no ISO,
@@ -93,29 +93,19 @@ otherwise it prints one line and builds without PGO (`--no-pgo` always skips;
 
 The `ssx3-lobby` matchmaker/relay server is vendored here as the source of
 truth: `infra/lobby-rust/` holds 24 files byte-identical to `ssx3-lobby`
-`main` `408932e` (NOT the `online-120-2` branch `b3905ce`, which deploys
-later with the 120 client change; verified per-file with `cmp` against
-`git show 408932e`). `cargo test --locked --workspace` there is green
-(41 passed, 0 failed), and the musl release build from the vendored tree
-reproduces the live binary byte-for-byte (SHA-256 `af6a37df…f2d`).
+`main` `408932e` (NOT the `online-120-2` branch `b3905ce`; verified
+per-file with `cmp` against `git show 408932e`). `cargo test --locked
+--workspace` there is green (41 passed, 0 failed), and the musl release
+build from the vendored tree reproduces the reference binary byte-for-byte
+(SHA-256 `af6a37df…f2d`).
 `infra/lobby-rust/` also retains two operator overlays that are not part
-of the lobby source: `ssx3-lobby.service` (production unit, identical to
-the live unit, SHA-256 `54e28e95…e44e`) and `lobby.toml` (production
-template, refreshed repo-to-repo from the lab infra tree at `20794f7a` —
-the limits-load-1 deploy source — checksum-identical to the live config
-`5d74f9f2…`, key names verified equal). online-v0-1 (2026-10-17)
-added the Quick Play endpoint (`[state_sync]` on UDP 3757; relay range
-3658-3756, `max_pairs` 98) and deployed it: running binary SHA-256
-`ca0f26ef…` (musl rebuild from this tree reproduces it), live config
-`277b3d94…` = this template, unit unchanged; the prior binary
-`af6a37df…` is kept as `ssx3-lobby.previous` and the prior config as
-`/etc/ssx3-lobby/lobby.toml.pre-online-v0-1`. The separate
-`ssx3-lobby` repository stays for history until its `online-120-2` branch
-merges. MComm is never published. lobby-load-1 (2026-10-18) widened the
-relay range to 3658-4657 (~1000 pairs), moved the Quick Play STATE port
-to a fixed 3657 below the range (legacy 3757 kept listening during the
-transition), and scaled the admission/egress caps and the unit FD limit
-to match; see `local/research/lobby-load-1/REPORT.md` in the lab repo.
+of the lobby source: `ssx3-lobby.service` (SHA-256 `54e28e95…e44e`) and
+`lobby.toml` (template; key names verified equal). The Quick Play endpoint
+lives at `[state_sync]` on UDP 3757 (relay range 3658-4657, ~1000 pairs;
+STATE on fixed port 3657 below the range, legacy 3757 kept listening
+during the transition); the musl rebuild from this tree reproduces the
+reference binary (SHA-256 `ca0f26ef…`). Admission/egress caps and the unit
+FD limit are scaled to match. MComm is never published.
 
 ## Never in this repo or its releases
 

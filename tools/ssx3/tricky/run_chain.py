@@ -162,8 +162,8 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts'],
         oracle_r='8b203740',
-        # Same-input ov-s (tk-nogc-1): PS2 .pbd surfaces, 304 flagged;
-        # downstream bound 4eae7401 + final c850d63e match the lab oracles.
+        # Same-input ov-s: PS2 .pbd surfaces, 304 flagged;
+        # downstream bound 4eae7401 + final c850d63e match the reference digests.
         oracle_ovs='ebd5605f9adcbe51878d595790121c6b9623ce26ad55bd3f8ecdada325ade3e7',
         resets_pbd=True,
         # TK33b build_snow33.sh: make_scenery33 (no flags) + 521 fence drops
@@ -283,9 +283,9 @@ COURSES = {
         race_tool='tk12/make_race_world.py',
         race_args=['--base-race-starts', '--gate-chain', '0,1,2,3,4'],
         resets_pbd=True,
-        # Same-input ov-s (tk-nogc-1): PS2 .pbd surfaces, 242 flagged;
+        # Same-input ov-s: PS2 .pbd surfaces, 242 flagged;
         # downstream finalw f81f73d4 + bound fe35aa18 + final 93668ecf
-        # match the lab oracles.
+        # match the reference digests.
         oracle_ovs='8ad629acf1658e62666e31dd716fb33a7aaa9c3d9964195fbfa67bfc247b08a0',
         # TK33b build_course33.sh mesa-cand2: make_scenery33 + soft +
         # mode2-solid-file + 39 breakaway drops (NOT mesa-fence.txt), rails16,
@@ -492,9 +492,9 @@ COURSES = {
                    '--gate-chain', '0,1,2,3'],
         resets_pbd=True,
         oracle_r='368a76e0',
-        # Same-input ov-s (tk-nogc-1): PS2 .pbd surfaces, 415 flagged;
+        # Same-input ov-s: PS2 .pbd surfaces, 415 flagged;
         # downstream -c 0c353680 + bound 6ca2bca6 + final 11e6b9f8
-        # match the lab oracles.
+        # match the reference digests.
         oracle_ovs='0cd565f4f8e60db1090b06907b907665d6477f9d10683d90747ee8b53a013b66',
         # TK20 build_course.sh aloha-b: TK16 make_scenery16 + 4 race-line
         # crossing drops; rails20. -b SHA pending; -c 0c353680 carried.

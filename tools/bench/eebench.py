@@ -67,7 +67,7 @@ ISO_SHA = '3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5'
 ELF_SHA = '1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc'
 GE1_LIB_SHA = '37a81b4d7a200e882bb1f3c5a2fc939f023275a59f35043a50187284596d45cc'
 
-# Standard pinned layout resolved under --pinned (lab ~/dev/ssx3-work/pinned).
+# Standard pinned layout resolved under --pinned.
 PINNED_ISO = 'game/ssx3-usa-3c2f8eb1/SSX 3 (USA).iso'
 PINNED_ELF = 'game/ssx3-usa-3c2f8eb1/cd/SLUS_207.72'
 PINNED_GE1 = 'mac/ge1-dylib-37a81b4d/libge1_gs.dylib'

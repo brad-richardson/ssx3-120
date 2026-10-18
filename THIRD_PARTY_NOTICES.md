@@ -1,9 +1,8 @@
 # THIRD_PARTY_NOTICES.md
 
-Per Brad 10-17 (`docs/decisions.md` → Standing), the SoundTouch static
-link, the community Turnip binary, the RE function map / hook addresses,
-and the whole-repo GPL-3.0 framing are approved **as long as each
-component's license is noted**. This file is that record: every
+The SoundTouch static link, the community Turnip binary, the RE function
+map / hook addresses, and the whole-repo GPL-3.0 framing ship here with
+each component's license noted. This file is that record: every
 component with its license and source. Full license texts ship with
 every support bundle (`notices/` assembled by `tools/ssx3/prebuilt.py`
 from the paths below) and with source checkouts of the linked projects.

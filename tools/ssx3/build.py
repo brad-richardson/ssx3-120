@@ -841,7 +841,7 @@ def next_version_code(work):
     return code
 
 
-# PGO (pgo-public-1): bundled indexed profiles with a codegen freshness gate.
+# PGO: bundled indexed profiles with a codegen freshness gate.
 # Profiles hold function names, hashes and counters only; no game bytes.
 # They are stored compressed in tools/ssx3/pgo/<platform>/ and decompressed
 # into the user's private work dir on use (never inside the checkout).

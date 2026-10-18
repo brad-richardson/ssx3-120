@@ -6,9 +6,8 @@
 # at configure time, so Xcode creates/refreshes the user's provisioning
 # profile and signs the build. Staging then adds the disc payload (which
 # invalidates the build-time seal) and the builder re-signs the staged app
-# with the same identity + profile. Lab provenance: derived from
-# local/research/I26/ios-device.toolchain.cmake (signing flipped on; no lab
-# paths).
+# with the same identity + profile. Derived from an internal prototype
+# (signing flipped on; no machine-specific paths).
 set(CMAKE_SYSTEM_NAME iOS)
 set(CMAKE_SYSTEM_PROCESSOR arm64)
 set(CMAKE_OSX_SYSROOT iphoneos)

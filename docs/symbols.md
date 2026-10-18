@@ -1,7 +1,7 @@
 # SSX 3 symbol map
 
 `games/ssx3/ssx3-symbols.tsv` is the project's guest function/data map. It
-supersedes the lab's `local/tooling/ee/labels.tsv`. One row per address,
+supersedes an earlier internal labels file (not shipped here). One row per address,
 sorted by address (numeric ascending, then symbolic `R+0x…`/`P+0x…` offsets
 alphabetically). Names, addresses and roles only — no game bytes.
 
@@ -13,8 +13,8 @@ alphabetically). Names, addresses and roles only — no game bytes.
 | kind | `code` (function or hook/call PC) or `data` (global, table, struct field, constant word) |
 | name | `snake_case` identifier; alternate names live in the role text as `alt:` / `disputed:` |
 | role | One-line role. May end with `engine: <const> (<file:line>)` naming the engine hook/const that uses it |
-| source | Lane ID, `labels.tsv:…`, `decomp:…`, or `engine` |
-| evidence | `file:line` that was read to establish the row (lane REPORT, engine source, or the map's own build inputs) |
+| source | origin tag: `engine`, a research `§Labels` section, `labels.tsv:<id>`, `nm1:<id>`, or `decomp:…` |
+| evidence | what established the row: an in-repo `file:line`, `<id> notes` (internal research attribution, not shipped here), or `prior labels/candidates/map` (a superseded input, not shipped here) |
 | confidence | See below |
 
 Sub-`0x100000` `code` rows are VU micro-memory program PCs (a separate
@@ -24,20 +24,19 @@ indirect-call targets from its `extra_function_starts`.
 
 ## Confidence levels
 
-- `verified` — a lane established the role by codegen read, trace, watch or
-  boot evidence (Labels tables, orchestrator-checked `labels.tsv` rows, or
-  gated REPORT prose). Engine-hook rows confirmed by a lane also land here.
-- `decomp-unverified` — an ssxdecomp name no lane has confirmed yet.
-  Prefer the lane name on conflicts; the decomp name stays as `disputed:`.
+- `verified` — the role was established by codegen read, trace, watch or
+  boot evidence. Engine-hook rows confirmed the same way also land here.
+- `decomp-unverified` — an ssxdecomp name not yet confirmed by research.
+  Prefer the researched name on conflicts; the decomp name stays as `disputed:`.
 - `inferred` — a single-observation candidate (NM1 harvests, engine-derived
   hook sites and stub names). Good enough to hook, not a confirmed identity.
 
-## How lanes add rows (brief contract item 8)
+## How contributors add rows
 
-Record the function, hook PC or RAM global in the lane's `## Labels` table
-(address, name, evidence) and in the function map in the same commit
-series. The merge keeps the better-evidenced name on conflicts and records
-the other as `disputed:` with both citations. `tests/test_symbols_map.py`
+Record the function, hook PC or RAM global (address, name, evidence) and
+add the map row in the same commit series. The merge keeps the
+better-evidenced name on conflicts and records the other as `disputed:`
+with both citations. `tests/test_symbols_map.py`
 (plus `tests/symbols_allowlist.tsv` for proven non-guest constants) runs in
 `product-checks.yml` and fails if any engine hook PC / `k*` constant lacks
-a row, so a lane that adds a hook must add the row with it.
+a row, so a change that adds a hook must add the row with it.

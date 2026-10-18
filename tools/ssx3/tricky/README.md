@@ -1,32 +1,31 @@
-# tools/ssx3/tricky/ — Tricky world + audio/HUD/sidecar converters (tk-port-1, tk-port-2)
+# tools/ssx3/tricky/ — Tricky world + audio/HUD/sidecar converters
 
-Port of the private TK-lane converter scripts into the public
+Port of the internal Tricky converter scripts into the public
 bring-your-own-disc builder (`python3 build.py tricky --iso <Tricky.iso>
 --work <work>` after prepare, or `./build android --ssx3-iso …
---tricky-iso …` for the one-command build; see the tk-public plan
-`docs/research/tk-public-plan-2026-10-15.md` §1/§4 in the lab repo).
+--tricky-iso …` for the one-command build).
 Copy rule: **verbatim copies with re-rooted imports and no behaviour
-edits**, except hardcoded lane work paths, which became CLI args (listed
+edits**, except hardcoded work paths, which became CLI args (listed
 per file below). No game data, converted assets or disc-derived bytes
-live here — only code plus lane-authored recipe data (fence/drop lists,
+live here — only code plus authored recipe data (fence/drop lists,
 blend specs, TSV defaults). Decoded census/glass tables are generated
 into the workdir at build time, never tracked.
 
-Provenance (lane source → this file):
+Provenance (origin → this file):
 
 | Ported file | Source | Adaptation |
 | --- | --- | --- |
 | `speech_eaxa.py` | TK25b `tk25b_eaxa.py` | none (verbatim) |
 | `speech_catalog.py` | TK25b `tk25b_catalog.py` | WORK/VGM/EXT/STR/WAV → CLI args; `__main__` guard |
 | `speech_slots.py` | TK25c `tk25c_slots.py` | WORK/WORK25B → `--tk25b-work`/`--work-dir`; sibling imports; `__main__` guard; `main(argv)` |
-| `speech_loud.py` | TK25c `tk25c_loud.py` | cache path via `init_cache()` (was a hardcoded lane path) |
+| `speech_loud.py` | TK25c `tk25c_loud.py` | cache path via `init_cache()` (was a hardcoded work path) |
 | `check_slots.py` | TK25b `tk25b_check_slots.py` | `__main__` guard only |
 | `speech_composite.py` | TK25c `tk25c_composite.py` | none (already CLI-clean) |
 | `speech_merge.py` | TKP4 `tooling/tkp4_speech.py` | none (already CLI-clean) |
 | `mpf3to4.py` | TKP4b `tooling/mpf3to4.py` (the TK41b fixed converter + graph check) | none (already guarded) |
 | `mus1_walk.py` | TK41b `tooling/mus1_walk.py` (= MUS1's, identical) | none |
-| `music_remus.py` | TK41 `tooling/tk41_remus.py` | lane `sys.path` CWD hack → sibling dir |
-| `music_selfcheck.py` | TK41 `tooling/tk41_selfcheck.py` | workdir is now a required arg (was a private default) |
+| `music_remus.py` | TK41 `tooling/tk41_remus.py` | `sys.path` CWD hack → sibling dir |
+| `music_selfcheck.py` | TK41 `tooling/tk41_selfcheck.py` | workdir is now a required arg (was a hardcoded default) |
 | `music_composite.py` | TKP4b `tooling/tk41b_composite.py` | `__main__` guard only |
 | `build_music_pool.py` | TKP4b `tooling/tkp4b_build_music.py` | REPO/TOOL/W/STAGE/S3/BUILT → CLI args; composite subprocess → sibling `music_composite.py`; `__main__` guard; `main(argv)` |
 | `music_assign.py` | TKP4b `tooling/tkp4b_assign.py` | STAGE → argv[1]; `__main__` guard; `main(argv)` |
@@ -52,10 +51,10 @@ Deliberately NOT ported (with reason):
   audits; the pool build does not call them.
 - TK43b meter slot builders (`tk43b_slots*.py`, limiter, composite) — ran
   as uncommitted scratch and are **lost** (work dir pruned); only the
-  REPORT §1 mapping table and the built members (inside the merged
+  mapping table and the built members (inside the merged
   composite) survive. Rider+meter merge is reproducible via
   `speech_merge.py` extract+merge; meter re-transcode from the ISO is a
-  documented gap for a follow-up lane.
+  documented gap for follow-up work.
 - World-chain readers this package imports but does not own
   (`wlib.py`, `tricky_pbd.py` + `ps2mdr.py`, `replace_terrain.py`,
   `gamecube_scenery.py`, `ps2_as_gc30.py`, `big.py`/`extract_big.py`,
@@ -91,7 +90,7 @@ never into the repo):
    (`song_eaxa.decode`, stereo 36 kHz, 6,602,400 frames), then
    `ffmpeg -i itstricky-36k.wav -ar 48000 -af volume=-1.69dB
    tricky-song.wav` → (`9c5dbf71…`, 8,803,200 frames stereo s16;
-   reproduced byte-identical by this lane).
+   reproduced byte-identical).
 5. Gems: `bake_gems.py --course ARCH:world:scenery:effects:group …`
    (345 rows, `c8407f43…`) → `gem_step.py` (+76 Alaska, +62 Pipedream;
    483 rows, `3f4cd72b…`) → `bake_mega_gems.py` (+38 MEGA; 521 rows,
@@ -105,11 +104,11 @@ System dependencies (pinned, macOS + Linux):
 | Dep | Pin | Notes |
 | --- | --- | --- |
 | `ffmpeg` / `ffprobe` | 9.0.2 (Homebrew) | resample, EA-XA decode, ebur128/volumedetect |
-| `vgmstream-cli` | master `7dc938fa2f210943b37c7b6511852b516ef432ab` (lane build) | MicroTalk decode only. Public recipe (TK25b): `brew fetch vgmstream libvorbis libogg speex libao`, `git clone --depth 1 https://github.com/vgmstream/vgmstream.git`, then the in-tree build per its docs; binary at `<build>/cli/vgmstream-cli` |
+| `vgmstream-cli` | master `7dc938fa2f210943b37c7b6511852b516ef432ab` (built from source) | MicroTalk decode only. Public recipe: `brew fetch vgmstream libvorbis libogg speex libao`, `git clone --depth 1 https://github.com/vgmstream/vgmstream.git`, then the in-tree build per its docs; binary at `<build>/cli/vgmstream-cli` |
 | `bsdtar` | system libarchive | single-file ISO9660 extract (atlas) |
 | `python3` | stdlib only (all scripts) | 3.14/3.15 used in validation |
 
-Golden table (all reproduced by this lane; see REPORT):
+Golden table (all reproduced in-builder):
 
 | Output | SHA-256 | Bytes | Via |
 | --- | --- | --- | --- |
@@ -125,38 +124,38 @@ Golden table (all reproduced by this lane; see REPORT):
 | slot acceptance | 186 replaced / 8 kept | — | `check_slots.py` 7/7 |
 | `mpf3to4 check` | 35/35 PASS | — | all pool members |
 
-Notes for `tk-build-1`: speech composites resolve their `iso` segments
+Notes for the builder: speech composites resolve their `iso` segments
 against the **SSX3** disc (they patch SSX3's BIGs); the Tricky ISO only
-supplies donor bytes. tk-audio-1's speech-step2 Big Air curation
-(`speech-step2-big fc9192da…`) is provisional (pending Brad audition +
-Odin) and is NOT part of this port — recorded here so the delta can be
+supplies donor bytes. The speech-step2 Big Air curation
+(`speech-step2-big fc9192da…`) is provisional (pending audition)
+and is NOT part of this port — recorded here so the delta can be
 applied later without disturbing today's pipeline.
-## Tricky world pipeline (lane tk-port-1)
+## Tricky world pipeline
 
-Faithful port of the private TK-lane world converters (extract, world build,
+Faithful port of the internal world converters (extract, world build,
 chain, preview) for the public bring-your-own-disc builder. Plan of record:
-`docs/research/tk-public-plan-2026-10-15.md` (private `ssx3-lab` checkout, §1
-inventory, §4 test plan, §5 lane 1).
+extract → world build → chain → preview (stages below), with per-file
+origins in §Provenance.
 
 ### Provenance
 
-Every `.py` here is byte-identical to its source in the private checkout
+Every `.py` here is byte-identical to its internal source
 **except** `sys.path` bootstrap lines and root-variable definitions, which are
-re-rooted from `~/dev/ssx3` (`local/research/*`, `tools/`) to this package
+re-rooted from the internal tree to this package
 (`tools/ssx3/tricky/<sub>/`). Two behavior-neutral accommodations:
 
 - `R = HERE.parents[1]` / `REPO = HERE.parents[3]` become `HERE.parent`: the
-  package is one level flatter than `local/research/<LANE>/tooling/`, so the
+  package is one level flatter than the internal layout, so the
   grandparent step lands one level too high otherwise.
 - A missing `from pathlib import Path` is added ahead of first use where a
   rewritten bootstrap line needs it (one file gets a duplicate import).
 
 No converter logic, defaults, CLI shapes, constants or data paths change.
-Equivalence evidence (lane scratch, not committed):
+Equivalence evidence (internal scratch, not committed):
 `audit_paths.py` (all 89 bootstraps evaluate to the mapped original entries,
 in order) and `equiv.py` (identical load outcomes old vs new on all 89).
 
-### Layout (source lane in parentheses)
+### Layout (origin in parentheses)
 
 - `shared/` — `tools/*.py` closure the converters import (`inspect_disc`,
   `inventory_tricky`, `probe_worlds`, `replace_terrain`, `course_route`,
@@ -179,31 +178,30 @@ in order) and `equiv.py` (identical load outcomes old vs new on all 89).
 - Chain: `tk56/` (fix_binds + survey/verify/table), `tk53/` (trigger_step,
   break_step), `tk57/` (interact_step), `tk51/` (patch_hidden_colliders,
   patch_source_bridge), `tk58/` (fix_hulls, hull).
-- `tkp5/` (relocate_step, preview_step lane copy, verify_chain, stage,
+- `tkp5/` (relocate_step, preview_step copy, verify_chain, stage,
   event_refs), `tk52/` (preview_step, menu_assets).
-- `tkroutes/` (`route_step.py`: tk-routes-1 world-data patches — Aloha
+- `tkroutes/` (`route_step.py`: world-data patches — Aloha
   covers3, Merqury wall2819, Megaplex tube94s2; proven by byte-identical
-  rerun of the three tk-routes outputs).
-- `run_chain.py` (this lane's validation driver; new glue, not a port): replays
-  the recorded lane commands end to end from the two ISOs, plus the
-  post-s5 `routes` rung (tk-routes-2 follow-up) on aloha/merq/mega.
+  rerun of the three route outputs).
+- `run_chain.py` (validation driver; new glue, not a port): replays
+  the recorded commands end to end from the two ISOs, plus the
+  post-s5 `routes` rung (follow-up) on aloha/merq/mega.
 
 ### Deliberately not ported here
 
 - `collect.py`, `donor_inventory.py`, `world_inventory.py` —
-  tk-port-2's (audio/HUD/sidecar) territory. (`TK52/gem_step.py` and
-  `tkp4_speech.py` are now ported by tk-port-2 above in this same
-  directory.)
+  audio/HUD/sidecar territory (ported above in this same
+  directory: `TK52/gem_step.py` and `tkp4_speech.py`).
 - `TK33/make_scenery33.py` — superseded ancestor; the chain runs TK33b's copy
   (resolved via `patch_source_bridge`'s path order, as upstream).
 - `TK42/bind_effects.py` — older variant; the TKP3 binds used TK24c's.
 - `TK16`/`TK18`/`TK20`/`TK28b`/`TK30`/`TK33b` `build_*.sh` drivers — hardcoded
-  lane workdir paths; superseded by `run_chain.py`.
-- Lane `boot*.sh`/`leg.sh` (device/harness), receipts, sheets, pad files.
+  workdir paths; superseded by `run_chain.py`.
+- Device/harness scripts (`boot*.sh`/`leg.sh`), receipts, sheets, pad files.
 
 ### Runtime inputs (never committed)
 
-Two disc images plus lane-authored recipe data that lives outside git:
+Two disc images plus authored recipe data that lives outside git:
 SSX 3 USA ISO, Tricky USA ISO, donor extracts, `scenery-effects` JSONs,
 `glass-targets.json` values (passed as CLI args by the driver), fence/
 breakaway flag lists (reproducible via `classify.py`/`breakaway_passes.py`).
