@@ -23,7 +23,11 @@ SSH_OPTS="-i $SSH_KEY -o IdentitiesOnly=yes -o ConnectTimeout=10"
 DRY_RUN=0
 WHEN_IDLE=0
 WHEN_IDLE_TIMEOUT=1800
-RELAY_UDP="3658:3757"
+RELAY_UDP="3658:4657"
+# Quick Play STATE/results UDP: the fixed port 3657 (below the relay range)
+# plus the legacy 3757 kept for installed clients during the transition.
+STATE_UDP="3657"
+STATE_UDP_LEGACY="3757"
 
 for arg in "$@"; do
   case "$arg" in
@@ -142,6 +146,10 @@ fi
 
 step "4. open relay UDP range $RELAY_UDP/udp in the host firewall (idempotent)"
 ssh_run ufw allow "$RELAY_UDP/udp"
+
+step "4b. open Quick Play STATE UDP ports $STATE_UDP/udp and $STATE_UDP_LEGACY/udp (legacy transition)"
+ssh_run ufw allow "$STATE_UDP/udp"
+ssh_run ufw allow "$STATE_UDP_LEGACY/udp"
 
 step "5. daemon-reload, stop MComm (image + compose file stay for rollback)"
 ssh_run systemctl daemon-reload

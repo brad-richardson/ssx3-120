@@ -26,17 +26,20 @@ peak = 3
 name = "Intermediate"
 peak = 4
 
-# Connection/admission caps, pinned explicitly (= the lobby code
-# defaults; see limits-load-1 REPORT). max_pairs is N-1 (99 relay
-# ports; 3757 is Quick Play); refused waiters stay queued and the quik
-# echo carries FULL=1.
+# Connection/admission caps. lobby-load-1 (Brad 10-18) widened the relay
+# range to ~1000 pairs; the global admission caps scale with it so a full
+# house is admitted (max_connections ~2 players x 3 TCP conns per pair,
+# max_sessions/queue = 2 players per pair). The per-IP caps below stay the
+# per-player limits. Refused waiters stay queued; the quik echo carries
+# FULL=1. The per-IP accept churn cap (120/min, hardcoded) still bounds
+# one NAT/IP; real players are on distinct IPs.
 [limits]
-max_connections = 512
+max_connections = 8192
 max_per_ip = 16
 msg_per_sec_per_ip = 60
-max_sessions = 256
-max_queue = 128
-max_pairs = 98
+max_sessions = 4096
+max_queue = 4096
+max_pairs = 999
 max_pairs_per_ip = 4
 max_queue_per_ip = 8
 max_sessions_per_ip = 6
@@ -57,9 +60,11 @@ mode = "open"
 [relay]
 mode = "always"
 # Range includes the game's well-known P2P port 3658: the first pair
-# gets 3658, so relay=always works with no client change.
+# gets 3658, so relay=always works with no client change. lobby-load-1:
+# widened 3658-4657 (~1000 pairs). The STATE port (below) is fixed
+# outside the range so future range changes never move it.
 port_start = 3658
-port_end = 3756
+port_end = 4657
 idle_timeout_secs = 120
 # Per-pair / per-role packet token buckets (a stock-60 race needs
 # ~40 pps per pair); per-role handshake bucket (one enrollment costs
@@ -72,12 +77,13 @@ handshake_per_sec = 5
 handshake_burst = 10
 # Bandwidth ceiling with egress accounting: cost per forwarded datagram
 # is payload + 28 B IP/UDP overhead (~4.7 MB per racing pair-hour
-# measured). Global covers a full house at per-pair maxima; the 8 TiB
-# monthly cap (headroom under the free 10 TB/mo) gates new admissions.
+# measured). Global covers a full house (999 pairs) at per-pair maxima;
+# the 8 TiB monthly cap (headroom under the free 10 TB/mo) gates new
+# admissions and is the real backstop at sustained full rate.
 bytes_per_sec_per_pair = 8192
 burst_bytes_per_pair = 32768
-global_bytes_per_sec = 812000
-global_burst_bytes = 1048576
+global_bytes_per_sec = 8192000
+global_burst_bytes = 16777216
 monthly_egress_cap_bytes = 8796093022208
 
 [health]
@@ -95,8 +101,13 @@ server_key = ""
 
 [state_sync]
 # Quick Play netplay (online-v0-1): 120<->120 matchmaking, START barrier,
-# STATE relay and canonical results on one UDP port, the top of the relay
-# UDP range the security list already opens (the O5 relay ends at 3756).
+# STATE relay and canonical results. lobby-load-1: fixed dedicated port
+# 3657, just below the relay range, so widening the range never moves it
+# (was 3757, the top of the old range). Stock clients bake in 3757
+# (`ps2_netsync.h kDefaultPort`) unless PS2X_NET_SERVER/PS2X_NETSYNC_RELAY
+# carries a port; `legacy_ports` keeps 3757 listening during the
+# transition, and the new port goes into the public presets.
 enable = true
 bind = "0.0.0.0"
-port = 3757
+port = 3657
+legacy_ports = [3757]

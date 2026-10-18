@@ -209,10 +209,16 @@ struct StateSyncCfg {
     /// Bind address (loopback default; 0.0.0.0 in production).
     #[serde(default = "d_ss_bind")]
     pub bind: String,
-    /// UDP port (production: 3757, the top of the relay UDP range that the
-    /// security list already opens; the O5 relay range then ends at 3756).
+    /// UDP port (production: 3657, a fixed dedicated port just below the
+    /// relay UDP range so widening the range never moves it; the O5 relay
+    /// range starts at 3658, the stock P2P convention).
     #[serde(default = "d_ss_port")]
     pub port: u16,
+    /// Extra legacy STATE ports to keep listening on for the transition
+    /// (old builds bake in 3757 via `ps2_netsync.h kDefaultPort`). Fed
+    /// into the same hub, and excluded from the relay port pool.
+    #[serde(default)]
+    pub legacy_ports: Vec<u16>,
     /// Test-only injected one-way delay + uniform jitter, milliseconds.
     #[serde(default)]
     pub delay_ms: f64,
@@ -245,7 +251,7 @@ fn d_ss_bind() -> String {
 }
 
 const fn d_ss_port() -> u16 {
-    3757
+    3657
 }
 
 const fn d_ss_timeout() -> u64 {
@@ -286,6 +292,7 @@ impl Default for StateSyncCfg {
             enable: false,
             bind: d_ss_bind(),
             port: d_ss_port(),
+            legacy_ports: Vec::new(),
             delay_ms: 0.0,
             jitter_ms: 0.0,
             timeout_ms: d_ss_timeout(),
@@ -1902,8 +1909,7 @@ async fn main() {
             panic!("lobby.advertise_ip must be set (the IP clients dial)");
         }
     }
-    let mut ports: Vec<u16> = (cfg.relay.port_start..=cfg.relay.port_end).collect();
-    ports.reverse(); // pop() allocates from port_start up
+    let ports = relay_pool(&cfg);
     let server_key = if cfg.session.server_key.is_empty() {
         new_hex(32)
     } else {
@@ -1946,6 +1952,7 @@ async fn main() {
         let ssc = state_sync::Sscfg {
             bind: c.bind.clone(),
             port: c.port,
+            legacy_ports: c.legacy_ports.clone(),
             delay_ms: c.delay_ms,
             jitter_ms: c.jitter_ms,
             timeout_ms: c.timeout_ms,
@@ -2092,6 +2099,27 @@ impl State {
         }
         ended.retain(|_, t| now.duration_since(*t) <= grace);
     }
+}
+
+/// The relay port pool: every port in the configured range except the
+/// ports other listeners own (lobby/game/buddy/health) and the fixed or
+/// legacy STATE ports. Reserved ports are dropped so widening the relay
+/// range over an existing service port can never collide. Pop order is
+/// ascending from `port_start` (the stock P2P port 3658 first).
+fn relay_pool(cfg: &Config) -> Vec<u16> {
+    let mut reserved: Vec<u16> = vec![
+        cfg.ports.lobby,
+        cfg.ports.game,
+        cfg.ports.buddy,
+        cfg.health.port,
+        cfg.state_sync.port,
+    ];
+    reserved.extend(cfg.state_sync.legacy_ports.iter().copied());
+    let mut ports: Vec<u16> = (cfg.relay.port_start..=cfg.relay.port_end)
+        .filter(|p| !reserved.contains(p))
+        .collect();
+    ports.reverse(); // pop() allocates from port_start up
+    ports
 }
 
 fn build_state(cfg: Config, ports: Vec<u16>, server_key: String) -> Arc<State> {
@@ -3281,6 +3309,67 @@ mod tests {
         .unwrap();
         assert_eq!(cfg.rooms.len(), 4);
         assert_eq!(cfg.rooms[0].name, "Beginner");
+    }
+
+    /// lobby-load-1: the STATE port is a fixed dedicated port just below
+    /// the relay range (3657), the range starts at the stock P2P port
+    /// (3658), and legacy transition ports can be added.
+    #[test]
+    fn state_sync_fixed_port_below_relay_range() {
+        let cfg = Config::default();
+        assert_eq!(cfg.state_sync.port, 3657);
+        assert_eq!(cfg.relay.port_start, 3658);
+        assert!(cfg.state_sync.port < cfg.relay.port_start);
+        assert!(cfg.state_sync.legacy_ports.is_empty());
+        let cfg2: Config = toml::from_str(
+            "[lobby]\nadvertise_ip = \"127.0.0.1\"\n[state_sync]\nenable = true\nport = 3657\nlegacy_ports = [3757]\n",
+        )
+        .unwrap();
+        assert_eq!(cfg2.state_sync.port, 3657);
+        assert_eq!(cfg2.state_sync.legacy_ports, vec![3757]);
+    }
+
+    /// lobby-load-1: the relay pool never includes a reserved listener
+    /// port (lobby/game/buddy/health or the fixed/legacy STATE ports) and
+    /// keeps ascending allocation from `port_start`.
+    #[test]
+    fn relay_pool_skips_reserved_and_state_ports() {
+        let mut cfg = Config::default();
+        cfg.relay.port_start = 3657;
+        cfg.relay.port_end = 3660;
+        cfg.state_sync.port = 3659;
+        cfg.state_sync.legacy_ports = vec![3658];
+        let pool = relay_pool(&cfg);
+        assert_eq!(pool, vec![3660, 3657]); // stack: pop() = 3657 first
+        assert!(!pool.contains(&3659));
+        assert!(!pool.contains(&3658));
+        let mut p = pool.clone();
+        assert_eq!(p.pop(), Some(3657));
+        assert_eq!(p.pop(), Some(3660));
+    }
+
+    /// lobby-load-1: a 1000-pair house must fit the configured admission
+    /// caps and FD budget, and the egress ceiling must cover it at
+    /// per-pair maxima (the M1 invariant, rescaled with max_pairs).
+    #[test]
+    fn prod_scale_caps_cover_a_thousand_pairs() {
+        let cfg: Config = toml::from_str(include_str!("../../../lobby.toml")).unwrap();
+        assert!(cfg.limits.max_pairs >= 990, "max_pairs {}", cfg.limits.max_pairs);
+        // 2 players per pair, ~3 TCP conns each, plus relay sockets.
+        assert!(cfg.limits.max_connections >= cfg.limits.max_pairs * 2 * 3);
+        assert!(cfg.limits.max_sessions >= cfg.limits.max_pairs * 2);
+        assert!(cfg.limits.max_queue >= cfg.limits.max_pairs * 2);
+        assert!(
+            cfg.relay.global_bytes_per_sec
+                >= cfg.limits.max_pairs as f64 * cfg.relay.bytes_per_sec_per_pair,
+            "global egress {} < full house",
+            cfg.relay.global_bytes_per_sec
+        );
+        // The relay range must actually hold max_pairs+1 ports (3658 first).
+        assert!(
+            (cfg.relay.port_end - cfg.relay.port_start) as usize + 1 > cfg.limits.max_pairs,
+            "relay range too small for max_pairs"
+        );
     }
 
     #[tokio::test]

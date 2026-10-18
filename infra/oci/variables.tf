@@ -58,7 +58,13 @@ variable "relay_udp_start" {
 variable "relay_udp_end" {
   description = "Last UDP port of the Rust lobby relay range."
   type        = number
-  default     = 3757
+  default     = 4657
+}
+
+variable "state_udp_ports" {
+  description = "Quick Play STATE/results UDP ports (fixed 3657 below the relay range, plus the legacy 3757 kept during the transition)."
+  type        = list(number)
+  default     = [3657, 3757]
 }
 
 variable "ocpus" {

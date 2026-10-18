@@ -89,6 +89,29 @@ resource "oci_core_security_list" "lobby" {
       }
     }
   }
+
+  # Quick Play STATE/results UDP ports (fixed 3657 below the relay range
+  # plus the legacy 3757), player allowlist only.
+  dynamic "ingress_security_rules" {
+    for_each = {
+      for r in flatten([
+        for port in var.state_udp_ports : [
+          for cidr in var.player_cidrs : {
+            port = port
+            cidr = cidr
+          }
+        ]
+      ]) : "${r.port}-${r.cidr}" => r
+    }
+    content {
+      source   = ingress_security_rules.value.cidr
+      protocol = "17" # UDP
+      udp_options {
+        min = ingress_security_rules.value.port
+        max = ingress_security_rules.value.port
+      }
+    }
+  }
 }
 
 resource "oci_core_subnet" "lobby" {

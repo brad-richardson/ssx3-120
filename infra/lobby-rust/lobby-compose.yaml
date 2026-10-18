@@ -18,6 +18,10 @@ services:
       - "11000:11000/tcp"
       - "10901:10901/tcp"
       - "13505:13505/tcp"
-      - "3658-3757:3658-3757/udp"
+      - "3658-4657:3658-4657/udp"
+      # Quick Play STATE/results UDP: fixed 3657 below the relay range +
+      # the legacy 3757 kept during the transition.
+      - "3657:3657/udp"
+      - "3757:3757/udp"
     volumes:
       - ./lobby.toml:/lobby.toml:ro

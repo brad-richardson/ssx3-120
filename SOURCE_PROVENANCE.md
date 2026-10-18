@@ -111,7 +111,11 @@ added the Quick Play endpoint (`[state_sync]` on UDP 3757; relay range
 `af6a37df…` is kept as `ssx3-lobby.previous` and the prior config as
 `/etc/ssx3-lobby/lobby.toml.pre-online-v0-1`. The separate
 `ssx3-lobby` repository stays for history until its `online-120-2` branch
-merges. MComm is never published.
+merges. MComm is never published. lobby-load-1 (2026-10-18) widened the
+relay range to 3658-4657 (~1000 pairs), moved the Quick Play STATE port
+to a fixed 3657 below the range (legacy 3757 kept listening during the
+transition), and scaled the admission/egress caps and the unit FD limit
+to match; see `local/research/lobby-load-1/REPORT.md` in the lab repo.
 
 ## Never in this repo or its releases
 

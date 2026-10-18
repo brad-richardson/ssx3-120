@@ -49,6 +49,7 @@ resource "oci_core_instance" "lobby" {
       lobby_ports     = var.lobby_tcp_ports
       relay_udp_start = var.relay_udp_start
       relay_udp_end   = var.relay_udp_end
+      state_udp_ports = var.state_udp_ports
       ssh_public_key  = trimspace(file(var.ssh_public_key_path))
     }))
   }

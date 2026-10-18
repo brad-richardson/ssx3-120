@@ -24,5 +24,5 @@ COPY --from=build /lobby /lobby
 COPY lobby.example.toml /lobby.toml
 # Non-root: scratch has no users; run as the standard nobody uid.
 USER 65534:65534
-EXPOSE 11000/tcp 10901/tcp 13505/tcp 3658-3757/udp
+EXPOSE 11000/tcp 10901/tcp 13505/tcp 3658-4657/udp 3657/udp 3757/udp
 ENTRYPOINT ["/lobby", "/lobby.toml"]

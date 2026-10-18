@@ -26,17 +26,17 @@ name = "Intermediate"
 peak = 4
 
 [limits]
-max_connections = 512
+max_connections = 8192
 max_per_ip = 16
 msg_per_sec_per_ip = 60
-max_sessions = 256
-max_queue = 128
+max_sessions = 4096
+max_queue = 4096
 # Admission (lane A): active-pair ceiling, per-IP pair ceiling (NAT
 # households share one IP), per-IP queue ceiling (storm fairness).
-# max_pairs is N-1 (99 relay ports; 3757 is Quick Play); refused
-# waiters stay queued and retry, and the quik echo carries FULL=1 for the
-# client message.
-max_pairs = 98
+# max_pairs fits the relay range (lobby-load-1: 999 of ~1000 ports);
+# refused waiters stay queued and retry, and the quik echo carries FULL=1
+# for the client message. The global caps above scale with max_pairs.
+max_pairs = 999
 max_pairs_per_ip = 4
 max_queue_per_ip = 8
 # Sessions (reserved names) per IP (M2): a few dozen IPs cannot hold
@@ -71,7 +71,7 @@ mode = "always"
 # reads the assigned RLYPORT from each +ses, so concurrent pairs route
 # to their own relay socket.
 port_start = 3658
-port_end = 3756
+port_end = 4657
 idle_timeout_secs = 120
 # Per-pair packet token buckets (rate/s sustained + burst). A stock-60
 # race needs ~40 pps per pair; these allow headroom plus the opening
@@ -89,16 +89,17 @@ handshake_burst = 10
 # ~1.5 KB/s (~4.7 MB per pair-hour measured), so the per-pair bucket is
 # ~5x and the global sustained rate is an abuse backstop far under the
 # Always Free 10 TB/mo outbound allowance (list price applies only
-# above that). A full house of 99 racing pairs 24/7 costs ~335 GB/mo.
+# above that). A full house of ~1000 racing pairs 24/7 is ~3.4 TB/mo.
 # monthly_egress_cap_bytes gates new admissions past the cap (0 = off,
 # default 8 TiB headroom under the free 10 TB); the counter resets on
 # unit restart (monthly cadence: alerts lane).
 bytes_per_sec_per_pair = 8192
 burst_bytes_per_pair = 32768
-# Global at/above a full house at per-pair maxima (M1: 99 x 8192):
-# abuse stays bounded per pair, monthly cap is the real backstop.
-global_bytes_per_sec = 812000
-global_burst_bytes = 1048576
+# Global at/above a full house at per-pair maxima (M1: 999 x 8192 = 8.18
+# MB/s ~ 65 Mbit/s): abuse stays bounded per pair, monthly cap is the real
+# backstop.
+global_bytes_per_sec = 8192000
+global_burst_bytes = 16777216
 monthly_egress_cap_bytes = 8796093022208
 
 [session]
@@ -116,8 +117,12 @@ server_key = ""
 
 [state_sync]
 # Quick Play netplay (online-v0-1): 120<->120 matchmaking, START barrier,
-# STATE relay and canonical results on one UDP port, the top of the relay
-# UDP range the security list already opens (the O5 relay ends at 3756).
+# STATE relay and canonical results. lobby-load-1: fixed dedicated port
+# 3657, just below the relay range (was 3757, the top of the old range).
+# `legacy_ports` keeps 3757 listening for installed clients that bake in
+# the old default (`ps2_netsync.h kDefaultPort`); the new port goes into
+# the public presets (PS2X_NET_SERVER host:port).
 enable = true
 bind = "0.0.0.0"
-port = 3757
+port = 3657
+legacy_ports = [3757]

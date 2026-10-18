@@ -48,9 +48,11 @@ cp lobby.example.toml lobby.toml   # set advertise_ip
 cargo run -p ssx3-lobby -- lobby.toml
 ```
 
-Ports 11000/10901/13505 (TCP); relay UDP range 3658-3756 when
-`relay.mode = "always"` (the default); Quick Play netplay on UDP 3757
-when `[state_sync] enable = true` (120<->120 pairing at the race card, a
+Ports 11000/10901/13505 (TCP); relay UDP range 3658-4657 when
+`relay.mode = "always"` (the default); Quick Play netplay on UDP 3657
+(a fixed port just below the relay range; the legacy 3757 is kept open
+during the transition via `[state_sync] legacy_ports`) when
+`[state_sync] enable = true` (120<->120 pairing at the race card, a
 shared GO instant, STATE relay, canonical results; see
 `crates/lobby/src/state_sync.rs`). The client HLE sends a random
 per-install DID, routes to the assigned relay port, and proves its

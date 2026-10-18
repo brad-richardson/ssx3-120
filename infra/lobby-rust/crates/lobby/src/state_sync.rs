@@ -40,6 +40,9 @@ const MAX_BUCKETS: usize = 4096;
 pub struct Sscfg {
     pub bind: String,
     pub port: u16,
+    /// Extra transition ports to also listen on (old builds' baked-in
+    /// STATE port), fed into the same hub so old and new clients pair.
+    pub legacy_ports: Vec<u16>,
     /// Test-only injected one-way delay + uniform jitter, milliseconds.
     pub delay_ms: f64,
     pub jitter_ms: f64,
@@ -72,6 +75,7 @@ impl Default for Sscfg {
         Self {
             bind: "127.0.0.1".into(),
             port: 3757,
+            legacy_ports: Vec::new(),
             delay_ms: 0.0,
             jitter_ms: 0.0,
             timeout_ms: 2000,
@@ -870,41 +874,68 @@ pub async fn run(
     mut stop: tokio::sync::watch::Receiver<bool>,
     qp: Arc<Mutex<QpStatus>>,
 ) {
-    let sock = match UdpSocket::bind((cfg.bind.as_str(), cfg.port)).await {
-        Ok(s) => Arc::new(s),
-        Err(e) => {
-            info!(port = cfg.port, err = %e, "quickplay bind failed");
-            return;
+    // The primary fixed port plus any legacy transition ports all feed one
+    // hub, so a client on the old baked-in port still pairs with a client
+    // on the new port. Ports are deduped; legacy bind failures are logged
+    // and ignored, a primary bind failure is fatal for the endpoint.
+    let mut sock_ports: Vec<u16> = vec![cfg.port];
+    for p in &cfg.legacy_ports {
+        if !sock_ports.contains(p) {
+            sock_ports.push(*p);
         }
-    };
-    info!(port = cfg.port, lead_ms = cfg.start_delay_ms, delay_ms = cfg.delay_ms,
-          jitter_ms = cfg.jitter_ms, "quickplay up");
-    let (delay, jitter) = (cfg.delay_ms, cfg.jitter_ms);
-    let mut hub = Hub::new(cfg, Instant::now());
-    let mut buf = [0u8; DATAGRAM_MAX];
-    let mut tick = tokio::time::interval(Duration::from_millis(100));
-    let mut stat_t = Instant::now();
-    let send = |sock: &Arc<UdpSocket>, outs: Vec<Out>| {
-        for (dst, bytes) in outs {
-            let d = delay / 1000.0 + rand::random::<f64>() * jitter / 1000.0;
-            if d > 0.0 {
-                let s2 = sock.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(Duration::from_secs_f64(d)).await;
-                    let _ = s2.send_to(&bytes, dst).await;
-                });
-            } else {
-                let _ = sock.try_send_to(&bytes, dst);
+    }
+    let mut socks: Vec<Arc<UdpSocket>> = Vec::new();
+    for p in &sock_ports {
+        match UdpSocket::bind((cfg.bind.as_str(), *p)).await {
+            Ok(s) => {
+                info!(port = *p, lead_ms = cfg.start_delay_ms, delay_ms = cfg.delay_ms,
+                      jitter_ms = cfg.jitter_ms, "quickplay up");
+                socks.push(Arc::new(s));
+            }
+            Err(e) => {
+                info!(port = *p, err = %e, "quickplay bind failed");
+                if *p == cfg.port {
+                    return;
+                }
             }
         }
-    };
+    }
+    if socks.is_empty() {
+        return;
+    }
+    let (delay, jitter) = (cfg.delay_ms, cfg.jitter_ms);
+    // Fan all sockets into one channel so the hub stays single-threaded.
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<(usize, SocketAddr, Vec<u8>)>(2048);
+    for (i, s) in socks.iter().enumerate() {
+        let s = s.clone();
+        let tx = tx.clone();
+        tokio::spawn(async move {
+            let mut buf = [0u8; DATAGRAM_MAX];
+            loop {
+                match s.recv_from(&mut buf).await {
+                    Ok((n, src)) => {
+                        if tx.send((i, src, buf[..n].to_vec())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+    }
+    drop(tx);
+    let mut hub = Hub::new(cfg, Instant::now());
+    // Which socket a client reached us on, so replies keep the NAT mapping.
+    let mut reply_via: HashMap<SocketAddr, usize> = HashMap::new();
+    let mut tick = tokio::time::interval(Duration::from_millis(100));
+    let mut stat_t = Instant::now();
     loop {
         tokio::select! {
             _ = stop.changed() => break,
             _ = tick.tick() => {
                 let now = Instant::now();
                 let outs = hub.on_tick(now);
-                send(&sock, outs);
+                send_routed(&socks, &reply_via, outs, delay, jitter);
                 *qp.lock().unwrap() = hub.qp_status(now);
                 if stat_t.elapsed() >= Duration::from_secs(60) {
                     stat_t = Instant::now();
@@ -913,14 +944,51 @@ pub async fn run(
                           "quickplay stats");
                 }
             }
-            r = sock.recv_from(&mut buf) => {
-                let Ok((n, src)) = r else { continue };
-                let outs = hub.on_datagram(src, &buf[..n], Instant::now());
-                send(&sock, outs);
+            Some((i, src, data)) = rx.recv() => {
+                if i != 0 {
+                    if reply_via.len() > 8192 {
+                        reply_via.clear();
+                    }
+                    reply_via.insert(src, i);
+                }
+                let outs = hub.on_datagram(src, &data, Instant::now());
+                send_routed(&socks, &reply_via, outs, delay, jitter);
             }
         }
     }
     info!("quickplay down");
+}
+
+/// Send each output via the socket the destination last reached us on
+/// (defaulting to the primary, index 0), so a client behind NAT keeps its
+/// source-port mapping during the port transition.
+fn send_routed(
+    socks: &[Arc<UdpSocket>],
+    reply_via: &HashMap<SocketAddr, usize>,
+    outs: Vec<Out>,
+    delay: f64,
+    jitter: f64,
+) {
+    if socks.is_empty() {
+        return;
+    }
+    for (dst, bytes) in outs {
+        let idx = reply_via
+            .get(&dst)
+            .copied()
+            .unwrap_or(0)
+            .min(socks.len() - 1);
+        let sock = socks[idx].clone();
+        let d = delay / 1000.0 + rand::random::<f64>() * jitter / 1000.0;
+        if d > 0.0 {
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_secs_f64(d)).await;
+                let _ = sock.send_to(&bytes, dst).await;
+            });
+        } else {
+            let _ = sock.try_send_to(&bytes, dst);
+        }
+    }
 }
 
 #[cfg(test)]

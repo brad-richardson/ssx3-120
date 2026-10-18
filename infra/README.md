@@ -79,8 +79,9 @@ kept as `/usr/local/bin/ssx3-lobby.previous`.
 ## 5. Operate
 
 - Status: `systemctl is-active ssx3-lobby.service`; TCP listeners
-  11000/10901/13505 and the Quick Play UDP listener 3757 (the top of the
-  relay range). Relay UDP ports bind per pair on demand, so no other
+  11000/10901/13505 and the Quick Play UDP listener 3657 (a fixed port just
+  below the relay range; 3757 stays open during the transition for installed
+  clients). Relay UDP ports bind per pair on demand, so no other
   UDP listener when idle is normal.
 - Logs: `journalctl -u ssx3-lobby.service` (health events and relay
   counters only; names, IPs and tokens stay in memory).

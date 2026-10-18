@@ -78,6 +78,10 @@ EOF'
   # DEP1: Rust lobby relay UDP range (static port rule; sources stay in
   # the security list, same as the TCP ports above).
   - [ ufw, allow, "${relay_udp_start}:${relay_udp_end}/udp" ]
+  # Quick Play STATE/results UDP (fixed 3657 below the range + legacy 3757).
+%{ for port in state_udp_ports ~}
+  - [ ufw, allow, "${port}/udp" ]
+%{ endfor ~}
   - [ ufw, --force, enable ]
   # Docker starts only after the flush and ufw are in place, so its chains
   # survive; the trailing restart re-creates them in case a later package

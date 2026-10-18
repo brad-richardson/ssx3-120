@@ -25,6 +25,10 @@ AmbientCapabilities=
 RestrictAddressFamilies=AF_INET AF_INET6
 MemoryMax=512M
 TasksMax=256
+# lobby-load-1: a ~1000-pair house holds ~2 TCP conns/player + 1 relay
+# socket/pair (thousands of FDs). systemd's default service soft limit is
+# 1024, which would cap the lobby far below the relay range.
+LimitNOFILE=65536
 
 # Config is read-only under /etc; logs go to the journal.
 ReadOnlyPaths=/etc/ssx3-lobby
