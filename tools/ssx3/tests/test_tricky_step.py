@@ -573,6 +573,8 @@ class BuildTrickyDriverTest(unittest.TestCase):
                 self.assertEqual(
                     Path(argv[argv.index('--work-dir') + 1]),
                     sp / ('work-' + t))
+                # speech_composite TARGETS carry the .dat extension.
+                self.assertTrue((sp / 'members' / (t + '.dat')).is_file())
             self.assertEqual(out, work / 'speech-tricky-big')
 
     def test_resume_copies_finals_and_skips_missing(self):

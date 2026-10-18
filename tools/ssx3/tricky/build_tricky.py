@@ -380,7 +380,8 @@ class Build:
         members = sp / 'members'
         members.mkdir(exist_ok=True)
         for t in SPEECH_TARGETS:
-            shutil.copy2(sp / 'built' / (t + '.dat'), members / t)
+            # speech_composite TARGETS carry the .dat extension.
+            shutil.copy2(sp / 'built' / (t + '.dat'), members / (t + '.dat'))
         out = self.W / 'speech-tricky-big'
         run(self.logs, 'speech-composite', sys.executable, T / 'speech_composite.py',
             self.a.ssx3_iso, members, out, cwd=self.W)
