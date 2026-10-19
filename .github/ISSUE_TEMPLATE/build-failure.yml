@@ -1,0 +1,36 @@
+name: Build failure
+description: The builder itself failed on your computer (doctor, prepare, android-libs, android, ios, or the Tricky step).
+title: "[Build]: "
+body:
+  - type: input
+    id: host
+    attributes:
+      label: Host OS / CPU / RAM
+      description: OS version, CPU, and RAM of the machine that ran the build.
+      placeholder: "e.g. macOS 15.2 / M4 / 16 GB, Ubuntu 24.04 / i5-13600K / 11 GB (WSL2)"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command that failed.
+      placeholder: "./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses"
+    validations:
+      required: true
+  - type: textarea
+    id: tail
+    attributes:
+      label: Last ~50 lines of output
+      description: Paste the tail of the failing run, including the error line.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor output
+      description: Output of the matching doctor probe, e.g. `python3 build.py doctor --target android` (or `prepare`, `mac`, `ios` for that step).
+      render: shell
+    validations:
+      required: true

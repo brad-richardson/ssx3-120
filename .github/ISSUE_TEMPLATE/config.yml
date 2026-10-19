@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Known issues
+    url: https://github.com/brad-richardson/ssx3-120/blob/main/docs/known-issues.md
+    about: Alpha rough edges and device/build notes — check here before filing.

@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in the built app behaves wrong. Use this for gameplay, graphics, audio, controls, or install issues that are not a host build failure or an Online problem.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Before filing, skim [docs/known-issues.md](../../blob/main/docs/known-issues.md) — Tricky and Online are Alpha and several rough edges are already listed there.
+  - type: input
+    id: device
+    attributes:
+      label: Device + OS
+      description: The device that ran the app and its OS version.
+      placeholder: "e.g. Odin 3 / Android 13, Pixel 8 / Android 14, iPhone 15 / iOS 18"
+    validations:
+      required: true
+  - type: input
+    id: build-host
+    attributes:
+      label: Build host
+      description: The computer that ran the build.
+      placeholder: "e.g. macOS Apple silicon 15.2, Ubuntu 24.04 x86_64, Windows 11 + WSL2 Ubuntu"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact build command
+      description: The full ./build (or python3 build.py) command you ran, including --tricky-iso when used.
+      placeholder: "./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses"
+    validations:
+      required: true
+  - type: dropdown
+    id: tricky
+    attributes:
+      label: Tricky layer
+      description: Whether the build included the optional Tricky layer (--tricky-iso).
+      options:
+        - "No (stock SSX 3 only)"
+        - "Yes (built with --tricky-iso)"
+    validations:
+      required: true
+  - type: dropdown
+    id: rate
+    attributes:
+      label: "60 / 120"
+      description: Gameplay is 120-only; the 60 option is plain stock 60.
+      options:
+        - "120"
+        - "60 (stock)"
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened vs what you expected
+      description: One or two sentences each.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Menu path, course, mode, and anything needed to see it again.
+      placeholder: "1. ... 2. ... 3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log section (logcat, Xcode console, or builder output). Trim to the interesting part.
+      render: shell
+  - type: markdown
+    attributes:
+      value: |
+        Support-bundle note: the builder compiles support libraries from source by default. It only uses a verified prebuilt support release when you pass `--prebuilt`, and that bundle holds game-free support libraries, notices, and shader/font text only — never your disc or any game bytes (see `tools/ssx3/build.py` `support_bundle` and `tools/ssx3/prebuilt.py`). If you passed `--prebuilt`, paste the builder line that says `Verified prebuilt release` or `building from source` (plus any `contract drift:` lines) into the Logs field above. Do not attach bundles, ISOs, or generated game code.

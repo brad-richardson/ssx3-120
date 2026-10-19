@@ -1,0 +1,46 @@
+name: Online problem
+description: Quick Play matchmaking or netplay through the community lobby server.
+title: "[Online]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Online is Alpha: Quick Play pairs two players through a small lobby server (default `ssx.bradr.dev`); there is no bot fallback. To play offline, just don't pick Online in the menu.
+  - type: input
+    id: when
+    attributes:
+      label: Time (UTC)
+      description: When the problem happened, so server logs can be matched.
+      placeholder: "e.g. 2026-10-19 03:15 UTC"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device + OS
+      description: The device that ran the app and its OS version.
+      placeholder: "e.g. Pixel 8 / Android 14, iPhone 15 / iOS 18"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Lobby server
+      description: Default or a custom PS2X_NET_SERVER host.
+      placeholder: "default (ssx.bradr.dev) / PS2X_NET_SERVER=<host>"
+    validations:
+      required: true
+  - type: textarea
+    id: screen
+    attributes:
+      label: What the screen said
+      description: The exact menu/message text on the device (e.g. what the Online row or match screen showed).
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Include the other player's device/OS when known.
+    validations:
+      required: true

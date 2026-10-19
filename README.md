@@ -189,6 +189,8 @@ this repo holds the operator side (`infra/`: one small cloud host, deploy,
 harden, backup, rollback). To play offline, just don't pick Online in the
 menu; the in-game settings panel has no Online row.
 
+Before filing, check [docs/known-issues.md](docs/known-issues.md) for current Alpha rough edges.
+
 ## Provenance and licence
 
 Fresh repo, no imported history. `SOURCE_PROVENANCE.md` + `SOURCE_MANIFEST.tsv`
