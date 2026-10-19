@@ -5,7 +5,7 @@ Tricky and Online are **Alpha**. This page lists the rough edges that are alread
 ## Tricky (Alpha)
 
 - **Tokyo Megaplex has no gems yet.** The gem tables cover the other courses; the Megaplex gem pass is still pending, so its gems are skipped at build time.
-- **SSX 3 DJ intros may play on Tricky courses.** The silent-ENGLISH recipe (`english-recipe-1`) is not landed yet, so without it the stock SSX 3 radio/artist intros can still be heard where the Tricky layer omits the replacement.
+- **SSX 3 DJ intros may play on Tricky courses.** The build step that silences them is not in the converter yet, so the stock SSX 3 radio/artist intros can still be heard on Tricky courses.
 - **Tricky audio needs local tools.** Tricky music/speech build only when local `ffmpeg` + `vgmstream` installs are present (probed, never fetched). Without them the Tricky layer builds without the audio aliases and those courses play SSX 3's soundtrack.
 
 ## Online (Alpha)
@@ -18,4 +18,4 @@ Tricky and Online are **Alpha**. This page lists the rough edges that are alread
 
 ## iOS
 
-- **iOS needs a Mac + Xcode + an Apple ID.** iPhone/iPad builds run on macOS Apple silicon with Xcode (Metal toolchain) and need your 10-character Apple Development Team ID (`--team`); signing uses the Apple Development certificate from Xcode's automatic signing for that team. Upgrade a installed app with a plain install — never uninstall it (that wipes saves).
+- **iOS needs a Mac + Xcode + an Apple ID.** iPhone/iPad builds run on macOS Apple silicon with Xcode (Metal toolchain) and need your 10-character Apple Development Team ID (`--team`); signing uses the Apple Development certificate from Xcode's automatic signing for that team. Upgrade an installed app with a plain install — never uninstall it (that wipes saves).
