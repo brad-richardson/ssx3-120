@@ -569,30 +569,44 @@ class Build:
         print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
 
     def resume_worlds(self, reuse):
-        """Resume from speech: copy a finished run's world finals + host
-        BAM into this fresh workdir, then rerun preview onward. Courses
-        with no final in the reuse dir take the same loud skip keys
-        phase_worlds uses (mega / resets-<course>). Also carries the
+        """Resume from speech: copy finished runs' world finals + host
+        BAM into this fresh workdir, then rerun preview onward. Accepts
+        one dir or a list (first dir wins per artifact): pass the extra
+        dir carrying the Megaplex world alongside the 9-course dir.
+        Courses with no final in ANY reuse dir take the same loud skip
+        keys phase_worlds uses (mega / resets-<course>). Also carries the
         gems/resetvol inputs (w-*-f11, w-*-b, effects, donor) for the
         non-skipped gem courses; absent trees are left for the phases to
-        fail closed on."""
-        reuse = Path(reuse)
-        if reuse.resolve() == self.W.resolve():
-            raise SystemExit(f'--reuse-worlds must differ from --work: {reuse}')
-        host = reuse / 'host-bam' / 'BAM.BIG'
-        if not host.is_file():
-            raise SystemExit(f'reuse worlds lack host BAM: {host}')
+        fail closed on. [tk-speed-1-gems: multi-dir]"""
+        reuses = [Path(reuse)] if isinstance(reuse, (str, Path)) else \
+            [Path(r) for r in reuse]
+        for r in reuses:
+            if r.resolve() == self.W.resolve():
+                raise SystemExit(
+                    f'--reuse-worlds must differ from --work: {r}')
+        host = next((r / 'host-bam' / 'BAM.BIG' for r in reuses
+                     if (r / 'host-bam' / 'BAM.BIG').is_file()), None)
+        if host is None:
+            raise SystemExit(
+                f'reuse worlds lack host BAM: {reuses[0]}/host-bam/BAM.BIG')
         dest = self.W / 'host-bam' / 'BAM.BIG'
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(host, dest)
+
+        def first(rel):
+            for r in reuses:
+                if (r / rel).is_file():
+                    return r / rel
+            return None
+
         for c in BUILD_COURSES:
             rel, _want = self.world_final_rel(c)
-            src = reuse / rel
-            if not src.is_file():
+            src = first(rel)
+            if src is None:
                 key = 'mega' if c == 'mega' else f'resets-{c}'
                 self.skipped[key] = f'reused worlds lack {rel}'
-                print(f'{c.upper()} REUSED-SKIP: no {rel} in {reuse}; '
-                      f'continuing without it', flush=True)
+                print(f'{c.upper()} REUSED-SKIP: no {rel} in '
+                      f'{reuses[0]}; continuing without it', flush=True)
                 continue
             dst = self.W / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -603,26 +617,35 @@ class Build:
         # gem_step ALWAYS runs (pipe/alaska rows) and also needs
         # w-alaska-b/scenery.json, which is outside GEM_COURSES: require
         # it here instead of failing late inside gem-step.
+        def first_dir(rel):
+            for r in reuses:
+                if (r / rel).is_dir():
+                    return r / rel
+            return None
+
         for arch, _group in GEM_COURSES:
             c = arch.lower()
             if f'resets-{c}' in self.skipped:
                 continue
             for tree in (f'w-{c}-f11', f'w-{c}-b'):
-                if (reuse / tree).is_dir():
-                    shutil.copytree(reuse / tree, self.W / tree)
+                hit = first_dir(tree)
+                if hit is not None:
+                    shutil.copytree(hit, self.W / tree)
         for tree in ('effects', 'donor'):
-            if (reuse / tree).is_dir():
-                shutil.copytree(reuse / tree, self.W / tree)
-        alb = reuse / 'w-alaska-b' / 'scenery.json'
-        if not alb.is_file():
+            hit = first_dir(tree)
+            if hit is not None:
+                shutil.copytree(hit, self.W / tree)
+        alb = first('w-alaska-b/scenery.json')
+        if alb is None:
             raise SystemExit(
-                f'reuse worlds lack {alb} (gem-step --alaska-scenery); '
-                f're-run the resume from a finished run with Alaska rung B')
+                f'reuse worlds lack w-alaska-b/scenery.json (gem-step '
+                f'--alaska-scenery); re-run the resume from a finished run '
+                f'with Alaska rung B')
         dest_alb = self.W / 'w-alaska-b' / 'scenery.json'
         dest_alb.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(alb, dest_alb)
-        print(f'worlds reused from {reuse}; skipped: {sorted(self.skipped)}',
-              flush=True)
+        print(f'worlds reused from {reuses[0]}; skipped: '
+              f'{sorted(self.skipped)}', flush=True)
 
     def phase_preview(self):
         run(self.logs, 'preview', sys.executable, T / 'run_chain.py',
@@ -1115,11 +1138,12 @@ def main(argv=None):
                          'when auto')
     ap.add_argument('--from-phase', default=None, choices=['speech'],
                     help='resume at a later phase, reusing a finished run')
-    ap.add_argument('--reuse-worlds', default=None,
+    ap.add_argument('--reuse-worlds', default=None, action='append',
                     help='finished --work dir whose world finals + host BAM '
                          '+ gems inputs (w-*-f11, w-*-b, effects, donor) are '
                          'copied into the fresh --work dir (fresh dir only; '
-                         'never the same dir)')
+                         'never the same dir). Repeat to layer an extra dir '
+                         '(e.g. the Megaplex world): first dir wins per file.')
     ap.add_argument('--routes-ref-dir', default=None)
     ap.add_argument('--english-base', default=None)
     ap.add_argument('--vgmstream', default=None,

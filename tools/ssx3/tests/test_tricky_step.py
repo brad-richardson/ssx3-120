@@ -633,6 +633,34 @@ class BuildTrickyDriverTest(unittest.TestCase):
                 want[key] = f'reused worlds lack {rel}'
             self.assertEqual(b.skipped, want)
 
+    def test_resume_layers_extra_dir_for_mega(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            nine = Path(tmp) / 'nine'
+            (nine / 'host-bam').mkdir(parents=True)
+            (nine / 'host-bam' / 'BAM.BIG').write_bytes(b'bam')
+            (nine / 'w-pipe-s5').mkdir(parents=True)
+            (nine / 'w-pipe-s5' / 'PIPE.BIG').write_bytes(b'pipe-nine')
+            (nine / 'w-alaska-b').mkdir(parents=True)
+            (nine / 'w-alaska-b' / 'scenery.json').write_bytes(b'{}')
+            mega = Path(tmp) / 'mega'
+            (mega / 'w-mega-routes').mkdir(parents=True)
+            (mega / 'w-mega-routes' / 'MEGA.BIG').write_bytes(b'mega')
+            (mega / 'w-pipe-s5').mkdir(parents=True)
+            (mega / 'w-pipe-s5' / 'PIPE.BIG').write_bytes(b'pipe-mega')
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped = work, {}
+            with patch.object(driver, 'check') as check:
+                b.resume_worlds([nine, mega])
+            self.assertEqual(
+                (work / 'w-mega-routes' / 'MEGA.BIG').read_bytes(), b'mega')
+            # first dir wins per file
+            self.assertEqual(
+                (work / 'w-pipe-s5' / 'PIPE.BIG').read_bytes(), b'pipe-nine')
+            self.assertNotIn('mega', b.skipped)
+            self.assertEqual(check.call_count, 2)
+
     def test_resume_carries_gems_inputs(self):
         with tempfile.TemporaryDirectory() as tmp:
             reuse = Path(tmp) / 'reuse'
