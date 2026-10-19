@@ -176,6 +176,14 @@ struct LimitsCfg {
     waiter_timeout_secs: u64,
     #[serde(default = "d_idle_probe")]
     idle_probe_secs: u64,
+    /// Idle keepalive for an unpaired queued searcher (online-lone-1):
+    /// the stock client drops a search that sees no inbound game-socket
+    /// bytes for ~3600 ticks (~60 s at 60 Hz), while the generic probe
+    /// fires at 90 s wall. Probing waiters faster keeps a lone search
+    /// alive to the stock give-up path. Paired sessions (off-queue) and
+    /// pre-search browsers keep the generic probe.
+    #[serde(default = "d_waiter_probe")]
+    waiter_probe_secs: u64,
     #[serde(default = "d_idle_close")]
     idle_close_secs: u64,
     /// Buddy presence TCP (13505) idle lifetime for an authenticated
@@ -431,6 +439,9 @@ const fn d_waiter_timeout() -> u64 {
 const fn d_idle_probe() -> u64 {
     90
 }
+const fn d_waiter_probe() -> u64 {
+    30
+}
 const fn d_idle_close() -> u64 {
     240
 }
@@ -547,6 +558,7 @@ impl Default for LimitsCfg {
             max_sessions_per_ip: d_max_sessions_per_ip(),
             waiter_timeout_secs: d_waiter_timeout(),
             idle_probe_secs: d_idle_probe(),
+            waiter_probe_secs: d_waiter_probe(),
             idle_close_secs: d_idle_close(),
             buddy_close_secs: d_buddy_close(),
             paired_grace_secs: d_paired_grace(),
@@ -1027,6 +1039,7 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
     };
     let mut last_active = Instant::now();
     let idle_probe = Duration::from_secs(state.cfg.limits.idle_probe_secs);
+    let waiter_probe = Duration::from_secs(state.cfg.limits.waiter_probe_secs);
     let idle_close = Duration::from_secs(state.cfg.limits.idle_close_secs);
     loop {
         // Unauthenticated connections get 10 s, not 240 s (M2): login is
@@ -1061,7 +1074,23 @@ async fn handle_game(state: Arc<State>, stream: TcpStream, peer: SocketAddr) {
                     }
                     break;
                 }
-                if last_active.elapsed() >= idle_probe
+                // online-lone-1: an unpaired queued searcher starves after
+                // ~3600 silent game ticks, far inside the generic 90 s
+                // probe. Probe waiters on the faster cadence so a lone
+                // search reaches the stock give-up instead of the
+                // disconnect dialog. Paired sessions leave the queue at
+                // pair time, so racing pairs keep the generic cadence.
+                // Single lock only (queue), no ordering issue.
+                let probe = if persona
+                    .as_deref()
+                    .map(|p| state.queue.lock().unwrap().iter().any(|n| n.as_str() == p))
+                    .unwrap_or(false)
+                {
+                    waiter_probe
+                } else {
+                    idle_probe
+                };
+                if last_active.elapsed() >= probe
                     && gsend(&wr, types::PNG, types::SUB_ZERO, &[], &[])
                         .await
                         .is_err()
@@ -3512,6 +3541,62 @@ mod tests {
             .await
             .expect("unpaired game conn still open past idle_close_secs");
         assert_eq!(n.unwrap(), 0, "unpaired game conn got bytes instead of close");
+    }
+
+    /// online-lone-1: a lone queued searcher gets a game-socket keepalive
+    /// inside the guest's ~3600-tick silence budget, while an
+    /// authenticated bystander that never queued sees no fast probe.
+    /// (The stock client drops a search with no inbound game bytes for
+    /// ~3600 ticks; the generic 90 s probe lands too late at 60 Hz.)
+    #[tokio::test]
+    async fn lone_waiter_gets_fast_probe_while_bystander_waits() {
+        let (mut cfg, _) = test_cfg("always");
+        cfg.limits.waiter_probe_secs = 2;
+        cfg.limits.idle_probe_secs = 3600;
+        cfg.limits.idle_close_secs = 3600;
+        cfg.limits.max_queue_per_ip = 100;
+        let rport = free_udp_port().await;
+        cfg.relay.port_start = rport;
+        cfg.relay.port_end = rport;
+        let (state, lp, gp, bp) = boot_cfg(cfg, vec![rport]).await;
+        let (mut ga, _ba) = login(&state, lp, gp, bp, "lone-a").await;
+        let (mut gc, _bc) = login(&state, lp, gp, bp, "byst-c").await;
+        // A queues a lone search; C browses (authenticated, never quiks).
+        ga.send(types::QUIK, &[("KIND", "DeathRace")]).await;
+        let q = ga.recv().await;
+        ga.expect(&q, "quik");
+        // The probe fires on the first 30 s authenticated read quantum
+        // once the waiter probe has expired. Script::recv panics after 5
+        // silent seconds, so pump the raw stream here until one full
+        // quantum plus margin passes.
+        let deadline = Instant::now() + Duration::from_secs(45);
+        let mut got_png = false;
+        while !got_png && Instant::now() < deadline {
+            let mut tmp = [0u8; 8192];
+            match tokio::time::timeout(Duration::from_secs(4), ga.stream.read(&mut tmp)).await {
+                Ok(Ok(0)) => break,
+                Ok(Ok(n)) => ga.buf.extend_from_slice(&tmp[..n]),
+                _ => continue,
+            }
+            if ga.buf.len() >= 12 {
+                let size =
+                    u32::from_be_bytes([ga.buf[8], ga.buf[9], ga.buf[10], ga.buf[11]]) as usize;
+                if ga.buf.len() >= size {
+                    let wire = ga.buf[..size].to_vec();
+                    ga.buf.drain(..size);
+                    let (m, _) = ssx3_proto::decode_one(&wire).unwrap();
+                    got_png = m.type_str() == Some("~png");
+                }
+            }
+        }
+        assert!(got_png, "lone waiter got no probe inside waiter_probe_secs");
+        // ...while the bystander sees nothing on the same timescale...
+        let mut tmp = [0u8; 64];
+        let idle = tokio::time::timeout(Duration::from_secs(4), gc.stream.read(&mut tmp)).await;
+        assert!(idle.is_err(), "bystander got the fast probe too");
+        // ...and A is still queued, never paired, never closed.
+        assert!(state.queue.lock().unwrap().contains(&"lone-a".to_string()));
+        assert!(state.pairs.lock().unwrap().is_empty());
     }
 }
 
