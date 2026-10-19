@@ -125,7 +125,7 @@ tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMa
 tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	f14d8b98432dc2162da4ba5a5fd73ac6710755096260fff98960ef6fcd46eaef	168050	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1+public-parity-2-g7-app-label+g9-ios-preset-name+g6-android-receipt
 tools/ssx3/build.py.lock	authored:tk-toolchain-1	-	da63d38c6e2aa2dcdad4473445f246b9df04ab6709ecb53799233e238e468bf1	11292	new
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
-tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	772ce938b853f94b251e559372a52c7eb2d06e95330cf7f49c1f69bc90c3fd42	6818	verbatim
+tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	6580e91212155f0abab3772b249f601e842377fb4f67a5be020d78fea6951b4e	6849	composition:main-guard-import-safe-tricky-picker-2
 tools/ssx3/knobs.tsv	fork@b9bf530a	tools/ssx3/knobs.tsv	c84fb700dc1057a71764d112030e9b8694b7a8d376ce353426fe09a468f9015b	7528	verbatim
 tools/ssx3/mac-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/mac-libs/CMakeLists.txt	4c424127104bab98cb841f66447a28dd241064fb523ffe5b22dc31577d5152a0	2927	verbatim
 tools/ssx3/offline-core/OM1StubHost.cpp	fork@f7a96f23	tools/ssx3/offline-core/OM1StubHost.cpp	15f36302ded2b8c984a61ab8b99185de95c7dda849d6a1b624aed67ac560d5be	672	verbatim
