@@ -123,6 +123,8 @@ Golden table (all reproduced in-builder):
 | `gems.tsv` (345) | `c8407f435bd4…` | — | donor rebuild |
 | `gems.tsv` (483) | `3f4cd72b9394…5ff` | — | chain rebuild (= MGX1 record) |
 | `tricky-gems.tsv` (521) | `467d0357a106…598` | 54,159 | chain rebuild, byte-identical |
+| `english-base-big` (8-member base) | `f61c7418dc15…2d2c` | 31,180,800 | `english_base.py` from the discs, byte-identical (Mac vgmstream r2117 + ffmpeg 9.0.2) |
+| `english-silent-big` (base + silenced DJ intros) | `8625f2ff25c2…728f` | 42,301,440 | `silence_intro_banks.py` on the rebuilt base (8 carried, 2 silenced, decode_peak 0) |
 | slot acceptance | 186 replaced / 8 kept | — | `check_slots.py` 7/7 |
 | `mpf3to4 check` | 35/35 PASS | — | all pool members |
 

@@ -16,7 +16,7 @@ The 8 members (stock SSX 3 ENGLISH.BIG, 30 members) and their takes:
 | PA_Venue_Intro_eng.dat | mc\\VenueIntro.dat stream 20 | donor + zero pad to the 101,632 B stream-0 region |
 | PA_Finish_Line_eng.dat | mc\\Go.dat stream 0 | fill all 60 slots + zero pad |
 | PA_Sponsor_Intro_eng.dat | narr\\Pre_Race_Overlay_01.dat stream 0 | fill all 68 slots + zero pad |
-| DJ_Artist_Intro_2_eng.dat | mc\\VenueIntro.dat stream 20 | EA-XA re-encode (+1.30 dB peak-capped take), fill all 9 slots |
+| DJ_Artist_Intro_2_eng.dat | mc\\VenueIntro.dat stream 20 | vgmstream decode -> ffmpeg 48 kHz mono -> 22050 stereo -> EA-XA re-encode (+1.30 dB peak-capped take), fill all 9 slots |
 | PA_Medal_Run_Intro_eng.dat | mc banks Big_Air + Takeoff (14 slots) | per-slot EA-XA re-encode, embedded gains |
 | PA_Rider_Intro_eng.dat | mc bank Wipeout (38 slots) | per-slot EA-XA re-encode, embedded gains |
 | PA_Rider_Postition_eng.dat | mc banks Position + Pass + Positioning (80 slots) | per-slot EA-XA re-encode, embedded gains |
@@ -289,8 +289,15 @@ def fill_all_slots(member_bytes, take, short):
 
 
 def build_encoded_member(ffmpeg, vgmstream, work, stock_member_bytes,
-                         decisions_path, tricky_big, tmembers, short):
-    """One EA-XA re-encoded member from its decisions TSV."""
+                         decisions_path, tricky_big, tmembers, short,
+                         via_mono48=False):
+    """One EA-XA re-encoded member from its decisions TSV.
+
+    via_mono48 reproduces the part3c take chain (artist gate-call take):
+    donor -> 48 kHz mono -> 22050 stereo. The intermediate is not a
+    no-op: mixdown+resample sample values differ from a direct stereo
+    resample, and the validated take bytes require it.
+    """
     slots = parse_slots(stock_member_bytes)
     by_index = {s["index"]: s for s in slots}
     rows = load_decisions(decisions_path)
@@ -311,9 +318,18 @@ def build_encoded_member(ffmpeg, vgmstream, work, stock_member_bytes,
             if not wav.is_file():
                 decode_donor(vgmstream, stream, wav)
             wav_cache[key] = wav
-        rs = work / f"{bank}-{idx:03}-{s['channels']}ch.wav"
-        if not rs.is_file():
-            resample_22050(ffmpeg, wav_cache[key], s["channels"], rs)
+        if via_mono48:
+            mono = work / f"{bank}-{idx:03}-mono48.wav"
+            if not mono.is_file():
+                run(str(ffmpeg), "-hide_banner", "-v", "error", "-y",
+                    "-i", str(wav_cache[key]), "-ar", "48000", "-ac", "1", str(mono))
+            rs = work / f"{bank}-{idx:03}-mono48-{s['channels']}ch.wav"
+            if not rs.is_file():
+                resample_22050(ffmpeg, mono, s["channels"], rs)
+        else:
+            rs = work / f"{bank}-{idx:03}-{s['channels']}ch.wav"
+            if not rs.is_file():
+                resample_22050(ffmpeg, wav_cache[key], s["channels"], rs)
         take = build_take(ffmpeg, rs, gain, s["template"], s["s_block"],
                           s["bytes"], f"{short} slot {slot_idx}")
         out[s["start"]:s["start"] + len(take)] = take
@@ -382,7 +398,9 @@ def main(argv=None):
         take = donor_stream(tricky_big, tmembers, member, idx)
         filled, nslots = fill_all_slots(stock[off:off + sz], take, short)
         members.append((short, filled))
-    # 4. encoded members from the decisions TSVs.
+    # 4. encoded members from the decisions TSVs. The artist gate-call
+    # take alone goes through the part3c mono48 intermediate (see
+    # build_encoded_member): the mc1 vessel takes resample stereo direct.
     decdir = HERE / "data" / "english-decisions"
     for short in ENCODED_MEMBERS:
         off, sz = stable[CHAR + short]
@@ -390,7 +408,8 @@ def main(argv=None):
             raise SystemExit(f"{short}: stock size {sz} != recipe (wrong disc?)")
         built, took = build_encoded_member(
             ffmpeg, vgmstream, work, stock[off:off + sz],
-            decdir / (short + ".decisions.tsv"), tricky_big, tmembers, short)
+            decdir / (short + ".decisions.tsv"), tricky_big, tmembers, short,
+            via_mono48=(short == "DJ_Artist_Intro_2_eng.dat"))
         members.append((short, built))
         print(f"{short}: {len(took)} takes placed", flush=True)
     rec = merge_container(a.ssx3_iso, members, a.out_composite)
