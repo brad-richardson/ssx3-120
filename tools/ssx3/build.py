@@ -32,6 +32,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import types
 import urllib.request
 import zipfile
 
@@ -2907,8 +2908,13 @@ def ios_onecmd(a):
     # F03: create WORK before any step writes into it (fresh iOS one-command
     # setups failed when prepare wrote SLUS_207.72 under a missing parent).
     a.work.mkdir(parents=True, exist_ok=True)
-    # F15: disk preflight before anything heavy (measured budgets in README).
-    check_capacity(a.work, 'ios')
+    # preflight-fix-1: size the disk gate from what will actually run and
+    # check it before anything heavy (4a/6a: Tricky needs 30 GB up front;
+    # full-reuse reruns need only the rerun margin).
+    _tricky_will_run, _heavy_will_run = onecmd_capacity_needs(
+        a.work, a.iso, a.tricky_iso, getattr(a, 'tricky_from', None),
+        ios_libs_current, getattr(a, 'tricky_audio', None))
+    check_capacity(a.work, 'ios', _tricky_will_run, _heavy_will_run)
     plan = _ux_plan(a, 'ios')
     est = {name: (lo, hi) for name, lo, hi in plan}
     total = len(plan)
@@ -3156,6 +3162,88 @@ def host_memory_bytes():
 MIN_FREE_BYTES = {'android': 25 * 1024**3, 'ios': 20 * 1024**3}
 MIN_FREE_BYTES_DEFAULT = 12 * 1024**3
 MIN_MEMORY_BYTES_WARN = 8 * 1024**3
+# preflight-fix-1: Tricky holds ~9 GB of work plus resume copies and
+# staging (driver gate), so a Tricky run needs 30 GB free up front. A rerun
+# with every skippable output current only runs the final incremental
+# build (Gradle/Xcode) plus packaging (~0.34 GB APK), so 5 GB headroom
+# covers it (e2e-air-1: full-reuse rerun failed at 11.7 GB free demanding
+# 25 GB; tricky skip itself was 0:02).
+TRICKY_MIN_FREE_BYTES = 30 * 1024**3
+RERUN_MIN_FREE_BYTES = 5 * 1024**3
+
+
+def required_free_bytes(target, tricky_will_run=False, heavy_will_run=True):
+    """Sized disk requirement (preflight-fix-1): what will actually run.
+
+    Tricky work dominates, so any Tricky build needs the 30 GB Tricky
+    admission. Otherwise a cold/partial run (prepare or libs will build)
+    needs the stock cold budget, and a full-reuse rerun (everything
+    current, only the final incremental build runs) needs the small
+    rerun margin. Pure function of flags so it unit-tests.
+    """
+    if tricky_will_run:
+        return TRICKY_MIN_FREE_BYTES
+    if heavy_will_run:
+        return MIN_FREE_BYTES.get(target, MIN_FREE_BYTES_DEFAULT)
+    return RERUN_MIN_FREE_BYTES
+
+
+def _safe_prepare_will_run(work, iso):
+    try:
+        return not prepare_current(work, iso)
+    except ValueError:
+        # Different-disc refusal: a fresh --work is needed, which is a
+        # full run for sizing purposes (the caller reports the refusal).
+        return True
+    except (OSError, TypeError, AttributeError):
+        return True
+
+
+def _safe_libs_will_run(work, libs_current_fn):
+    try:
+        return not libs_current_fn(work)
+    except (ValueError, OSError, TypeError, AttributeError):
+        return True
+
+
+def onecmd_capacity_needs(work, ssx3_iso, tricky_iso, tricky_from, libs_current_fn, tricky_audio=None):
+    """Probe which heavy steps will run (preflight-fix-1, no downloads).
+
+    Returns (tricky_will_run, heavy_will_run). Any probe failure means
+    "will run" (fail closed to the full requirement). Tricky current-ness
+    keys on the current host's resolved audio mode + toolchain, like the
+    skip itself; with --tricky-from an absent layer still needs the full
+    Tricky admission for the import copy.
+    """
+    work = Path(work)
+    prepare_will_run = _safe_prepare_will_run(work, ssx3_iso)
+    libs_will_run = _safe_libs_will_run(work, libs_current_fn)
+    tricky_will_run = False
+    if tricky_iso is not None:
+        try:
+            req = tricky_audio or 'auto'
+            if req not in ('on', 'off', 'auto'):
+                tricky_will_run = True
+            else:
+                probe_args = types.SimpleNamespace(tricky_audio=tricky_audio)
+                try:
+                    audio_on = tricky_resolve_audio(probe_args) == 'on'
+                except ValueError:
+                    # --tricky-audio=on without tools: the step will fail
+                    # closed later; size for the full run meanwhile.
+                    return True, True
+                try:
+                    toolchain = tricky_current_toolchain(probe_args)
+                except (ValueError, OSError):
+                    toolchain = None
+                tricky_will_run = not tricky_current(
+                    work, Path(tricky_iso), audio_on=audio_on, toolchain=toolchain)
+        except (ValueError, OSError, TypeError, AttributeError):
+            # Different-disc refusal or missing record: full run.
+            # A same-path ValueError from prepare above already means full.
+            tricky_will_run = True
+    heavy_will_run = prepare_will_run or libs_will_run
+    return tricky_will_run, heavy_will_run
 
 
 # link-mem-1: the Android game link peaks at ~8.39 GiB with 18 ThinLTO
@@ -3202,19 +3290,28 @@ def effective_jobs(requested_or_none, ram_gb_or_none):
     return DEFAULT_JOBS
 
 
-def check_capacity(work, target):
+def check_capacity(work, target, tricky_will_run=False, heavy_will_run=True):
     """F15: fail before heavy work when the work filesystem is too full.
 
     Disk is enforced (a full disk mid-build corrupts outputs); low RAM is
     a warning only (small hosts can still build with --jobs 1).
+    preflight-fix-1: the requirement is sized from what will actually
+    run (required_free_bytes). Tricky runs need the 30 GB admission up
+    front; full-reuse reruns need only the small rerun margin.
     """
-    required = MIN_FREE_BYTES.get(target, MIN_FREE_BYTES_DEFAULT)
+    required = required_free_bytes(target, tricky_will_run, heavy_will_run)
     free = shutil.disk_usage(str(work)).free
     if free < required:
+        if tricky_will_run:
+            what = '%s+Tricky cold build' % target
+        elif not heavy_will_run:
+            what = '%s rerun (all cached outputs current)' % target
+        else:
+            what = '%s cold build' % target
         raise ValueError('host preflight: only %.1f GB free under %s, need ~%d GB free '
-                         'for a %s cold build (measured footprints in README; '
+                         'for a %s (measured footprints in README; '
                          'free space or pick another --work)' %
-                         (free / 1024**3, work, required // 1024**3, target))
+                         (free / 1024**3, work, required // 1024**3, what))
     total = host_memory_bytes()
     if total is not None and total < MIN_MEMORY_BYTES_WARN:
         print('warning: host RAM is %.1f GB; 8+ GB is recommended '
@@ -4437,10 +4534,17 @@ def android_onecmd(a):
         return build_ux.run_step(a.work, step_no, total, name, lo, hi, func,
                                  color=color)
 
-    # F15: disk preflight before anything heavy (measured budgets in README).
-    check_capacity(a.work, 'android')
     # F12: disc identity and native host tools before any JDK/SDK download.
     a.iso = validate_ssx3_iso(a.ssx3_iso)
+    # preflight-fix-1: size the disk gate from what will actually run and
+    # check it before any heavy step (toolchain fetch, prepare, tricky).
+    # A Tricky build needs the 30 GB admission up front (4a: the old 25 GB
+    # gate passed, then the driver failed at 21 GB free after ~15 min);
+    # a full-reuse rerun needs only the small rerun margin (6a).
+    _tricky_will_run, _heavy_will_run = onecmd_capacity_needs(
+        a.work, a.iso, a.tricky_iso, getattr(a, 'tricky_from', None),
+        android_libs_current, getattr(a, 'tricky_audio', None))
+    check_capacity(a.work, 'android', _tricky_will_run, _heavy_will_run)
     preflight_host_tools()
     ensure_android_toolchain(a)
     a.target = 'android'

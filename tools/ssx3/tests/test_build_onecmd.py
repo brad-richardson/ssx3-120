@@ -614,6 +614,176 @@ class CapacityTest(unittest.TestCase):
         self.assertIn('3.4 GB', text)
 
 
+class PreflightFix1Test(unittest.TestCase):
+    """preflight-fix-1: upfront Tricky-aware capacity + reuse-sized rerun.
+
+    Row 4a: --tricky-iso cold needs 30 GB up front, before the toolchain
+    fetch and prepare. Row 6a: a full-reuse rerun needs only the small
+    rerun margin, not the cold 25 GB."""
+
+    def usage(self, free_gb):
+        import collections
+        usage = collections.namedtuple('usage', 'total used free')
+        total = int((free_gb + 100) * 1024**3)
+        return usage(total, total - int(free_gb * 1024**3), int(free_gb * 1024**3))
+
+    def test_required_free_bytes_truth_table(self):
+        gb = 1024**3
+        self.assertEqual(build.required_free_bytes('android', False, True), 25 * gb)
+        self.assertEqual(build.required_free_bytes('ios', False, True), 20 * gb)
+        self.assertEqual(build.required_free_bytes('android', True, True), 30 * gb)
+        self.assertEqual(build.required_free_bytes('android', True, False), 30 * gb)
+        self.assertEqual(build.required_free_bytes('ios', True, True), 30 * gb)
+        self.assertEqual(build.required_free_bytes('android', False, False), 5 * gb)
+        self.assertEqual(build.required_free_bytes('ios', False, False), 5 * gb)
+        self.assertEqual(build.required_free_bytes('other-target', False, True), 12 * gb)
+        self.assertEqual(build.required_free_bytes('other-target', False, False), 5 * gb)
+
+    def test_tricky_cold_needs_30gb_upfront(self):
+        build.check_capacity = _REAL_CHECK_CAPACITY
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp) / 'work'
+                work.mkdir()
+                with patch.object(build.shutil, 'disk_usage',
+                                   return_value=self.usage(21)):
+                    with self.assertRaisesRegex(ValueError, r'only 21\.0 GB free.*need ~30 GB.*Tricky'):
+                        build.check_capacity(work, 'android', True, True)
+        finally:
+            build.check_capacity = lambda *a, **k: True
+
+    def test_full_reuse_rerun_needs_only_margin(self):
+        build.check_capacity = _REAL_CHECK_CAPACITY
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp) / 'work'
+                work.mkdir()
+                # e2e-air-1 row 6a: 11.7 GB free failed demanding 25 GB.
+                with patch.object(build.shutil, 'disk_usage',
+                                   return_value=self.usage(11.7)):
+                    self.assertTrue(build.check_capacity(work, 'android', False, False))
+                    with self.assertRaisesRegex(ValueError, r'need ~25 GB.*cold build'):
+                        build.check_capacity(work, 'android', False, True)
+                with patch.object(build.shutil, 'disk_usage',
+                                   return_value=self.usage(1)):
+                    with self.assertRaisesRegex(ValueError, r'only 1\.0 GB free.*need ~5 GB.*rerun'):
+                        build.check_capacity(work, 'android', False, False)
+        finally:
+            build.check_capacity = lambda *a, **k: True
+
+    def test_onecmd_capacity_needs_cold_partial_full_reuse(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            iso.write_bytes(b'x')
+            tricky = Path(tmp) / 'tricky.iso'
+            tricky.write_bytes(b'y')
+            # Cold, no Tricky: everything will run.
+            with patch.object(build, 'prepare_current', return_value=False), \
+                 patch.object(build, 'android_libs_current', return_value=False):
+                self.assertEqual(
+                    build.onecmd_capacity_needs(work, iso, None, None,
+                                                build.android_libs_current),
+                    (False, True))
+            # Partial reuse, no Tricky: prepare current, libs will run.
+            with patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=False):
+                self.assertEqual(
+                    build.onecmd_capacity_needs(work, iso, None, None,
+                                                build.android_libs_current),
+                    (False, True))
+            # Full reuse, no Tricky: only the final build runs.
+            with patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=True):
+                self.assertEqual(
+                    build.onecmd_capacity_needs(work, iso, None, None,
+                                                build.android_libs_current),
+                    (False, False))
+            # Cold Tricky: tricky will run even when stock is current.
+            with patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=True), \
+                 patch.object(build, 'tricky_resolve_audio', return_value='off'), \
+                 patch.object(build, 'tricky_current_toolchain', return_value={}), \
+                 patch.object(build, 'tricky_current', return_value=False):
+                self.assertEqual(
+                    build.onecmd_capacity_needs(work, iso, tricky, None,
+                                                build.android_libs_current),
+                    (True, False))
+            # Full reuse with Tricky: tricky skips, stock current.
+            with patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'android_libs_current', return_value=True), \
+                 patch.object(build, 'tricky_resolve_audio', return_value='off'), \
+                 patch.object(build, 'tricky_current_toolchain', return_value={}), \
+                 patch.object(build, 'tricky_current', return_value=True):
+                self.assertEqual(
+                    build.onecmd_capacity_needs(work, iso, tricky, None,
+                                                build.android_libs_current),
+                    (False, False))
+
+    def test_android_onecmd_tricky_cold_fails_before_toolchain(self):
+        build.check_capacity = _REAL_CHECK_CAPACITY
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp) / 'work'
+                work.mkdir()
+                iso = Path(tmp) / 'SSX3.iso'
+                make_iso(iso)
+                tricky = Path(tmp) / 'tricky.iso'
+                make_iso(tricky)
+                args = onecmd_args(work, ssx3_iso=iso, tricky_iso=tricky)
+                calls = []
+                with patch.object(build, 'validate_tricky_iso', return_value=tricky), \
+                     patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                     patch.object(build, 'prepare_current', return_value=False), \
+                     patch.object(build, 'android_libs_current', return_value=False), \
+                     patch.object(build, 'tricky_resolve_audio', return_value='off'), \
+                     patch.object(build, 'tricky_current_toolchain', return_value={}), \
+                     patch.object(build, 'tricky_current', return_value=False), \
+                     patch.object(build.shutil, 'disk_usage',
+                                   return_value=self.usage(21)), \
+                     patch.object(build, 'ensure_android_toolchain',
+                                   side_effect=lambda a: calls.append('toolchain')), \
+                     patch.object(build, 'preflight_host_tools', return_value=True), \
+                     patch.object(build, 'doctor'):
+                    with self.assertRaisesRegex(ValueError, r'need ~30 GB'):
+                        build.android_onecmd(args)
+                self.assertNotIn('toolchain', calls)
+        finally:
+            build.check_capacity = lambda *a, **k: True
+
+    def test_android_onecmd_full_reuse_rerun_passes_with_11gb(self):
+        build.check_capacity = _REAL_CHECK_CAPACITY
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp) / 'work'
+                work.mkdir()
+                iso = Path(tmp) / 'SSX3.iso'
+                make_iso(iso)
+                args = onecmd_args(work, ssx3_iso=iso)
+                calls = []
+                with patch.object(build, 'validate_ssx3_iso', return_value=iso.resolve()), \
+                     patch.object(build, 'prepare_current', return_value=True), \
+                     patch.object(build, 'android_libs_current', return_value=True), \
+                     patch.object(build.shutil, 'disk_usage',
+                                   return_value=self.usage(11.7)), \
+                     patch.object(build, 'preflight_host_tools',
+                                   side_effect=lambda: calls.append('preflight') or True), \
+                     patch.object(build, 'ensure_android_toolchain',
+                                   side_effect=lambda a: calls.append('toolchain')), \
+                     patch.object(build, 'doctor', side_effect=lambda a: calls.append('doctor')), \
+                     patch.object(build, 'prepare', side_effect=lambda a: calls.append('prepare')), \
+                     patch.object(build, 'android_libs', side_effect=lambda a: calls.append('android-libs')), \
+                     patch.object(build, 'android', side_effect=lambda a: calls.append('android')):
+                    build.android_onecmd(args)
+                self.assertIn('toolchain', calls)
+                self.assertIn('android', calls)
+                self.assertNotIn('prepare', calls)
+                self.assertNotIn('android-libs', calls)
+        finally:
+            build.check_capacity = lambda *a, **k: True
+
+
 class InstallDeviceTest(unittest.TestCase):
     """F14: --install discovers its target in the doctor, not after the build."""
 
