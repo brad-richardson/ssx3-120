@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ISSUE_URL = ('https://github.com/brad-richardson/ssx3-120/issues/new'
-             '?template=build-failure.md')
+             '?template=build-failure.yml')
 
 # Course-worker mirror for estimates: courses =
 # max(1, min(floor(cores/3), RAM cap)); kept as a 6-line mirror (not an

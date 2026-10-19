@@ -74,12 +74,14 @@ class EstimateScalingTest(unittest.TestCase):
         self.assertGreater(workers, 1)
 
     def test_table_labels_estimates_and_cites_sources(self):
-        text = build_ux.estimate_table_text(target='android', tricky=True,
-                                            cores=10, ram_gb=64, jobs=8)
-        self.assertIn('ranges, not promises', text)
-        self.assertIn('measured 9-course serial 299 min', text)
-        self.assertIn('measured: 8-CPU Linux, 276 s', text)
-        self.assertIn('measured: M-series Mac', text)
+        android = build_ux.estimate_table_text(
+            target='android', tricky=True, cores=10, ram_gb=64, jobs=8)
+        self.assertIn('ranges, not promises', android)
+        self.assertIn('measured 9-course serial 299 min', android)
+        self.assertIn('measured: 8-CPU Linux, 276 s', android)
+        ios = build_ux.estimate_table_text(
+            target='ios', tricky=False, cores=10, ram_gb=64, jobs=8)
+        self.assertIn('measured: M-series Mac', ios)
 
     def test_estimates_never_raise_without_host_facts(self):
         with patch.object(build_ux, 'host_facts', return_value=(0, None)):
@@ -98,7 +100,7 @@ class FailureMessageTest(unittest.TestCase):
         self.assertIn('re-run the same command to resume', lines[1])
         self.assertIn('open an issue with the build-failure template: '
                       'https://github.com/brad-richardson/ssx3-120/issues/new'
-                      '?template=build-failure.md', lines[2])
+                      '?template=build-failure.yml', lines[2])
         self.assertIn('/w/support-bundle-x.txt', lines[3])
 
     def test_tricky_resume_note_says_no_mid_step_resume(self):
@@ -117,7 +119,7 @@ class FailureMessageTest(unittest.TestCase):
         out = stream.getvalue()
         self.assertIn('[step 3/5] android-libs (est. 3-6 min on this machine)', out)
         self.assertIn('BUILD FAILED at android-libs', out)
-        self.assertIn('build-failure.md', out)
+        self.assertIn('build-failure.yml', out)
         self.assertTrue(bundles)
 
     def test_run_step_success_prints_banner_and_elapsed(self):
