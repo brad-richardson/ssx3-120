@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """TK16 (copy of TK13's, temp dir only; TK13 from TK12, unchanged except the temp file): import the donor course's rails into a PS2 replace-world (item 3), as <STEM>.BIG.
 
-    make_rails.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TEMPLATE.json] [--template T] [--tmp D]
+    make_rails.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TMPDIR] [--template T] [--tmp D]
 
 TK21: when the host has no rail-bound spline (DBC2), a borrowed template
-may be passed explicitly (--template, same file the positional arg 7 took)
-instead of relying on the positional. --tmp overrides the scratch dir.
+may be passed explicitly (--template). The optional 7th positional is
+the workdir scratch dir (sibling rails convention); --tmp overrides it.
 
 Mechanism: every replace-world so far keeps the HOST location's kind-8 splines (rails/paths at the host
 course's positions) and no donor rails. The GameCube route already imports donor rails
@@ -73,11 +73,13 @@ def encode_ps2(spline, rid, track, first_global, matrix, translation, hdr_templa
     return bytes(data)
 
 
-def main():
-    # Explicit --template/--tmp (tk-mega-1): positional arg 7 is ambiguous
-    # with scratch/template use, so flags win; the legacy positional still
-    # works when no flag is given, and conflicts fail closed.
-    argv, tmpdir, template_opt, rest = sys.argv[1:], None, None, []
+def split_rails_args(argv):
+    """Split explicit --template/--tmp flags from positionals (unit-testable).
+
+    Optional 7th positional is the workdir scratch dir (sibling rails
+    convention); the borrowed template travels only via --template."""
+    tmpdir = template_opt = None
+    rest = []
     i = 0
     while i < len(argv):
         if argv[i] == '--template' and i + 1 < len(argv):
@@ -86,17 +88,22 @@ def main():
             tmpdir = argv[i + 1]; i += 2
         else:
             rest.append(argv[i]); i += 1
+    return rest, tmpdir, template_opt
+
+
+def main():
+    rest, tmpdir_opt, borrowed_opt = split_rails_args(sys.argv[1:])
     if len(rest) < 6:
-        raise SystemExit('usage: make_rails21.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TEMPLATE.json] [--template T] [--tmp D]')
-    base_p, exp_p, nbd_p, gsf_p, stem, out_p = rest[:6]  # TK21: optional argv[7] = template rails.json
-    legacy = rest[6] if len(rest) > 6 else None
-    if template_opt is not None and legacy is not None and template_opt != legacy:
-        raise SystemExit('conflicting --template and positional template (arg 7)')
-    borrowed_opt = template_opt or legacy
+        raise SystemExit('usage: make_rails21.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TMPDIR] [--template T] [--tmp D]')
+    base_p, exp_p, nbd_p, gsf_p, stem, out_p = rest[:6]
+    # Optional 7th positional: workdir scratch dir (sibling convention;
+    # the lane path stays the default so 6-arg invocations are unchanged).
+    tmpdir = Path(tmpdir_opt or (rest[6] if len(rest) > 6 else None) or
+                  Path.home() / 'dev/ssx3-work/TK21/tmp')
     base_bytes = Path(base_p).read_bytes()
     tmp = None
     if W(base_p).stem != 'bam':  # probe_ssx3/assemble_archive read data/worlds/bam.*: rename in a scratch copy
-        tmp = str(Path(tmpdir or Path.home() / 'dev/ssx3-work/TK21/tmp') / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
+        tmp = str(tmpdir / (Path(out_p).parent.name + '-rails-bam.BIG'))  # left in place; no deletes
         base_bytes = gdir.rename_world_members(base_bytes, 'bam')
         Path(tmp).parent.mkdir(parents=True, exist_ok=True)
         Path(tmp).write_bytes(base_bytes)

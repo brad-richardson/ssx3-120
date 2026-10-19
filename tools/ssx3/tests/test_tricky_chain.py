@@ -475,16 +475,21 @@ class RailTemplateTest(unittest.TestCase):
                       '344a1100344a1100cf576100', '056d55000f000000'):
             self.assertNotIn(const, source)
 
-    def test_rails_explicit_flags_conflict_fail_closed(self):
-        import subprocess
-        import sys
-        tool = str(TRICKY / 'tk21' / 'make_rails21.py')
-        r = subprocess.run(
-            [sys.executable, tool, 'A', 'B', 'C', 'D', 'E', 'F',
-             '--template', 'T1', 'T2'],
-            capture_output=True, text=True)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn('conflicting', r.stdout + r.stderr)
+    def test_rails_arg_split(self):
+        mod = load('tk_make_rails21', TRICKY / 'tk21' / 'make_rails21.py')
+        # Flags win over positionals; the 7th positional is scratch.
+        rest, tmpdir, tmpl = mod.split_rails_args(
+            ['A', 'B', 'C', 'D', 'E', 'F', 'WDIR',
+             '--template', 'T', '--tmp', 'D'])
+        self.assertEqual(rest,
+                         ['A', 'B', 'C', 'D', 'E', 'F', 'WDIR'])
+        self.assertEqual(tmpdir, 'D')
+        self.assertEqual(tmpl, 'T')
+        rest, tmpdir, tmpl = mod.split_rails_args(
+            ['A', 'B', 'C', 'D', 'E', 'F'])
+        self.assertEqual(len(rest), 6)
+        self.assertIsNone(tmpdir)
+        self.assertIsNone(tmpl)
 
 
 class GemsRungTest(unittest.TestCase):
