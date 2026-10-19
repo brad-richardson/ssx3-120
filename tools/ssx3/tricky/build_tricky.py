@@ -46,8 +46,8 @@ from iso_extract import extract_member, big_member  # noqa: E402
 import tool_paths  # noqa: E402
 from run_chain import COURSES, TKP5_FINALS  # noqa: E402
 
-# build-ux-1: per-course/phase progress lines + 60 s heartbeat. Optional:
-# any import failure leaves plain prints in place and never breaks a build.
+# First-build progress lines + 60 s heartbeat. Optional: any import
+# failure leaves plain prints in place and never breaks a build.
 try:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import build_ux as _ux
@@ -599,7 +599,7 @@ class Build:
         cores, free = cpu_budget(), free_gb()
         print(f'tricky: {workers} courses x {inner} jobs '
               f'(cores {cores}, RAM {free:.1f} GiB)', flush=True)
-        # build-ux-1: modest-rate per-course lines + 60 s heartbeat.
+        # Modest-rate per-course lines + 60 s heartbeat.
         prog = _ux.TrickyProgress(len(BUILD_COURSES)) if _ux else None
         if workers <= 1:
             for c in BUILD_COURSES:

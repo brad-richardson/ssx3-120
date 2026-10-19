@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """First-build experience: step banners, host-scaled estimates, final summary.
 
-build-ux-1. Small output/UX layer for the one-command builds
+Small output/UX layer for the one-command builds
 (`./build android --ssx3-iso ...` / `./build ios --ssx3-iso ...`).
 No build logic lives here: build.py calls into these printers, and the
 Tricky driver (tools/ssx3/tricky/build_tricky.py) uses TrickyProgress
 for its per-course/phase lines. Everything is plain `\n` lines; ANSI
 is only emitted when use_color() allows it (NO_COLOR / non-TTY safe).
 
-Measured anchors (ranges, never promises):
-- prepare 41+4 s Linux (astra-buildtime-1) -> 1-2 min here.
-- android-libs 276 s Linux (astra-buildtime-1) -> 3-6 min.
-- Gradle android 578/673 s Linux, cached 6m23s (release-pb71-1) -> 8-16 min.
-- ios-libs has no isolated fresh wall (astra-buildtime-2) -> 3-6 min.
-- Xcode ios: whole fresh stock iOS ~17 min (release-pb71-1) -> 10-20 min.
-- Tricky worlds: r13 nine-course work sum 299 min serial, ~104 min at
-  3 workers (tk-speed-1); scaled by this host's course-worker sizing.
-- Tricky tail (speech/music/gems/layout): 15-35 min (astra-buildtime-2;
-  anchors: r13b 20.1 min to the gems failure, K 21.3 min partial).
+Measured anchors (ranges, never promises; full receipts live in the
+project's internal build-timing notes):
+- prepare ~45 s on an 8-CPU Linux host -> 1-2 min here.
+- android-libs 276 s on the same host -> 3-6 min.
+- Gradle android 578/673 s there, 6m23s cached on a Mac -> 8-16 min.
+- ios-libs has no isolated fresh measurement -> 3-6 min.
+- Xcode ios: whole fresh stock iOS ~17 min on a Mac -> 10-20 min.
+- Tricky worlds: 9-course serial work sum 299 min, ~104 min at
+  3 workers; scaled by this host's course-worker sizing.
+- Tricky tail (speech/music/gems/layout): 15-35 min.
 - install 1-3 min (transfer; unmeasured, labeled an estimate).
 """
 import os
@@ -30,25 +30,26 @@ from pathlib import Path
 ISSUE_URL = ('https://github.com/brad-richardson/ssx3-120/issues/new'
              '?template=build-failure.md')
 
-# Tricky sizing mirror (tricky-manifest-1 decision): courses =
+# Course-worker mirror for estimates: courses =
 # max(1, min(floor(cores/3), RAM cap)); kept as a 6-line mirror (not an
-# import) so the driver and the tests never depend on each other.
+# import, so the driver and the tests never depend on each other) of the
+# shipped sizing (floor(cores/3) bounded by a per-course RAM peak).
 _COURSE_PEAK_GB = 4.0
 _RAM_RESERVE_GB = 8.0
-_SERIAL_WORK_MIN = 299.0  # tk-speed-1 r13 nine-course work sum, minutes.
-_HOST_FACTOR = (0.75, 1.50)  # astra-buildtime-2 H interval (assumption).
+_SERIAL_WORK_MIN = 299.0  # Measured 9-course serial work sum, minutes.
+_HOST_FACTOR = (0.75, 1.50)  # Host-performance interval (assumption).
 
 # (step, lo_min, hi_min, source tag) for the non-Tricky steps.
 _BASE_ESTIMATES = {
     'doctor': (0, 1, 'tool probes only'),
-    'prepare': (1, 2, 'astra-buildtime-1 41+4s Linux'),
-    'android-libs': (3, 6, 'astra-buildtime-1 276s Linux'),
-    'android': (8, 16, 'astra-buildtime-1 578/673s; release-pb71-1 cached 6m23s'),
-    'ios-libs': (3, 6, 'astra-buildtime-2 (no isolated fresh wall)'),
-    'ios': (10, 20, 'release-pb71-1 whole fresh stock iOS ~17 min'),
+    'prepare': (1, 2, 'measured: 8-CPU Linux, 45 s'),
+    'android-libs': (3, 6, 'measured: 8-CPU Linux, 276 s'),
+    'android': (8, 16, 'measured: 8-CPU Linux 578/673 s; cached Mac 6m23s'),
+    'ios-libs': (3, 6, 'estimate: no isolated fresh measurement'),
+    'ios': (10, 20, 'measured: M-series Mac, whole fresh stock iOS ~17 min'),
     'install': (1, 3, 'transfer; unmeasured'),
 }
-_TAIL_ESTIMATE = (15, 35, 'astra-buildtime-2; r13b 20.1 min, K 21.3 min')
+_TAIL_ESTIMATE = (15, 35, 'speech/music/gems/layout tail')
 
 # Exact per-step resume contract (verified against build.py predicates).
 RESUME_NOTES = {
@@ -132,7 +133,7 @@ def host_facts():
 
 
 def course_workers(cores, ram_gb, jobs=8, nready=9):
-    """Mirror of the tricky-manifest-1 course sizing for estimates.
+    """Mirror of the shipped course sizing for estimates.
 
     courses = max(1, min(nready, floor(cores/3), RAM cap)) where the RAM
     cap = floor((ram - reserve) / per-course peak); unknown RAM skips
@@ -196,8 +197,8 @@ def estimate_table_text(*, target, tricky, audio_on=False, cores=None,
     for name, lo, hi in planned:
         if name == 'tricky':
             workers, _note = course_workers(cores, ram_gb, jobs)
-            src = ('tk-speed-1 r13 serial 299 min / %d workers x H0.75-1.5 '
-                   '+ tail 15-35 min' % workers)
+            src = ('measured 9-course serial 299 min / %d workers, '
+                   'host factor 0.75-1.5 + tail 15-35 min' % workers)
             if not audio_on:
                 src += '; audio off shortens the tail'
         else:

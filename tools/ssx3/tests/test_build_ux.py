@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""build-ux-1: estimate scaling, banner formatting, failure help, non-TTY.
+"""First-build UX: estimate scaling, banner formatting, failure help, non-TTY.
 
 No network, no disc, no toolchain: estimate math and printers are pure,
 run_step failures are raised from a stub, and the one dry-run test stubs
@@ -77,9 +77,9 @@ class EstimateScalingTest(unittest.TestCase):
         text = build_ux.estimate_table_text(target='android', tricky=True,
                                             cores=10, ram_gb=64, jobs=8)
         self.assertIn('ranges, not promises', text)
-        self.assertIn('tk-speed-1 r13', text)
-        self.assertIn('astra-buildtime-1', text)
-        self.assertIn('release-pb71-1', text)
+        self.assertIn('measured 9-course serial 299 min', text)
+        self.assertIn('measured: 8-CPU Linux, 276 s', text)
+        self.assertIn('measured: M-series Mac', text)
 
     def test_estimates_never_raise_without_host_facts(self):
         with patch.object(build_ux, 'host_facts', return_value=(0, None)):

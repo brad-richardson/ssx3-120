@@ -4292,7 +4292,7 @@ def _dry_step_status(work, probe):
 
 
 def onecmd_dry_run(a, target):
-    """Plan + estimates without downloads, builds or installs (build-ux-1)."""
+    """Plan + estimates without downloads, builds or installs."""
     libs = 'android-libs' if target == 'android' else 'ios-libs'
     build_step = 'android' if target == 'android' else 'ios'
     print(_ux_table(a, target), flush=True)
