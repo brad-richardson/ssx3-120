@@ -83,6 +83,10 @@ def ps2xAppLabel = project.findProperty('ps2xAppLabel') ?: (ps2xAppId in ['com.p
 // app label so test installs are distinguishable, keeping the mode.
 def ps2xAlias60 = "${ps2xAppLabel} · 60"
 def ps2xAlias120 = "${ps2xAppLabel} · 120"
+// Brad 10-18: test installs keep their package id but get no launcher
+// icons (lanes drive them via explicit am start); only the product ids
+// appear in the launcher.
+def ps2xAliasEnabled = (ps2xAppId in ['com.ps2x.runner', 'com.ssx3.recomp'] ? 'true' : 'false')
 def ps2xBootElf = project.findProperty('ps2xBootElf') ?: "/storage/emulated/0/Android/data/${ps2xAppId}/files/game.elf"
 
 android {
@@ -110,7 +114,8 @@ android {
         manifestPlaceholders = [ps2xAppLabel: ps2xAppLabel,
                                 ps2xProfileable: (ps2xDev || ps2xPgoGen) ? 'true' : 'false',
                                 ps2xAlias60: ps2xAlias60,
-                                ps2xAlias120: ps2xAlias120]
+                                ps2xAlias120: ps2xAlias120,
+                                ps2xAliasEnabled: ps2xAliasEnabled]
         if (ps2xPgoGen) {
             versionNameSuffix '-pgogen'
         }

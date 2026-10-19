@@ -180,9 +180,11 @@ class AppLabelTest(unittest.TestCase):
         manifest = (ROOT / 'apps/android/app/src/main/AndroidManifest.xml').read_text()
         self.assertIn('${ps2xAlias60}', manifest)
         self.assertIn('${ps2xAlias120}', manifest)
+        self.assertIn('${ps2xAliasEnabled}', manifest)
         gradle = (ROOT / 'apps/android/app/build.gradle').read_text()
         self.assertIn('ps2xAlias60', gradle)
         self.assertIn('ps2xAlias120', gradle)
+        self.assertIn('ps2xAliasEnabled', gradle)
 
     def test_builder_passes_label_to_both_platforms(self):
         source = (HERE / 'build.py').read_text()
