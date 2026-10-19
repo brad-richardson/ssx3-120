@@ -399,6 +399,35 @@ def size_inner_jobs(workers, group_peak_gb=0.5, reserve_gb=8.0):
     return max(1, min(by_cpu, by_mem))
 
 
+def size_course_pool(nready, jobs, peak_course_gb=4.0, group_peak_gb=0.5,
+                     reserve_gb=8.0):
+    """Joint (courses, inner) sizing from cores, RAM and the --jobs budget.
+
+    --jobs is the TOTAL thread budget (courses x inner <= jobs, and never
+    more than cores); RAM caps courses at (free-reserve)//peak per course
+    and inner groups at group_peak each. Serial (1 course, and inner 1
+    when RAM is short) when memory is tight. Independent groups pack in
+    parallel with order-independent assembly, so the counts are
+    scheduling only: byte-identical by construction (Part B proved 1-vs-2
+    worker equality). Returns (courses, inner, note).
+    """
+    cores = cpu_budget()
+    total = min(max(1, jobs), cores)
+    free = free_gb()
+    if free > 0 and peak_course_gb > 0:
+        mem_courses = max(1, int((free - reserve_gb) // peak_course_gb))
+    else:
+        mem_courses = nready
+    courses = max(1, min(nready, total, mem_courses))
+    inner = max(1, total // courses)
+    if free > 0 and group_peak_gb > 0:
+        inner = max(1, min(inner,
+                           int((free - reserve_gb) // group_peak_gb // courses)))
+    note = (f'cores={cores} jobs={jobs} free={free:.1f}G peak={peak_course_gb}G '
+            f'group={group_peak_gb}G reserve={reserve_gb}G -> {courses}x{inner}')
+    return courses, inner, note
+
+
 def iso_member(iso, want):
     """Find a disc member by basename (case-insensitive); fail closed."""
     with open(iso, 'rb') as f:
@@ -492,18 +521,36 @@ class Build:
             run(self.logs, 'world-report', sys.executable,
                 T / 'shared' / 'probe_worlds.py', 'ssx3', host_bam,
                 '--report', wr, cwd=self.W)
-        inner = int(os.environ.get('TRICKY_INNER_JOBS')
-                    or getattr(self.a, 'inner_jobs', 0) or 6)
+        inner_req = int(os.environ.get('TRICKY_INNER_JOBS')
+                        or getattr(self.a, 'inner_jobs', 0) or 0)
         want = getattr(self.a, 'course_workers', 0) or 0
+        jobs = int(getattr(self.a, 'jobs', 0) or 0) or cpu_budget()
+        peak = float(getattr(self.a, 'course_mem_gb', 0) or 4.0)
         if want == 1:
-            workers, note = 1, 'serial (--course-workers 1: exact path)'
+            workers, inner = 1, (inner_req or 6)
+            if inner_req and 'TRICKY_INNER_JOBS' not in os.environ:
+                os.environ['TRICKY_INNER_JOBS'] = str(inner_req)
+            note = 'serial (--course-workers 1: exact path)'
+        elif inner_req:
+            # Explicit inner: legacy course count, bounded by the --jobs
+            # total budget (courses x inner <= jobs).
+            workers, _legacy = size_course_workers(len(BUILD_COURSES),
+                                                   inner_req, peak)
+            workers = max(1, min(workers, jobs // max(1, inner_req)))
+            inner = inner_req
+            if 'TRICKY_INNER_JOBS' not in os.environ:
+                os.environ['TRICKY_INNER_JOBS'] = str(inner)
+            note = (f'explicit inner={inner} jobs={jobs} -> {workers}')
         else:
-            peak = float(getattr(self.a, 'course_mem_gb', 0) or 4.0)
-            workers, note = size_course_workers(len(BUILD_COURSES), inner,
-                                                peak)
+            workers, inner, note = size_course_pool(len(BUILD_COURSES),
+                                                    jobs, peak)
             if want > 1:
                 workers = min(workers, want)
-        print(f'course pool: workers={workers} ({note})', flush=True)
+            if 'TRICKY_INNER_JOBS' not in os.environ:
+                os.environ['TRICKY_INNER_JOBS'] = str(inner)
+        cores, free = cpu_budget(), free_gb()
+        print(f'tricky: {workers} courses x {inner} jobs '
+              f'(cores {cores}, RAM {free:.1f} GiB)', flush=True)
         if workers <= 1:
             for c in BUILD_COURSES:
                 status, key, msg = self.run_one_course(c, host_bam)
@@ -523,10 +570,9 @@ class Build:
                 self.world_final(c)
             print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
             return
-        # Bound inner pack pools so total processes stay within cores.
-        if 'TRICKY_INNER_JOBS' not in os.environ:
-            os.environ['TRICKY_INNER_JOBS'] = str(
-                size_inner_jobs(workers))
+        # Inner pack pools were sized with the course pool above
+        # (TRICKY_INNER_JOBS exported there); courses x inner already
+        # fits cores, RAM and the --jobs budget.
         # mesa's s3 borrows aloha-b's receipt, so mesa starts after aloha
         # finishes; every other pair is disjoint (per-course donor, build,
         # iso, w-*, log paths; shared tmp/ uses per-course filenames).

@@ -106,5 +106,56 @@ class BudgetTest(unittest.TestCase):
         self.assertLessEqual(workers, 10)
 
 
+class SizeCoursePoolTest(unittest.TestCase):
+    """Joint (courses, inner) sizing: --jobs is the total budget.
+
+    Table: cores x RAM (jobs=cores, 10 ready courses). Patches the host
+    probes so the table is deterministic on any machine.
+    """
+
+    def sized(self, cores, ram_gb, jobs=None, nready=10):
+        from unittest import mock
+        with mock.patch.object(bt, 'cpu_budget', return_value=cores), \
+             mock.patch.object(bt, 'free_gb', return_value=float(ram_gb)):
+            return bt.size_course_pool(nready, jobs if jobs is not None else cores)
+
+    def test_table(self):
+        table = {(8, 8): (1, 1), (8, 16): (2, 4), (8, 32): (6, 1),
+                 (10, 8): (1, 1), (10, 16): (2, 5), (10, 32): (6, 1),
+                 (12, 8): (1, 1), (12, 16): (2, 6), (12, 32): (6, 2),
+                 (16, 8): (1, 1), (16, 16): (2, 8), (16, 32): (6, 2)}
+        for (cores, ram), (courses, inner) in table.items():
+            with self.subTest(cores=cores, ram=ram):
+                got_courses, got_inner, _note = self.sized(cores, ram)
+                self.assertEqual((got_courses, got_inner), (courses, inner))
+
+    def test_jobs_is_the_total_budget(self):
+        courses, inner, _note = self.sized(12, 32, jobs=4)
+        self.assertEqual((courses, inner), (4, 1))
+        self.assertLessEqual(courses * inner, 4)
+
+    def test_group_ram_caps_inner(self):
+        # 16 threads of budget, 2 GiB usable: 1 course, groups cap inner.
+        courses, inner, _note = self.sized(16, 10, jobs=16)
+        self.assertEqual((courses, inner), (1, 4))
+
+    def test_ram_short_stays_serial(self):
+        for cores in (8, 10, 12, 16):
+            with self.subTest(cores=cores):
+                courses, _inner, _note = self.sized(cores, 8)
+                self.assertEqual(courses, 1)
+
+    def test_ready_courses_cap(self):
+        courses, inner, _note = self.sized(16, 32, nready=3)
+        self.assertEqual((courses, inner), (3, 5))
+
+    def test_unknown_ram_falls_back_to_budget(self):
+        from unittest import mock
+        with mock.patch.object(bt, 'cpu_budget', return_value=12), \
+             mock.patch.object(bt, 'free_gb', return_value=0.0):
+            courses, inner, _note = bt.size_course_pool(10, 12)
+        self.assertEqual((courses, inner), (10, 1))
+
+
 if __name__ == '__main__':
     unittest.main()

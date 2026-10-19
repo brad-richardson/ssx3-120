@@ -2668,6 +2668,17 @@ def stage_ios_tricky(a, app):
     return staged, trees
 
 
+def stage_and_activate_ios_tricky(a, app):
+    """Stage the built Tricky layer into the bundle and activate it.
+
+    One call for ios() and tests: record-driven stage plus the env merge
+    the normal launch needs (it reads only bundle ps2x.env). No layer:
+    both steps are no-ops (stock SSX 3 only).
+    """
+    stage_ios_tricky(a, app)
+    activate_tricky_env(app / 'ps2x.env', app / 'tricky' / 'tricky.env')
+
+
 def ios_release_flags(pgo_data):
     """iOS app Release flags (D04 apple-a15 tuning plus optional PGO use)."""
     base = '-O3 -DNDEBUG -mcpu=' + IOS_MCPU
@@ -2803,8 +2814,7 @@ def ios(a):
     # into the bundle and merge its env rows into the bundle base env,
     # so the normal launch (which reads only bundle ps2x.env) activates
     # the explicitly requested layer. No layer: stock SSX 3 only.
-    stage_ios_tricky(a, app)
-    activate_tricky_env(app / 'ps2x.env', app / 'tricky' / 'tricky.env')
+    stage_and_activate_ios_tricky(a, app)
     # P2: the Metal TFX selector coverage ships inside the bundle; the
     # staged ps2x.env points GE1_TFX_PREWARM at it. The file is written
     # and verified BEFORE the knob can take effect (the knob without its
@@ -3793,21 +3803,39 @@ def tricky_host_info():
 
 
 def record_tricky_inputs(work, iso, identity, argv, ssx3, wall_seconds=None):
-    """Write tricky_inputs.json beside inputs.json (double-read output SHAs).
+    """Write tricky_inputs.json beside inputs.json (double-read SHAs).
 
     Copies the driver's tools.json pins + tool identity + SSX3 identity
     into the record so the skip-check can refuse stale reuse (F06), plus
     the tricky-manifest-1 fields: converter_version, builder_version,
     host, jobs, wall_seconds and the driver's per-course wall table when
     it has one.
+
+    Payload/scratch split (buildtime-2 item 3): `outputs` is the FINAL
+    payload only (the stage/install allowlist) and is the stage/install
+    verification boundary. Everything else under <work>/tricky/
+    (intermediates, logs, tools.json) is recorded separately as
+    `scratch` provenance and is never a stage/install gate, so touching
+    a log can no longer fail a completed payload.
     """
     tricky = Path(work) / 'tricky'
-    outputs = {}
+
+    def file_entry(candidate):
+        return {'sha256': sha2(candidate),
+                'bytes': candidate.stat().st_size}
+
+    outputs, scratch = {}, {}
     for candidate in sorted(tricky.rglob('*')):
-        if candidate.is_file():
-            relative = candidate.relative_to(tricky).as_posix()
-            outputs[relative] = {'sha256': sha2(candidate),
-                                 'bytes': candidate.stat().st_size}
+        if not candidate.is_file():
+            continue
+        relative = candidate.relative_to(tricky).as_posix()
+        entry = file_entry(candidate)
+        if relative in TRICKY_DEVICE_FILES or any(
+                relative == name or relative.startswith(name + '/')
+                for name in TRICKY_DEVICE_TREES):
+            outputs[relative] = entry
+        else:
+            scratch[relative] = entry
     try:
         receipt = json.loads((tricky / 'tools.json').read_text())
     except (OSError, ValueError):
@@ -3834,7 +3862,7 @@ def record_tricky_inputs(work, iso, identity, argv, ssx3, wall_seconds=None):
               'driver': {'path': str(TRICKY_DRIVER.relative_to(ROOT))
                          if TRICKY_DRIVER.is_relative_to(ROOT) else str(TRICKY_DRIVER),
                          'argv': list(map(str, argv)), 'repo_commit': repo_commit},
-              'outputs': outputs,
+              'outputs': outputs, 'scratch': scratch,
               'created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
     tricky_inputs_path(work).write_text(json.dumps(record, indent=2) + '\n')
     return record
@@ -4028,7 +4056,11 @@ def tricky_record(work):
 
 
 def verify_tricky_outputs(work, record):
-    """Re-verify staged Tricky outputs against the build record (fail closed)."""
+    """Re-verify staged Tricky outputs against the build record (fail closed).
+
+    Boundary is the final payload manifest (record['outputs']); scratch
+    provenance (record['scratch']) is never verified here.
+    """
     tricky = Path(work) / 'tricky'
     for relative, entry in record['outputs'].items():
         candidate = tricky / relative

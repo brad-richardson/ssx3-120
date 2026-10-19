@@ -1519,6 +1519,67 @@ class StageIosTrickyTest(unittest.TestCase):
             self.assertFalse((app / 'tricky').exists())
 
 
+class PayloadScratchSplitTest(unittest.TestCase):
+    def rerecord(self, work, iso):
+        with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+            identity = build.tricky_disc_identity(iso)
+        ssx3_path = json.loads((work / 'inputs.json').read_text())['iso']
+        ssx3 = Path(ssx3_path)
+        return build.record_tricky_inputs(
+            work, iso, identity, ['stub'],
+            {'path': str(ssx3), 'sha256': build.sha(ssx3),
+             'bytes': ssx3.stat().st_size})
+
+    def test_outputs_are_payload_only_and_scratch_is_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, iso = BuildTrickyTest().run_step(tmp)[:2]
+            tricky = work / 'tricky'
+            (tricky / 'logs').mkdir()
+            (tricky / 'logs' / 'world-pipe.log').write_bytes(b'log-bytes')
+            (tricky / 'build-pipe').mkdir()
+            (tricky / 'build-pipe' / 'x').write_bytes(b'intermediate')
+            record = self.rerecord(work, iso)
+            for relative in record['outputs']:
+                self.assertTrue(
+                    relative in build.TRICKY_DEVICE_FILES
+                    or relative.startswith('tricky-ov/'),
+                    'non-payload in outputs: ' + relative)
+            self.assertIn('tools.json', record['scratch'])
+            self.assertIn('logs/world-pipe.log', record['scratch'])
+            self.assertIn('build-pipe/x', record['scratch'])
+            self.assertNotIn('tools.json', record['outputs'])
+            # Deleting scratch keeps the skip and the stage green.
+            (tricky / 'logs/world-pipe.log').unlink()
+            import shutil as _shutil
+            _shutil.rmtree(tricky / 'build-pipe')
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+                self.assertTrue(build.tricky_current(
+                    work, iso, audio_on=False,
+                    toolchain={'ffmpeg': None, 'vgmstream': None}))
+            args = tricky_args(work, app_id='com.example.game', step='stage')
+            (work / 'app-id.txt').write_text('com.example.game\n')
+            (work / 'android-resources').mkdir()
+            files = build.stage(args)
+            self.assertTrue((files / 'speech-tricky-big').is_file())
+            # A tampered payload still fails closed.
+            (tricky / 'speech-tricky-big').write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'changed since build_tricky'):
+                build.verify_tricky_outputs(work, record)
+
+    def test_import_record_is_payload_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = StageIosTrickyTest().import_ios_layer(tmp)
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            for relative in record['outputs']:
+                self.assertTrue(
+                    relative in build.TRICKY_DEVICE_FILES
+                    or relative.startswith('tricky-ov/'),
+                    'non-payload in outputs: ' + relative)
+            self.assertIn('tools.json', record.get('scratch', {}))
+            self.assertFalse([k for k in record.get('scratch', {})
+                              if k.startswith('build-') or k.startswith('donor/')])
+
+
 class CheckTrickyCliTest(unittest.TestCase):
     def check(self, **over):
         base = dict(step='android', from_dir=None, tricky_from=None, tricky_iso=None)
@@ -1588,6 +1649,57 @@ class IosOneCommandTrickyTest(unittest.TestCase):
             src.mkdir()
             self.assertEqual(self.run_onecmd(tmp, [], tricky_from=src),
                              ['prepare', 'import', 'ios'])
+
+
+class IosOneCommandBuildsAndStagesTest(unittest.TestCase):
+    def test_ios_tricky_iso_builds_and_stages_into_bundle(self):
+        # ./build ios --ssx3-iso --tricky-iso: the one-command path builds
+        # the layer (real import_tricky here) and the ios bundle step
+        # stages + activates it (real stage_and_activate_ios_tricky).
+        # Only Xcode/prepare/ios-libs are mocked.
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = StageIosTrickyTest().ios_layer_source(
+                tmp, build.sha(iso), audio='off')
+            ssx3 = json.loads((work / 'inputs.json').read_text())['iso']
+            apps = []
+
+            def fake_ios(a):
+                app = Path(tmp) / 'app'
+                app.mkdir(exist_ok=True)
+                (app / 'ps2x.env').write_text('PS2X_SOUND=1\n')
+                build.stage_and_activate_ios_tricky(a, app)
+                apps.append(app)
+
+            args = types.SimpleNamespace(
+                work=work, ssx3_iso=Path(ssx3), tricky_iso=iso,
+                tricky_from=None, install=False, team='T' * 10, jobs=2,
+                app_id=build.PUBLIC_APP_ID, tricky_audio='off', dry_run=False)
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+                 patch.object(build, 'check_team'), \
+                 patch.object(build, 'doctor'), \
+                 patch.object(build, 'validate_ssx3_iso',
+                              return_value=Path(ssx3)), \
+                 patch.object(build, 'validate_tricky_iso', return_value=iso), \
+                 patch.object(build, 'prepare_current', return_value=True), \
+                 patch.object(build, 'ios_libs_current', return_value=True), \
+                 patch.object(build, 'build_tricky',
+                              side_effect=lambda a, i: build.import_tricky(
+                                  a, i, src)), \
+                 patch.object(build, 'ios', side_effect=fake_ios):
+                build.ios_onecmd(args)
+            self.assertEqual(len(apps), 1)
+            app = apps[0]
+            self.assertTrue(
+                (app / 'tricky/tricky-ov/DATA/WORLDS/PIPE.BIG').is_file())
+            manifest = (app / 'tricky/m-tricky.txt').read_text()
+            self.assertIn('alias = /DATA/AUDIO/SPEECH.BIG:speech-tricky-big',
+                          manifest)
+            merged = (app / 'ps2x.env').read_text()
+            self.assertIn('PS2X_SSX3_COURSE_PICKER=1', merged)
+            self.assertIn('${BUNDLE}/tricky/', merged)
 
 
 if __name__ == '__main__':
