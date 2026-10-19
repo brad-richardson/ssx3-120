@@ -189,7 +189,7 @@ def estimate_table_text(*, target, tricky, audio_on=False, cores=None,
         cores, _mem = host_facts()
         if ram_gb is None:
             ram_gb = _mem
-    lines = ['estimates for this machine (cores=%s, RAM=%s; ranges, not promises):'
+    lines = ['estimates for this machine (cores=%s, RAM=%s):'
              % (cores or '?', ('%.0f GB' % ram_gb) if ram_gb else '?')]
     planned = estimate_steps(target=target, tricky=tricky, audio_on=audio_on,
                              cores=cores, ram_gb=ram_gb, jobs=jobs,

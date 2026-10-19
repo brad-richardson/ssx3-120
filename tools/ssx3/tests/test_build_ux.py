@@ -76,7 +76,7 @@ class EstimateScalingTest(unittest.TestCase):
     def test_table_labels_estimates_and_cites_sources(self):
         android = build_ux.estimate_table_text(
             target='android', tricky=True, cores=10, ram_gb=64, jobs=8)
-        self.assertIn('ranges, not promises', android)
+        self.assertIn('estimates for this machine (cores=', android)
         self.assertIn('measured 9-course serial 299 min', android)
         self.assertIn('measured: 8-CPU Linux, 276 s', android)
         ios = build_ux.estimate_table_text(
@@ -259,7 +259,7 @@ class DryRunTest(unittest.TestCase):
             self.assertEqual(calls, ['doctor'])
             self.assertFalse(work.exists())
             out = stream.getvalue()
-            self.assertIn('ranges, not promises', out)
+            self.assertIn('estimates for this machine (cores=', out)
             self.assertIn('[dry-run] prepare: MISSING (would run)', out)
             self.assertIn('[dry-run] nothing was built', out)
 
