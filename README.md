@@ -156,9 +156,23 @@ platform-tools 37 MB), managed Temurin JDK 17 0.3 GB, staged slim ISO
 ~0.8 GB (codegen 272 MB + generator build 504 MB + ELF 3.7 MB), Mac
 runner build 1.9 GB, whole Mac work dir 5.8 GB, iOS work dir 13 GB
 (several timestamped build dirs), APK ~0.34 GB — plus Gradle/Xcode
-caches outside `--work`, hence the ~2x headroom. RAM: 8+ GB recommended
-(the default is `--jobs 8`; small hosts should pass `--jobs 1` — low RAM
-is a warning, a full disk is an error).
+caches outside `--work`, hence the ~2x headroom. RAM: 8+ GB recommended.
+Hosts with 8 GB or less build with reduced parallelism automatically
+(`--jobs 2`, one ThinLTO link job, 2 GB Gradle heap: slow but complete);
+larger hosts use `--jobs 8`, a RAM-sized ThinLTO cap and a 4 GB heap.
+Explicit `--jobs`, `--thinlto-jobs` and `--gradle-heap-gb` always win, and
+the builder logs the effective values. Low RAM is a warning, a full disk
+is an error. Measured game-link peaks (SSX 3, NDK lld, 9,455 generated
+files; all outputs byte-identical across job counts):
+
+| ThinLTO jobs | 18 | 8 | 4 | 2 | 1 |
+| --- | --- | --- | --- | --- | --- |
+| Link peak (GiB) | 8.4 | 6.3 | 5.1 | 4.6 | 4.1 |
+
+The game compile peaks ~7.5 GiB at `-j8` versus 2.4 GiB at `-j2` (hence the
+`--jobs` cap on small hosts); Apple ld shows the same shape (5.8 GiB
+default, 3.2 GiB capped). Last-resort fallback: game IPO off (1.4 GiB
+link, output differs, small device-CPU cost).
 
 What the builder does with your disc: validates the ISO/ELF hashes, writes
 a slim image plus a hole table into `--work`, generates EE code with the
