@@ -16,7 +16,7 @@ Tricky and Online are **Alpha**. This page lists the rough edges that are alread
 
 ## Build times
 
-- **Full end-to-end build time range, measured on <machine>: TBD from the Air run.** The v0 end-to-end timing pass on a clean MacBook Air clone (Android, iOS, then `--tricky-iso`, with wall time and peak disk/RAM per step) has not run yet. Per-stage numbers from a Mac mini (M5 Pro, 4 jobs, empty caches) are in the README (prepare ~80 s, Android libraries ~600 s, APK link+package ~260 s resumed); your machine will differ and `build.py` prints per-stage timing.
+- **Build time and memory.** On a MacBook Air (M4, 16 GB) the Android build takes about 14 minutes, or about 1 h 10 min with Tricky; it peaks near the full 16 GB of RAM, so close other apps. Smaller machines take longer (8 GB machines get conservative job counts automatically). A rerun of the same command needs about 25 GB free even when everything is reused.
 
 ## iOS
 

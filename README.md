@@ -114,7 +114,9 @@ python3 build.py android-libs --work ~/ssx3-work
 python3 build.py android --work ~/ssx3-work
 ```
 
-iOS (macOS Apple silicon host with Xcode and its Metal toolchain;
+iOS (macOS Apple silicon host with Xcode and its Metal toolchain: if `doctor`
+reports `unable to find utility "metallib"`, run
+`xcodebuild -downloadComponent MetalToolchain` once;
 iPhone/iPad target) needs
 your Apple Development team id; the offline-VU1 stage is generated
 from your disc into `work/om1-stage` by the builder:
