@@ -22,8 +22,8 @@ Provenance (origin → this file):
 | `check_slots.py` | TK25b `tk25b_check_slots.py` | `__main__` guard only |
 | `speech_composite.py` | TK25c `tk25c_composite.py` | none (already CLI-clean) |
 | `speech_merge.py` | TKP4 `tooling/tkp4_speech.py` | none (already CLI-clean) |
-| `english_base.py` | new glue (english-recipe-1; reconstructed tk-audio-2 merge) | n/a: builds the 8-member ENGLISH base from the discs; per-slot takes from `data/english-decisions/` (embedded gains, never re-measured) |
-| `data/english-decisions/*.decisions.tsv` | reconstructed lane recipe (mc-curation sources + validated gains) | `slot<TAB>source<TAB>gain_db`; source `tricky-<Bank>-<Idx>` or KEEP-ORIGINAL |
+| `english_base.py` | new glue (reconstructed ENGLISH base merge) | n/a: builds the 8-member ENGLISH base from the discs; per-slot takes from `data/english-decisions/` (embedded gains, never re-measured) |
+| `data/english-decisions/*.decisions.tsv` | reconstructed recipe (curated sources + validated gains) | `slot<TAB>source<TAB>gain_db`; source `tricky-<Bank>-<Idx>` or KEEP-ORIGINAL |
 | `mpf3to4.py` | TKP4b `tooling/mpf3to4.py` (the TK41b fixed converter + graph check) | none (already guarded) |
 | `mus1_walk.py` | TK41b `tooling/mus1_walk.py` (= MUS1's, identical) | none |
 | `music_remus.py` | TK41 `tooling/tk41_remus.py` | `sys.path` CWD hack → sibling dir |
