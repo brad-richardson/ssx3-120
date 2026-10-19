@@ -1137,8 +1137,8 @@ def android(a):
     else:
         heap = 4
     ram_label = ('%.1f' % (total_ram / 1024**3)) if total_ram is not None else 'unknown'
-    print('link-mem-1: host RAM %s GB, %d cores -> ThinLTO jobs %d, Gradle heap %d GB' %
-          (ram_label, cores, thinlto, heap))
+    print('link: thinlto-jobs=%d, gradle-heap=%d GB (RAM %s GB, %d cores)' %
+          (thinlto, heap, ram_label, cores))
     run('bash', ROOT / 'apps/android/gradlew', '-p', ROOT / 'apps/android', 'assembleRelease',
         '-Dorg.gradle.jvmargs=-Xmx%dg' % heap,
         '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),

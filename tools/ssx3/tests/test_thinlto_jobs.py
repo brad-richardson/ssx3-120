@@ -1,4 +1,4 @@
-"""Sizing tests for the link-mem-1 low-RAM ThinLTO cap.
+"""Sizing tests for the low-RAM ThinLTO cap.
 
 The Android game link peaks at ~8.39 GiB with 18 ThinLTO backends and scales
 ~0.25 GiB/job down to 4.13 GiB at 1 job (byte-identical outputs). Hosts with
