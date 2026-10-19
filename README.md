@@ -17,12 +17,19 @@ reported as such. An emulator's 2× speedhack is fast-forward, not 120.
 ## Build from your own disc
 
 Supported build hosts: macOS Apple silicon, Linux x86_64/arm64 (Windows
-users: Ubuntu in WSL2). Play targets: Android arm64, iOS. Prerequisites:
-[`uv`](https://docs.astral.sh/uv/) (the `./build` wrapper runs the
-builder through it, provisioning Python plus the font-pack libraries,
-so no system Python setup) plus a host toolchain — git, CMake, Ninja,
-pkg-config, a C/C++ compiler, make, bison and flex. `doctor` checks
-every one and prints the exact install line when something is missing:
+users: Ubuntu in WSL2). Play targets: Android arm64, iOS. Install the host
+toolchain **before** cloning (a clean machine has no git yet):
+
+- macOS: Xcode command-line tools (provides git and the Metal toolchain),
+  then `brew install cmake ninja llvm python pkg-config autoconf automake libtool bison`.
+- Linux (Ubuntu 24.04):
+  `sudo apt-get update && sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk`.
+  Windows users run all of this inside WSL2 Ubuntu, on its Linux
+  filesystem (never `/mnt/c`).
+
+Then install [`uv`](https://docs.astral.sh/uv/) — the `./build` wrapper runs
+the builder through it, provisioning Python plus the font-pack libraries,
+so no system Python setup — and clone:
 
 ```sh
 git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git ssx3-120
@@ -30,9 +37,15 @@ cd ssx3-120
 ./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses
 ```
 
+`./build doctor --target android --work <dir>` (or `prepare`, `mac`,
+`ios`) re-checks the prerequisites — including the managed JDK/SDK under
+your `--work` directory — and prints the exact install line when
+something is missing.
+
 Everything the build makes goes in `~/ssx3-work` (pass `--work <dir>` to
 use another folder outside this checkout). Plan on ~25 GB. It holds your
-APK and your app signing key: keep it, and back up the key, because a
+APK and your app signing key (`ssx3-signing.keystore` plus
+`version-code.txt`): keep them, and back up the key, because a
 different key forces an uninstall, which wipes saves.
 
 That one command runs doctor → prepare → android-libs → android in order
@@ -43,7 +56,14 @@ packages, SHA-256-verified, into `--work/toolchain/` (project-local; no
 system install, no sudo). Google's SDK licence must be accepted:
 `--accept-android-licenses` is the documented path (interactive runs may
 answer the prompt instead). Add `--install` to push to a connected device
-afterwards, `--prebuilt` to reuse a verified prebuilt support release when
+afterwards: the builder installs the APK from
+`apps/android/app/build/outputs/apk/release/app-release.apk` with
+`adb install -r` (existing saves kept) and pushes your disc payload
+beside it — the ISO stays outside the APK. The device must already be
+visible to `adb devices` (USB debugging on, on-device trust prompt
+accepted; use `--serial <adb-serial>` when several devices are
+connected). WSL2 users attach the phone to Ubuntu first with `usbipd`,
+otherwise `adb devices` is empty. `--prebuilt` to reuse a verified prebuilt support release when
 one matches, and `--tricky-iso <Tricky.iso>` to validate your Tricky disc
 and build the Tricky layer from it with the in-tree converter driver
 (standalone step after prepare: `python3 build.py tricky --iso
@@ -58,11 +78,19 @@ disc. Tricky courses are converted to run inside SSX 3's engine — so SSX 3
 handling, tricks and scoring apply — which means converting every course's
 geometry, collision, resets, race lines, gems, HUD and menus, plus audio
 when you have the tools for it, then recompressing each course archive in
-the game's own archive format. That recompression is most of the time:
-currently ~X min on an 8-core machine [TODO: fill in from the final timed
-run]. The step is optional: skip it by leaving out `--tricky-iso`
-(Tricky audio needs local ffmpeg + vgmstream installs). It runs once,
-then its outputs are cached in your work directory.
+the game's own archive format. That recompression is most of the time;
+end-to-end Tricky timing is TBD from the Air run (see
+[docs/known-issues.md](docs/known-issues.md)). The step is optional: skip
+it by leaving out `--tricky-iso`. It runs once, then its outputs are
+cached in your work directory: a rerun reuses the layer when the disc,
+converter, audio mode and toolchain are unchanged, and otherwise refuses
+the existing `tricky/` directory — remove it or use a fresh `--work`
+directory. Before anything heavy the builder requires **30 GB free** on
+the work volume (4 GiB RAM minimum; lower `--jobs` under 8 GiB).
+Tricky audio (`--tricky-audio on|off|auto`, default `auto`) builds the
+music/speech phases only when the local `ffmpeg` (>= 6.0) and
+`vgmstream-cli` (r1900+) probes pass — nothing is downloaded. Without
+them, or with `off`, those courses play SSX 3's soundtrack.
 
 Prefer your own toolchain? `--no-auto-download` never fetches: the builder
 uses only what it finds and fails with a precise
@@ -82,7 +110,8 @@ python3 build.py android-libs --work ~/ssx3-work
 python3 build.py android --work ~/ssx3-work
 ```
 
-iOS (macOS Apple silicon host with Xcode; iPhone/iPad target) needs
+iOS (macOS Apple silicon host with Xcode and its Metal toolchain;
+iPhone/iPad target) needs
 your Apple Development team id; the offline-VU1 stage is generated
 from your disc into `work/om1-stage` by the builder:
 
@@ -90,8 +119,15 @@ from your disc into `work/om1-stage` by the builder:
 ./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10>
 ```
 
+Find the 10-character id in Xcode > Settings > Accounts after signing in
+with your Apple ID (free personal teams work but must re-sign weekly).
+Xcode's automatic signing creates the Apple Development certificate the
+build uses — a Distribution certificate installs but refuses to launch.
 Add `--install` to push to the connected device (plain install; saves
-are kept — never uninstall the app). The app id is
+are kept — never uninstall the app): connect over USB, trust the
+computer, enable Developer Mode (Settings > Privacy & Security), and
+pass `--device <udid>` from `xcrun devicectl list devices` when more
+than one device is attached. The app id is
 `com.ssx3recomp.<team-lower>`, signed with the Apple Development
 certificate from Xcode's automatic signing for that team.
 
@@ -174,6 +210,14 @@ hashes don't prove graphics or cost: pair them with fixed captures
   approved; FXAA/ShadeBoost out.
 - iPhone/iPad: 2×. iOS uses an offline VU core; never uninstall the app
   (it wipes saves) — upgrade with a plain install.
+- Render defaults are automatic: capable devices (iOS, or Android with
+  5+ GiB RAM) use panel-native rendering on a 1080p panel, otherwise 2×
+  with CAS 0.25; smaller devices use 1× with no CAS. The in-game
+  Resolution setting overrides the default.
+- Mode (60/120) and Resolution changes need a full app restart (settings
+  are read once per process): fully close the app before switching.
+  Select+Start together (within ~200 ms) or the "…" button opens the
+  settings panel.
 - Upscale recipe: stage the resolution env layer, confirm the fixed capture
   set is clean, then ride. See `docs/facts.md` (upscale evidence) and
   `apps/android/README.md`.

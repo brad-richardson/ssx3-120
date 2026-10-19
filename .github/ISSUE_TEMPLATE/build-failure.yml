@@ -18,11 +18,19 @@ body:
       placeholder: "./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses"
     validations:
       required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Product + engine SHAs
+      description: The repo commit you built from (`git rev-parse HEAD`) and the engine pin (`git -C deps/PS2Recomp rev-parse HEAD`).
+      placeholder: "e.g. ssx3-120 abc1234, engine 1ce278b8"
+    validations:
+      required: true
   - type: textarea
     id: tail
     attributes:
       label: Last ~50 lines of output
-      description: Paste the tail of the failing run, including the error line.
+      description: Paste the tail of the failing run, including the error line. Redact personal paths, device IDs and credentials; never attach ISOs, generated game code, cards or bundles.
       render: shell
     validations:
       required: true

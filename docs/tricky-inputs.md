@@ -43,3 +43,29 @@ No disc, ELF, BIG, composite, TSV, WAV or pack is supplied or linked here.
 Keep the ISO, the generated Tricky layer and recordings in your own
 external input/build directories. Do not publish game-bearing binaries or
 extracted/remastered packs as receipts.
+
+## Capacity, reruns and audio choices
+
+- **Free space:** the Tricky step requires **30 GB free** on the work
+  volume (plus 4 GiB RAM minimum; lower `--jobs` under 8 GiB RAM). The
+  check runs before any work directory is created and fails closed with
+  the numbers. This is separate from the stock budgets (25 GB Android /
+  20 GB iOS / 12 GB prepare cold builds).
+- **Reruns:** a rerun reuses the layer when the Tricky disc, converter,
+  audio mode and toolchain are unchanged. When they differ, the step
+  refuses the existing `tricky/` directory instead of rebuilding over
+  it — remove that directory or rerun with a fresh `--work` directory.
+  Enabling audio tools after an audio-off build therefore rebuilds; it
+  does not patch the old layer.
+- **Audio:** `--tricky-audio on|off|auto` (default `auto`). `on` fails
+  closed without local tools; `auto` builds the music/speech phases when
+  local `ffmpeg` (>= 6.0) and `vgmstream-cli` (r1900+) probes pass and
+  otherwise prints one line and falls back to SSX 3 audio on Tricky
+  courses. Nothing is downloaded: on Linux install `ffmpeg` by apt and
+  build `vgmstream-cli` from https://github.com/vgmstream/vgmstream when
+  your distro does not ship it.
+- **Keys:** Android signs every build with the per-user
+  `ssx3-signing.keystore` in your work directory (`version-code.txt`
+  beside it). Back both up before rebuilding anywhere else: a different
+  key forces an uninstall, which wipes saves — including Tricky
+  progress.

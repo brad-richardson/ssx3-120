@@ -20,11 +20,11 @@ and SSX 3 guest-code generation are separate steps.
 | Android arm64 | JDK 17, SDK 34, NDK 28.2.13676358, CMake 3.22.1; Gradle/AGP; engine + matching GE1/microVU sources (or verified support archives) | EE/VU0 generated directories (your disc), JNI libraries, shader resources; optional Mesa Turnip (downloaded release or local build); your own signing keystore |
 | iOS arm64 / arm64 simulator | Xcode SDK/toolchain, CMake, Ninja | EE/VU0 generation, manifest-driven OM1 offline-VU1 stage from your disc (`work/om1-stage`), signing setup |
 
-Evidence: [engine CMake minimum](../deps/PS2Recomp/CMakeLists.txt#L1),
+Evidence: [engine CMake minimum](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/CMakeLists.txt#L1),
 [Android properties/toolchain](../apps/android/app/build.gradle#L5),
-[Mac assembly](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/build.sh#L55),
-[iOS assembly](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/build.sh#L122),
-[iOS runtime linking](../deps/PS2Recomp/ps2xRuntime/CMakeLists.txt#L895).
+[Mac assembly](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L55),
+[iOS assembly](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L122),
+[iOS runtime linking](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/CMakeLists.txt#L895).
 
 ## What the renderer's own recipe does
 
@@ -34,31 +34,30 @@ inside the engine (public file, advanced use). Prefer
 pinned fetches. The script's interface is `build.sh
 <mac|android|ios|ios-sim> --armsx2 <checkout> [--build-root <scratch>]
 [--jobs N]`; it has no `--help` or dry-run mode
-([parser](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/build.sh#L29)). It requires clean
+([parser](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L29)). It requires clean
 source trees, archives the supplied ARMSX2 HEAD, and records both source SHAs.
 It does **not** fetch a fixed renderer revision or generate the game inputs.
 Portable iOS offline recording/generation remains outstanding.
 
 Mac builds `libge1_gs.dylib`, `ge1_replay` and `libmv2_microvu.dylib`
-([configuration](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/build.sh#L81)). Android stages
+([configuration](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L81)). Android stages
 GE1 and mv2 sources for the NDK build. iOS builds static
 GE1 from a staged dependency bundle; it does not produce the offline VU1 stage
-([iOS branch](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/build.sh#L122)). OM1 consumes
+([iOS branch](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L122)). OM1 consumes
 recorded assembly/tables and staged core sources; coverage of missing programs
-must be validated separately ([OM1 inputs](../deps/PS2Recomp/ps2xRuntime/third_party/armsx2/om1/rt/CMakeLists.txt#L1)).
+must be validated separately ([OM1 inputs](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/om1/rt/CMakeLists.txt#L1)).
 
 The runtime accepts `PS2X_GAME_CODEGEN_DIR`, `PS2X_VU0_RECOMP_DIR`,
 `PS2X_OM1_STAGE` and `PS2X_OM1_LIB`
-([EE](../deps/PS2Recomp/ps2xRuntime/CMakeLists.txt#L790),
-[VU0](../deps/PS2Recomp/ps2xRuntime/CMakeLists.txt#L840),
-[OM1](../deps/PS2Recomp/ps2xRuntime/CMakeLists.txt#L895)). Their presence is not proof that
+([EE](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/CMakeLists.txt#L790),
+[VU0](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/CMakeLists.txt#L840),
+[OM1](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/CMakeLists.txt#L895)). Their presence is not proof that
 they match this source revision. Keep a local manifest of generator/config/map,
 transforms, output hashes, renderer/microVU/resource hashes and toolchain
 (`prepare` writes `inputs.json` for the game side; `deps.lock.json` pins the
 rest).
 
-PGO is optional with bundled profiles: `tools/ssx3/pgo/android/` (PB58)
-and `tools/ssx3/pgo/ios/` (IPB30) ship gzip-compressed `.profdata` plus
+PGO is optional with bundled profiles: `tools/ssx3/pgo/android/` and `tools/ssx3/pgo/ios/` ship gzip-compressed `.profdata` plus
 `MANIFEST.json` provenance. `build.py android`/`ios` apply the bundled profile
 (`-Pps2xPgoData` / Xcode `-fprofile-use`) only when the user's
 `codegen/register_functions.cpp` SHA matches the trained register SHA;
@@ -77,7 +76,7 @@ these adapters are GPL-3.0-or-later. Optional Turnip comes from
 MIT with component-specific notices
 ([inventory](https://github.com/brad-richardson/mesa/blob/ssx3/docs/license.rst)).
 SoundTouch and fetched libraries retain their own notices
-([SoundTouch](../deps/PS2Recomp/ps2xRuntime/third_party/soundtouch/README.at1.md)).
+([SoundTouch](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/soundtouch/README.at1.md)).
 Record exact source revisions and applicable notices for the components
 you build.
 Software licences do not authorize distributing game-derived assets.

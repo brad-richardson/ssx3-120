@@ -9,22 +9,33 @@ says. Do not improvise toolchains, flags, or signing.
 1. **Target.** Android (`./build android ...`) or iOS (`./build ios ...`).
    Android builds on macOS Apple silicon or Linux x86_64/arm64 (Windows:
    Ubuntu in WSL2, everything inside its Linux filesystem, never
-   `/mnt/c`); iOS needs macOS Apple silicon with Xcode.
+   `/mnt/c`); iOS needs macOS Apple silicon with Xcode (including its
+   Metal toolchain).
 2. **Inputs.** The user supplies their USA `SSX 3 (USA).iso`
    (`SLUS_207.72`); confirm the path exists before running anything.
    Optional: their Tricky USA disc (`--tricky-iso`, see
    `docs/tricky-inputs.md`) — without it the build is stock SSX 3 only.
-3. **Checkout.** This repo needs its engine submodule: clone with
-   `git clone --recurse-submodules <url>`, or recover with
+3. **Host toolchain before clone.** A clean machine has no git yet:
+   macOS needs Xcode command-line tools plus
+   `brew install cmake ninja llvm python pkg-config autoconf automake libtool bison`;
+   Ubuntu 24.04 needs `sudo apt-get update && sudo apt-get install -y
+   python3 git cmake ninja-build clang lld g++ pkg-config curl
+   ca-certificates unzip zip make autoconf automake libtool bison flex
+   openjdk-17-jdk` (full lines in `tools/ssx3/README.md`). Then install
+   [`uv`](https://docs.astral.sh/uv/).
+4. **Checkout.** This repo needs its engine submodule: clone with
+   `git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git`, or recover with
    `git submodule update --init -- deps/PS2Recomp`. Every builder command
    below fails closed with that recovery line when the submodule is
    missing or stale.
-4. **Prerequisites.** Install [`uv`](https://docs.astral.sh/uv/) first —
-   the `./build` wrapper runs the builder through it (pinned Python plus
-   the font-pack libraries, no system Python setup). Then run the doctor
-   before anything heavy: `python3 build.py doctor --target android`
+5. **Prerequisites.** The `./build` wrapper runs the builder through uv
+   (pinned Python plus the font-pack libraries, no system Python setup).
+   Then run the doctor before anything heavy, from the repo root with
+   your work directory so managed-toolchain probes resolve:
+   `./build doctor --target android --work <dir>`
    (or `--target ios` on a Mac). It prints the exact install line for
-   anything missing (README lists per-host packages).
+   anything missing. `python3 build.py doctor` without uv can report a
+   healthy toolchain as missing; prefer the wrapper.
 
 ## Ground rules
 
@@ -56,7 +67,9 @@ unless `--no-auto-download` is passed — then set `JAVA_HOME`,
 `android`. `--serial <adb-serial>` picks among several Android devices
 (`adb devices` lists them); `--device <udid>` is iOS-only and
 `--serial` is Android-only — the builder rejects the swapped combination.
-WSL2: attach the phone to Ubuntu first (`usbipd`), otherwise `adb devices`
+WSL2: attach the phone to Ubuntu first (`usbipd`: the Windows-visible
+phone is not visible in Ubuntu until forwarded), authorize USB debugging
+and accept the on-device trust prompt; otherwise `adb devices`
 is empty and the doctor says so before anything builds. Keep 25 GB free
 under the work directory (`~/ssx3-work` unless `--work` is given; README budgets); the builder preflights this.
 

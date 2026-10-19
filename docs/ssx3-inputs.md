@@ -24,13 +24,13 @@ If either differs, stop before generating or building. A filename change cannot
 make another revision compatible. No disc, ELF, BIOS, extracted asset or pack
 is supplied or linked here. A BIOS dump is not an input to the documented runner
 startup: it loads the ELF and uses runtime/IOP services
-([startup](../deps/PS2Recomp/ps2xRuntime/src/main.cpp#L303), [IOP](../deps/PS2Recomp/ps2xIOP/README.md)).
+([startup](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/main.cpp#L303), [IOP](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xIOP/README.md)).
 
 Keep the ISO, extracted files, EE/VU generated code and recordings in your own
 external input/build directories. The runner reads the ISO through
 `PS2X_CD_IMAGE` and uses the ELF path supplied at startup
-([paths](../deps/PS2Recomp/ps2xRuntime/src/main.cpp#L198),
-[disc configuration](../deps/PS2Recomp/ps2xRuntime/src/main.cpp#L309)). Android's boot path is
+([paths](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/main.cpp#L198),
+[disc configuration](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/main.cpp#L309)). Android's boot path is
 compiled through `ps2xBootElf`; see [Android setup](../apps/android/README.md).
 
 The [public preparation script](../tools/ssx3/README.md) pins the historical

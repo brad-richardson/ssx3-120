@@ -4,8 +4,8 @@ New local preparation/build entry: [tools/ssx3](../../tools/ssx3/README.md). Sup
 
 Read the [input contract](../../docs/ssx3-inputs.md) and the
 [public build recipe](../../tools/ssx3/README.md) first. That recipe produced a
-signed APK from a fresh clone on macOS Apple silicon in PUB1 and rebuilt one
-from a second fresh clone in PUB2 (2026-10-13, package `com.ssx3.recomp`).
+signed APK from a fresh clone on macOS Apple silicon and rebuilt one
+from a second fresh clone (package `com.ssx3.recomp`).
 Device installation, a finished race, controls, sound, and save/reload remain to be
 validated. No game-bearing APK is provided.
 
@@ -48,8 +48,8 @@ python3 tools/ssx3/build.py install --work /path/to/private-build
 ```
 
 `build.py stage` is a local layout preview. It uses the built APK's package id and stages the shipped presets
-([ps2x.env](../../tools/ssx3/presets/ps2x.env),
-[full120.env](../../tools/ssx3/presets/full120.env), SET2 settings overlay on)
+([ps2x.env](../../presets/ps2x.env),
+[full120.env](../../presets/full120.env), SET2 settings overlay on)
 plus `ge1-resources` and an empty card dir and prints the exact `adb`
 commands without running them. A hand-written minimal `ps2x.env` would use:
 
@@ -60,41 +60,49 @@ PS2X_MC_ROOT=/storage/emulated/0/Android/data/com.ssx3.recomp/files/mc0
 
 The compiled boot path determines the env directory; `PS2X_CD_IMAGE` selects
 the ISO and `PS2X_MC_ROOT` the card directory
-([env paths](../../deps/PS2Recomp/ps2xRuntime/include/ps2_android_env.h#L93),
-[runner paths](../../deps/PS2Recomp/ps2xRuntime/src/main.cpp#L309)). This minimal env is not the
+([env paths](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_android_env.h#L93),
+[runner paths](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/main.cpp#L309)). This minimal env is not the
 complete play preset: stage matching GS shader resources under `files/ge1-resources`
 and writable data under `files/ge1-data`. Defaults select external GE1, microVU,
 VU0 recompilation and Turnip; supply those libraries or a separately validated
-configuration ([defaults](../../deps/PS2Recomp/ps2xRuntime/include/ps2_knobs.h#L98)).
+configuration ([defaults](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_knobs.h#L98)).
 
 ## Controls and 60/120
 
-Pair a controller in Android settings before launch. The Android pad path uses
+Pair a controller in Android settings before launch, or play by touch:
+the touch overlay shows automatically when no physical controller is
+present and hides while one is connected (Touch=On in settings forces
+it on). The Android pad path uses
 raylib gamepad index 0: bottom/right/left/top face buttons map to
 Cross/Circle/Square/Triangle; shoulders map to L1/R1/L2/R2, and Menu/View to
-Start/Select ([mapping](../../deps/PS2Recomp/ps2xRuntime/src/lib/ps2_pad.cpp#L50)). Check steering,
+Start/Select ([mapping](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_pad.cpp#L50)). Check steering,
 confirm/back and pause with a disposable new save before using an existing card.
-The virtual-controls overlay defaults on only for iOS; other platforms require
-an explicit opt-in. Use a controller for this Android setup; a touch-only Android
-play path has not been validated here
-([overlay enablement](../../deps/PS2Recomp/ps2xRuntime/src/lib/ps2_runtime.cpp#L2201)).
+Select+Start together (within ~200 ms) or the "…" button opens the
+settings panel; Mode and Resolution changes there need a full app
+restart
+([touch overlay](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_runtime.cpp#L8290),
+[chord](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_settings_overlay.h#L25)).
 
 The 60 launcher reads only `ps2x.env`; the 120 launcher overlays `full120.env`
 in the same directory. Fully close the app before switching; env is read once
 per process ([launcher](app/src/main/java/com/ps2x/runner/LaunchActivity.java#L16),
-[loader](../../deps/PS2Recomp/ps2xRuntime/src/lib/ps2_android_runtime.cpp#L61)). The 60 entry is
-the stock game (SPR1 retired split120); the full-120 layer uses
+[loader](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_android_runtime.cpp#L61)). The 60 entry is
+the stock game; the full-120 layer uses
 `PS2X_SSX3_FULL120=events`, with the validated fix groups and display/pacing
 settings for that build. Full 120 is the intended play default; stock 60 is
 the user's option. The separate layer must be staged: selecting the launcher
-alone does not generate it ([layer semantics](../../deps/PS2Recomp/ps2xRuntime/ios/full120.env#L5)).
+alone does not generate it ([layer semantics](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/ios/full120.env#L5)).
+Render defaults are automatic (capable devices with 5+ GiB RAM: native
+panel on 1080p else 2× with CAS 0.25; smaller devices: 1×, no CAS;
+[device tier](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_public_tier.h#L45));
+the in-game Resolution setting overrides them.
 
 ## Protect saves and upgrade keys
 
 Cards are directories: default `<ELF directory>/mc0`, or the directory named
 by `PS2X_MC_ROOT`. When that directory is named `mc0`, port 1 uses its sibling
 `mc1`; with another name, port 1 uses `<name>_slot1`
-([card paths](../../deps/PS2Recomp/ps2xRuntime/src/lib/Kernel/Stubs/MemoryCard.cpp#L124)). With the
+([card paths](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/Kernel/Stubs/MemoryCard.cpp#L124)). With the
 app stopped, copy the entire files directory to a **new** local backup directory:
 
 ```sh

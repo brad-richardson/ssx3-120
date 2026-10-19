@@ -5,7 +5,15 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. Before filing, skim [docs/known-issues.md](../../blob/main/docs/known-issues.md) — Tricky and Online are Alpha and several rough edges are already listed there.
+        Thanks for reporting. Before filing, skim [docs/known-issues.md](https://github.com/brad-richardson/ssx3-120/blob/main/docs/known-issues.md) — Tricky and Online are Alpha and several rough edges are already listed there.
+  - type: input
+    id: versions
+    attributes:
+      label: Product + engine SHAs
+      description: The repo commit you built from (`git rev-parse HEAD`) and the engine pin (`git -C deps/PS2Recomp rev-parse HEAD`).
+      placeholder: "e.g. ssx3-120 abc1234, engine 1ce278b8"
+    validations:
+      required: true
   - type: input
     id: device
     attributes:
@@ -69,7 +77,7 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Relevant log section (logcat, Xcode console, or builder output). Trim to the interesting part.
+      description: Relevant log section (logcat, Xcode console, or builder output). Trim to the interesting part. Redact personal paths, device IDs and credentials; never attach ISOs, generated game code, cards or bundles.
       render: shell
   - type: markdown
     attributes:

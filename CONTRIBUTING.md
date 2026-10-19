@@ -12,17 +12,25 @@ Do not commit disc bytes, ISOs/ELFs, extracted or converted packs, generated gam
 
 ## How to run the checks
 
-CI runs no-disc product checks on every push (see `.github/workflows/product-checks.yml`). Run the same set locally from the repo root:
+CI runs no-disc product checks on every push (see `.github/workflows/product-checks.yml`). Run the same set locally from the repo root, with the engine submodule checked out (`git submodule update --init -- deps/PS2Recomp`):
 
 ```sh
-for t in tools/ssx3/tests/test_*.py; do python3 "$t"; done
+pip install numpy pillow
+test "$(git -C deps/PS2Recomp rev-parse HEAD)" = "$(python3 -c "import json; print(json.load(open('deps.lock.json'))['engine']['pin'])")"
+for t in tools/ssx3/tests/test_*.py; do python3 "$t" || exit 1; done
 python3 tools/ssx3/test_prebuilt.py
 python3 tests/test_contract_stable.py
 python3 tests/provenance/check_manifest.py
 python3 tests/test_symbols_map.py
+for s in $(git ls-files '*.sh'); do
+  if head -1 "$s" | grep -q bash; then bash -n "$s"; else sh -n "$s"; fi
+done
+python3 -m py_compile build.py tools/ssx3/build.py
 ```
 
-All of them must pass with no disc and no device. Name new tests `tools/ssx3/tests/test_*.py` (builder) or extend the matching suite so CI picks them up.
+All of them must pass with no disc and no device. The `|| exit 1` keeps
+the loop fail-fast: without it a passing last test hides an earlier
+failure. Name new tests `tools/ssx3/tests/test_*.py` (builder) or extend the matching suite so CI picks them up. New shell scripts must pass the syntax loop; new Python entry points belong in the `py_compile` list.
 
 ## PR flow
 

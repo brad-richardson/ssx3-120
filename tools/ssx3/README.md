@@ -1,21 +1,24 @@
 # Build SSX 3 from your own disc
 
 Build hosts: **macOS on Apple silicon** and **Linux x86_64/arm64** for
-Android arm64. Windows users run the Linux path inside **WSL2 Ubuntu**.
-Mac runner and Metal library builds require macOS; iOS preparation remains incomplete. This source preview does not
+Android arm64, plus **macOS on Apple silicon** for the Mac runner, the
+Metal libraries and iOS. Windows users run the Linux path inside
+**WSL2 Ubuntu**. This source tree does not
 provide game downloads or game-bearing app binaries. Start with the
 [disc identity contract](../../docs/ssx3-inputs.md).
 
 This entry provides a local EE generator, Mac runner build and native Metal
-GS/microVU library build. The baseline uses interpreted VU0 and no PGO;
+GS/microVU library build, plus the Android and iOS device builds below.
+The baseline uses interpreted VU0 and no PGO;
 it is not the optimized device play build. A fresh clone built a signed
-Android APK on macOS Apple silicon in PUB1 (2026-10-12). PUB2 rebuilt a signed
-APK from a second fresh clone on 2026-10-13 with package id
+Android APK on macOS Apple silicon, and a second fresh clone rebuilt one
+with package id
 `com.ssx3.recomp`; the ISO is outside the APK. Neither build is an on-device
-acceptance result. iOS offline-VU1 preparation remains incomplete.
+acceptance result. iOS builds follow [Agent setup](../../docs/agent-setup.md)
+(the offline-VU1 stage is generated from your own disc by the builder).
 
 The runner-only path and source-built Metal/microVU libraries were validated
-on macOS Apple silicon from an isolated fresh clone on 2026-10-06, using only
+on macOS Apple silicon from an isolated fresh clone, using only
 the caller's supported disc image. One boot reached the "Press START button"
 title screen. The optional suite, Android and iOS were not validated by that
 acceptance run.
@@ -83,7 +86,7 @@ omitted when you are already root (for example in a container):
 ```sh
 sudo apt-get update
 sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk
-git clone --recurse-submodules <this-repo> ssx3-120
+git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git ssx3-120
 cd ssx3-120
 python3 tools/ssx3/build.py doctor --target prepare
 python3 tools/ssx3/build.py prepare --tools-only --work /path/to/private-build --jobs 4
@@ -197,7 +200,7 @@ dependencies. Keep the directory in place while running.
 work directory**; it bypasses startup movies. It does not use another user's
 cards, texture packs or play settings. See [knobs.tsv](knobs.tsv) for a
 source-registry snapshot; supported defaults remain defined by
-[ps2_knobs.h](../../deps/PS2Recomp/ps2xRuntime/include/ps2_knobs.h). Registry classes describe
+[ps2_knobs.h](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_knobs.h). Registry classes describe
 the source census, not a promise that every diagnostic knob is supported.
 
 ## Android APK
@@ -232,7 +235,9 @@ The Tricky step needs only uv plus local audio tools for Tricky audio
 each found via explicit flags, `SSX3_TRICKY_*` env, PATH or the usual
 Homebrew/apt prefixes and gated by a version + capability probe
 (`tools/ssx3/tricky/tool_paths.py`; install lines: macOS
-`brew install ffmpeg vgmstream`, Linux `apt install ffmpeg vgmstream`).
+`brew install ffmpeg vgmstream`, Linux `apt install ffmpeg` plus
+`vgmstream` where your distro ships it, otherwise build the CLI from
+https://github.com/vgmstream/vgmstream).
 `--tricky-audio on|off|auto` (default auto) runs the speech / music /
 song / music-inf phases when both probe clean and skips them with one
 clear message otherwise; the off layout stages no audio aliases, so the
@@ -241,8 +246,10 @@ no-pool path). Worlds, HUD, menus and gems build without ffmpeg.
 
 Reruns skip when the disc, converter and tools are unchanged: the
 `tricky` step reuses a current layer (printing when it was built, by
-whom and how long it took) and rebuilds on any disc, pin, converter,
-audio-mode or toolchain change. A finished driver workdir can be
+whom and how long it took). When the recorded inputs no longer match
+(disc, pin, converter, audio-mode or toolchain change), the step
+refuses the existing `tricky/` directory instead of rebuilding over it:
+remove that directory or use a fresh `--work` directory and rerun. A finished driver workdir can be
 imported instead of rebuilt (`build.py tricky --from <dir>`,
 `./build android --tricky-from <dir>`). When a layer was built, `stage`
 (Android) and `ios` (bundle `tricky/`) stage it and merge the staged
@@ -344,13 +351,13 @@ game-derived and stay private. A build without a stage runs interpreted VU0;
 it does not take another user's VU images. Programs outside the manifest
 keep the interpreter fallback.
 
-Android PGO: `tools/ssx3/pgo/android/` ships a bundled profile (PB58,
-gzip-compressed; see `MANIFEST.json` for the trained fork/codegen and SHA).
+Android PGO: `tools/ssx3/pgo/android/` ships a bundled profile
+(gzip-compressed; see `MANIFEST.json` for the trained fork/codegen and SHA).
 `android` applies it via Gradle `-Pps2xPgoData` only when your
 `codegen/register_functions.cpp` SHA matches the trained register SHA;
 otherwise it prints one line and builds without PGO. `--no-pgo` always skips;
 `--pgo-profile /path/profile.profdata` uses your own file instead. iOS works
-the same via `tools/ssx3/pgo/ios/` (IPB30) and Xcode `-fprofile-use`. Bundled
+the same via `tools/ssx3/pgo/ios/` and Xcode `-fprofile-use`. Bundled
 profiles hold translated guest-function identities and counts only (no game
 bytes); regenerate your own after guest-code changes with Gradle
 `-Pps2xPgoGenerate=ON -Pps2xPgoHelperDir=/path/to/this/tools/ssx3/pgo`, play
@@ -363,8 +370,10 @@ export settings without a personal host/card path or automatic pad route.
 They require your own game inputs and offline VU1 stage. The handwritten
 [offline host machinery](offline-core/README.md) is included as source,
 separate from the external recorded assembly/tables. iOS has no JIT VU1;
-its OM1 assembly/tables are local game-derived outputs. The complete portable
-recording/generation and app-signing recipe remains incomplete; consult the
+its OM1 assembly/tables are local game-derived outputs. The portable
+recording/generation flow for that stage is documented in
+[Agent setup](../../docs/agent-setup.md) (iOS section); the engine's own
+host recipe below stays the advanced reference. Consult the
 [build inventory](../../docs/ssx3-build.md). Shader prewarm lists are 24-byte host pipeline selector tuples
 (PS/VS/extras, no texture, asset identifier, instruction or guest memory).
 [tfx-selectors.json](tfx-selectors.json) contains 247 shader configurations;
@@ -396,7 +405,7 @@ Preserve dependency licences from their source checkouts.
 `android-libs` and `android` build the support libraries from source by
 default; `--prebuilt` opts in. With `--prebuilt`, a release matching this
 checkout's source and toolchain contract is downloaded, required to match the
-archive hash pinned in [`prebuilt-releases.json`](../../deps/PS2Recomp/tools/ssx3/prebuilt-releases.json),
+archive hash pinned in [`prebuilt-releases.json`](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/tools/ssx3/prebuilt-releases.json),
 unpacked with a strict file allowlist, and verified file by file.
 `SHA256SUMS` only guards the download in transit; it is the committed pin
 that authenticates the archive, so a tampered re-upload under the same tag is

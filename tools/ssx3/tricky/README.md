@@ -6,9 +6,12 @@ bring-your-own-disc builder (`python3 build.py tricky --iso <Tricky.iso>
 --tricky-iso …` for the one-command build).
 Copy rule: **verbatim copies with re-rooted imports and no behaviour
 edits**, except hardcoded work paths, which became CLI args (listed
-per file below). No game data, converted assets or disc-derived bytes
+per file below). No game data, converted assets or game bytes
 live here — only code plus authored recipe data (fence/drop lists,
-blend specs, TSV defaults). Decoded census/glass tables are generated
+blend specs, TSV defaults). Recipe TSVs may transcribe disc text or
+coordinates (song titles, reset volumes) as build inputs; the builder
+rereads the actual game bytes from your own discs at build time.
+Decoded census/glass tables are generated
 into the workdir at build time, never tracked.
 
 Provenance (origin → this file):
@@ -101,7 +104,8 @@ never into the repo):
    --untrack-dir … --plans resetvol-plans.json` (463 volumes, 1022
    triangles, `77acce03…`).
 
-System dependencies (pinned, macOS + Linux):
+System dependencies (validation env, macOS + Linux; the builder itself
+only probes for local tools and never downloads them):
 
 | Dep | Pin | Notes |
 | --- | --- | --- |

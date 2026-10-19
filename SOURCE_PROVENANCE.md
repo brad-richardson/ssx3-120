@@ -10,8 +10,8 @@ reviewable diffs on top).
 
 | Source | Pin | Content |
 | --- | --- | --- |
-| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `b9bf530a…acbf` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
-| `the private orchestration repo` (private orchestration, stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no orchestration, briefs, receipts, cards or device tooling copied |
+| Engine `brad-richardson/PS2Recomp` (`ssx3`) | `1ce278b8…3cbe` (`deps/PS2Recomp` gitlink) | builder `tools/ssx3/`, game metadata `games/ssx3/`, public docs `docs/ssx3-*.md`, full `android/` app shell, `LICENSE` |
+| The private lab repo (stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
 | Vendor `brad-richardson/armsx2` | `e8ed655ec66eeba12ae3029cc26b45927964b476` | renderer/VU source; support-archive identity in `deps.lock.json` |
