@@ -1809,5 +1809,163 @@ class ConverterVersionDocsTest(unittest.TestCase):
             (tricky / 'conv.py').write_text('x = 2\n')
             self.assertNotEqual(v1, build.tricky_converter_version(root))
 
+
+ATLAS_SPEC = importlib.util.spec_from_file_location('tricky_atlas', HERE / 'tricky_atlas.py')
+tricky_atlas = importlib.util.module_from_spec(ATLAS_SPEC)
+ATLAS_SPEC.loader.exec_module(tricky_atlas)
+
+
+def _bake_stub_ctx():
+    import contextlib
+    return contextlib.nullcontext()
+
+
+class AtlasScopeTest(unittest.TestCase):
+    STEP_RELS = ('tools/ssx3/tricky_atlas.py', 'tools/ssx3/tklist-codes.tsv')
+
+    def test_step_files_outside_converter_table(self):
+        rels = [rel for rel, _ in build.tricky_converter_table()]
+        for rel in self.STEP_RELS:
+            self.assertNotIn(rel, rels)
+        # The pre-existing HUD atlas baker is unrelated; only the picker
+        # step files must stay out.
+        self.assertFalse([r for r in rels if 'tricky_atlas' in r or 'tklist' in r])
+
+    def test_step_wiring_resolves(self):
+        self.assertTrue((HERE / 'tricky_atlas.py').is_file())
+        self.assertEqual(tricky_atlas.DEFAULT_CODES, HERE / 'tklist-codes.tsv')
+        self.assertTrue(tricky_atlas.DEFAULT_CODES.is_file())
+
+    def test_codes_cover_nine_events_and_match_panes(self):
+        rows = {}
+        for line in tricky_atlas.DEFAULT_CODES.read_text().splitlines():
+            s = line.strip()
+            if s and not s.startswith('#') and '=' in s:
+                ev, code = s.split('=', 1)
+                rows[int(ev)] = code.strip()
+        self.assertEqual(sorted(rows), [0, 1, 2, 4, 6, 7, 11, 14, 16])
+        self.assertNotIn(15, rows)
+        text = (HERE / 'tricky' / 'build_tricky.py').read_text()
+        chunk = text.split('TP_PANES', 1)[1].split(']', 1)[0]
+        panes = sorted(tok[2:] for tok in chunk.split("'") if tok.startswith('TP'))
+        self.assertEqual(sorted(rows.values()), panes)
+
+
+class AtlasStepTest(unittest.TestCase):
+    CODES_TEXT = '# stub\n0=ARA1\n1=BRA2\n'
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.work = Path(self.tmp.name) / 'work'
+        self.tricky = self.work / 'tricky'
+        self.ui = self.tricky / 'tricky-ov' / 'DATA' / 'UI'
+        self.ui.mkdir(parents=True)
+        (self.ui / 'TPARA1.SSH').write_bytes(b'tp-ara1-stub')
+        (self.ui / 'TPBRA2.SSH').write_bytes(b'tp-bra2-stub')
+        self.codes = Path(self.tmp.name) / 'codes.tsv'
+        self.codes.write_text(self.CODES_TEXT)
+        (self.tricky / 'tricky.env').write_text(
+            '# stub\nPS2X_SSX3_COURSE_PICKER=1\n')
+        (self.tricky / 'tricky-ov' / 'tklist-art.bin').write_bytes(b'atlas-stub')
+        (self.work / 'tricky_inputs.json').write_text(
+            json.dumps({'converter_version': 'stub', 'outputs': {}}))
+
+        stub = types.ModuleType('build_tk_list_art')
+        stub.iso_read = lambda path, name: b'FE1STUB'
+        patcher = patch.dict(sys.modules, {'build_tk_list_art': stub})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def art_row(self):
+        return ('PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
+                + build.PUBLIC_APP_ID + '/files/tricky-ov/tklist-art.bin')
+
+    def test_env_row_append_idempotent_and_migrates(self):
+        self.assertTrue(tricky_atlas.ensure_env_row(self.tricky))
+        rows = (self.tricky / 'tricky.env').read_text().splitlines()
+        self.assertIn(self.art_row(), rows)
+        self.assertFalse(tricky_atlas.ensure_env_row(self.tricky))
+        # A stale path row (older layout) migrates to the current value.
+        text = (self.tricky / 'tricky.env').read_text()
+        (self.tricky / 'tricky.env').write_text(
+            text.replace('tricky-ov/tklist-art.bin', 'tklist-art.bin'))
+        self.assertTrue(tricky_atlas.ensure_env_row(self.tricky))
+        self.assertIn(self.art_row(),
+                      (self.tricky / 'tricky.env').read_text().splitlines())
+
+    def test_record_extension_shape_and_idempotent(self):
+        self.assertTrue(tricky_atlas.extend_tricky_record(self.work))
+        record = json.loads((self.work / 'tricky_inputs.json').read_text())
+        for relative in ('tricky-ov/tklist-art.bin', 'tricky.env'):
+            self.assertIn(relative, record['outputs'])
+            entry = record['outputs'][relative]
+            self.assertEqual(set(entry), {'sha256', 'bytes'})
+        self.assertFalse(tricky_atlas.extend_tricky_record(self.work))
+
+    def test_ensure_bakes_then_current_then_rebakes_on_key_drift(self):
+        baked = []
+
+        def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
+            art = Path(ov_dir) / 'tklist-art.bin'
+            art.write_bytes(b'atlas-stub')
+            baked.append(True)
+            return art
+
+        with patch.object(tricky_atlas, 'bake_atlas', fake_bake):
+            self.assertEqual(
+                tricky_atlas.ensure(self.work, Path(self.tmp.name) / 'ssx3.iso',
+                                    str(self.ui), str(self.codes)), 'baked')
+            self.assertEqual(len(baked), 1)
+            self.assertEqual(
+                tricky_atlas.ensure(self.work, Path(self.tmp.name) / 'ssx3.iso',
+                                    str(self.ui), str(self.codes)), 'current')
+            self.assertEqual(len(baked), 1)
+            self.codes.write_text(self.CODES_TEXT + '2=CRA3\n')
+            (self.ui / 'TPCRA3.SSH').write_bytes(b'tp-cra3-stub')
+            self.assertEqual(
+                tricky_atlas.ensure(self.work, Path(self.tmp.name) / 'ssx3.iso',
+                                    str(self.ui), str(self.codes)), 'baked')
+            self.assertEqual(len(baked), 2)
+
+    def test_ensure_reapplies_record_drift_without_rebake(self):
+        def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
+            art = Path(ov_dir) / 'tklist-art.bin'
+            art.write_bytes(b'atlas-stub')
+            return art
+
+        with patch.object(tricky_atlas, 'bake_atlas', fake_bake):
+            args = (self.work, Path(self.tmp.name) / 'ssx3.iso',
+                    str(self.ui), str(self.codes))
+            self.assertEqual(tricky_atlas.ensure(*args), 'baked')
+            record_path = self.work / 'tricky_inputs.json'
+            record = json.loads(record_path.read_text())
+            del record['outputs']['tricky-ov/tklist-art.bin']
+            record_path.write_text(json.dumps(record, indent=2) + '\n')
+            with patch.object(tricky_atlas, 'bake_atlas') as rebake:
+                self.assertEqual(tricky_atlas.ensure(*args), 're-applied')
+                rebake.assert_not_called()
+
+    def test_check_only_reports_stale_without_writing(self):
+        # Missing atlas file with no record is stale, and nothing is written.
+        (self.tricky / 'tricky-ov' / 'tklist-art.bin').unlink()
+        with _bake_stub_ctx():
+            self.assertEqual(
+                tricky_atlas.ensure(self.work, Path(self.tmp.name) / 'ssx3.iso',
+                                    str(self.ui), str(self.codes),
+                                    check_only=True), 'stale')
+        self.assertFalse((self.tricky / 'tricky-ov' / 'tklist-art.bin').exists())
+        self.assertFalse((self.work / 'tklist-atlas.json').exists())
+
+    def test_refuses_without_layer_or_record(self):
+        with _bake_stub_ctx():
+            with self.assertRaises(ValueError):
+                tricky_atlas.ensure(Path(self.tmp.name) / 'nolayer',
+                                    Path(self.tmp.name) / 'ssx3.iso',
+                                    str(self.ui), str(self.codes))
+            (self.work / 'tricky_inputs.json').unlink()
+            with self.assertRaises(ValueError):
+                tricky_atlas.extend_tricky_record(self.work)
+
 if __name__ == '__main__':
     unittest.main()

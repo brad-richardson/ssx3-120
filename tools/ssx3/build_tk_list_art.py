@@ -186,4 +186,5 @@ def main():
     print(f"baked {len(rects)} art sprites -> {outdir / 'tklist-art.bin'}")
 
 
-main()
+if __name__ == '__main__':
+    main()

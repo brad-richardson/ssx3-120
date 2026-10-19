@@ -1,0 +1,17 @@
+# tklist-codes.tsv: SSX 3 event id -> Tricky TP preview file code.
+# Consumed by tools/ssx3/tricky_atlas.py (--codes; defaults here) and passed
+# to tools/ssx3/build_tk_list_art.py. Facts only (short names, same class as
+# MANIFEST_ROWS in the driver): the codes are the stock event filecodes
+# (RAM 0x442950 table); the TP files are DATA/UI/TP<code>.SSH on the user's
+# Tricky disc. Megaplex (event 15) has no preview on disc and is
+# intentionally absent (text card). Lives beside the atlas step (NOT under
+# tools/ssx3/tricky/) so it stays out of the Tricky converter table.
+0=ARA1
+1=BRA2
+2=CRA3
+4=ERA5
+6=DSS2
+7=ESS3
+11=BHP1
+14=ABC1
+16=EBC3
