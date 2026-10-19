@@ -31,7 +31,7 @@ class SubmitOrderTest(unittest.TestCase):
     def test_longest_first(self):
         self.assertEqual(bt.course_submit_order(),
                          ['gari', 'merq', 'aloha', 'elys', 'snow',
-                          'alaska', 'untrack', 'pipe', 'mega'])
+                          'alaska', 'untrack', 'mega', 'pipe'])
 
     def test_covers_all_unblocked(self):
         order = bt.course_submit_order()

@@ -70,16 +70,17 @@ BUILD_COURSES = ['pipe', 'untrack', 'snow', 'gari', 'aloha',
                  'mesa', 'merq', 'elys', 'alaska', 'mega']
 
 
-# Pool submit weights: measured bradflix r13 world-leg walls (s), longest
+# Pool submit weights: measured bradflix world-leg walls (s), longest
 # first — r13 queued mesa (aloha-gated) last and it started at ~81 min.
-# Weights: gari 3236, merq 2714, aloha 2397, elys 1987, snow 1953,
-# alaska 1132, untrack 674, pipe 390, mega 260 (skip-with-record).
+# Walls: gari 3236, merq 2714, aloha 2397, elys 1987, snow 1953,
+# alaska 1132, untrack 674, mega 657 (search+capture; replay faster),
+# pipe 390. mega was 260 (skip) before tk-mega-1 landed its world.
 # Scheduling only: the serial path keeps BUILD_COURSES order, outputs are
 # identical either way (courses are disjoint; Part B proved 1-vs-2
 # worker byte equality). [tk-speed-1]
 SUBMIT_WEIGHTS = {'gari': 3236, 'merq': 2714, 'aloha': 2397,
                   'elys': 1987, 'snow': 1953, 'alaska': 1132,
-                  'untrack': 674, 'pipe': 390, 'mega': 260}
+                  'untrack': 674, 'mega': 657, 'pipe': 390}
 
 
 def course_submit_order():
