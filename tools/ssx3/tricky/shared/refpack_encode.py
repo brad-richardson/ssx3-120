@@ -5,12 +5,22 @@ The caller must verify decoded equality and enforce the original block capacity.
 """
 from collections import defaultdict, deque
 
+try:
+    import refpack_native as _native
+except ImportError:
+    _native = None
+
 
 def encode(data, candidates=64):
     if len(data) > 0xffffff:
         raise ValueError('10FB supports at most 24-bit output lengths')
     if candidates < 1:
         raise ValueError('At least one match candidate is required')
+    if _native is not None:
+        try:
+            return _native.encode_greedy(data, candidates)
+        except Exception as e:
+            _native._log_once(f'refpack_encode.encode: {e}; using Python')
     data = bytes(data)
     out = bytearray(b'\x10\xfb' + len(data).to_bytes(3, 'big'))
     positions = defaultdict(lambda: deque(maxlen=candidates))

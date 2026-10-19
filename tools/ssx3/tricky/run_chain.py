@@ -25,6 +25,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SHARED = HERE / 'shared'
+sys.path.insert(0, str(SHARED))
 
 # --------------------------------------------------------------------------
 # Pins ( payday oracles; full SHAs where recorded )
@@ -722,6 +723,15 @@ class Chain:
         self.lane = Path(a.lane_dir) if a.lane_dir else None
         self.donor = self.W / 'donor'
         (self.W / 'logs').mkdir(parents=True, exist_ok=True)
+        try:
+            import refpack_native as _rpn
+            _ok, _detail = _rpn.ensure(self.W / 'native')
+            print(f'refpack-native: {_detail} '
+                  f'(Python fallback on any failure)', flush=True)
+            os.environ['REFPACK_NATIVE_DIR'] = str(self.W / 'native')
+        except Exception as e:
+            print(f'refpack-native: unavailable ({e}); using Python',
+                  flush=True)
 
     def log(self, *names):
         return str(self.W / 'logs' / '-'.join(names))

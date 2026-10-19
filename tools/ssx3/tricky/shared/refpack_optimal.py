@@ -18,6 +18,11 @@ with the independent decoder. Deterministic; no randomness.
 """
 from collections import defaultdict, deque
 
+try:
+    import refpack_native as _native
+except ImportError:
+    _native = None
+
 MAX_LEN = 1028
 MAX_DIST = 131072
 
@@ -46,6 +51,11 @@ def find_matches(data, candidates=128, skip_threshold=64):
     """For each position, a list of (length, distance) candidates: the longest match in each
     distance class (<=1024, <=16384, <=131072). Positions inside a long match reuse the
     match found at its start instead of searching, which keeps the cost near linear."""
+    if _native is not None:
+        try:
+            return _native.find_matches(data, candidates, skip_threshold)
+        except Exception as e:
+            _native._log_once(f'refpack_optimal.find_matches: {e}; using Python')
     n = len(data)
     chains = defaultdict(lambda: deque(maxlen=candidates))
     result = [()] * n
@@ -102,6 +112,11 @@ def plan(data, candidates=128, skip_threshold=64):
     This is the searched decision; emit_commands() applies it with no
     search. [tk-speed-1]
     """
+    if _native is not None:
+        try:
+            return _native.plan(data, candidates, skip_threshold)
+        except Exception as e:
+            _native._log_once(f'refpack_optimal.plan: {e}; using Python')
     data = bytes(data)
     n = len(data)
     if n > 0xffffff:
@@ -224,6 +239,11 @@ def emit_commands(data, picks):
 
 
 def encode(data, candidates=128, skip_threshold=64):
+    if _native is not None:
+        try:
+            return _native.encode_optimal(data, candidates, skip_threshold)
+        except Exception as e:
+            _native._log_once(f'refpack_optimal.encode: {e}; using Python')
     data = bytes(data)
     return emit_commands(data, plan(data, candidates, skip_threshold))
 

@@ -492,6 +492,15 @@ class Build:
         self.skipped = {}
         self.course_walls = {}
         self.phase_walls = {}
+        try:
+            import refpack_native as _rpn
+            ok, detail = _rpn.ensure(self.W / 'native')
+            print(f'refpack-native: {detail} '
+                  f'(Python fallback on any failure)', flush=True)
+            os.environ['REFPACK_NATIVE_DIR'] = str(self.W / 'native')
+        except Exception as e:
+            print(f'refpack-native: unavailable ({e}); using Python',
+                  flush=True)
 
     def timed(self, name, func, *args, **kwargs):
         """Run one phase, recording its wall time (tricky-manifest-1)."""
