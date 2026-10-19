@@ -3745,7 +3745,9 @@ def tricky_converter_table(root=ROOT):
         relparts = candidate.relative_to(tricky).parts
         if 'tests' in relparts or '__pycache__' in relparts:
             continue
-        if candidate.suffix == '.pyc':
+        if candidate.suffix in ('.pyc', '.md'):
+            # Docs never change converter output; a README edit must not
+            # invalidate a user's cached Tricky layer.
             continue
         candidates.append(candidate.relative_to(root).as_posix())
     candidates.extend(TRICKY_CONVERTER_EXTRA)

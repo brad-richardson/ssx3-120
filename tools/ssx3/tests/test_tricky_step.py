@@ -1774,5 +1774,28 @@ class IosOneCommandBuildsAndStagesTest(unittest.TestCase):
             self.assertIn('${BUNDLE}/tricky/', merged)
 
 
+
+class ConverterVersionDocsTest(unittest.TestCase):
+    """A docs edit under tools/ssx3/tricky must not move the converter
+    version (it would invalidate every user's cached Tricky layer)."""
+
+    def test_markdown_does_not_change_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tricky = root / 'tools' / 'ssx3' / 'tricky'
+            tricky.mkdir(parents=True)
+            (tricky / 'conv.py').write_text('x = 1\n')
+            (tricky / 'README.md').write_text('docs v1\n')
+            extra = list(getattr(build, 'TRICKY_CONVERTER_EXTRA', []))
+            for rel in extra:
+                p = root / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text('extra\n')
+            v1 = build.tricky_converter_version(root)
+            (tricky / 'README.md').write_text('docs v2, reworded\n')
+            self.assertEqual(v1, build.tricky_converter_version(root))
+            (tricky / 'conv.py').write_text('x = 2\n')
+            self.assertNotEqual(v1, build.tricky_converter_version(root))
+
 if __name__ == '__main__':
     unittest.main()
