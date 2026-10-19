@@ -1119,7 +1119,28 @@ def android(a):
     print('Back up your keystore; a different key forces an uninstall, which wipes saves.')
     pgo_data = resolve_pgo(a.work, 'android', explicit=getattr(a, 'pgo_profile', None),
                            disabled=getattr(a, 'no_pgo', False))
+    # link-mem-1: RAM-aware ThinLTO cap + Gradle heap so the build completes
+    # on 8 GB hosts (slow is fine). Explicit flags win; unknown RAM falls
+    # back to --jobs. The engine hook (PS2X_THINLTO_JOBS) ignores empty.
+    total_ram = host_memory_bytes()
+    cores = os.cpu_count() or 8
+    if getattr(a, 'thinlto_jobs', None) is not None:
+        thinlto = a.thinlto_jobs
+    elif total_ram is not None:
+        thinlto = thinlto_jobs(total_ram / 1024**3, cores)
+    else:
+        thinlto = a.jobs
+    if getattr(a, 'gradle_heap_gb', None) is not None:
+        heap = a.gradle_heap_gb
+    elif total_ram is not None:
+        heap = gradle_heap_gb(total_ram / 1024**3)
+    else:
+        heap = 4
+    ram_label = ('%.1f' % (total_ram / 1024**3)) if total_ram is not None else 'unknown'
+    print('link-mem-1: host RAM %s GB, %d cores -> ThinLTO jobs %d, Gradle heap %d GB' %
+          (ram_label, cores, thinlto, heap))
     run('bash', ROOT / 'apps/android/gradlew', '-p', ROOT / 'apps/android', 'assembleRelease',
+        '-Dorg.gradle.jvmargs=-Xmx%dg' % heap,
         '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
@@ -1131,6 +1152,7 @@ def android(a):
         '-Pps2xAppLabel=' + resolve_app_label(a),
         '-Pps2xPrebuiltDir=' + (str(bundle) if bundle else ''),
         '-Pps2xJobs=' + str(a.jobs),
+        '-Pps2xThinLtoJobs=' + str(thinlto),
         '-Pps2xNativeBuildDir=' + str(a.work / 'android-native-build'),
         '-Pps2xVersionCode=' + str(version_code),
         '-Pps2xKeystoreFile=' + str(keystore),
@@ -3136,6 +3158,50 @@ MIN_FREE_BYTES_DEFAULT = 12 * 1024**3
 MIN_MEMORY_BYTES_WARN = 8 * 1024**3
 
 
+# link-mem-1: the Android game link peaks at ~8.39 GiB with 18 ThinLTO
+# backends and scales ~0.25 GiB/job down to 4.13 GiB at 1 job, with
+# byte-identical outputs (measured on the mini, NDK 28 lld). Size the cap
+# from host RAM so small builders complete instead of swapping to death.
+THINLTO_GB_PER_JOB = 0.25
+THINLTO_RESERVE_GB = 6.0  # 4 GB Gradle heap + ~2 GB OS/headroom.
+
+
+def thinlto_jobs(ram_gb, cores, per_job_gb=THINLTO_GB_PER_JOB):
+    """ThinLTO backend threads for the game link given host RAM and cores.
+
+    Hosts with 8 GB or less always get 1 (the measured 4.13 GiB link plus a
+    2 GB Gradle heap fits); above that, leave the reserve then one thread
+    per per_job_gb, never exceeding core count. Pure function of numbers so
+    it unit-tests without touching the host.
+    """
+    if ram_gb <= 8:
+        return 1
+    return max(1, min(cores, int((ram_gb - THINLTO_RESERVE_GB) // per_job_gb)))
+
+
+def gradle_heap_gb(ram_gb):
+    """Gradle daemon heap: 2 GB on small hosts, else the 4 GB default."""
+    return 2 if ram_gb <= 8 else 4
+
+
+# link-mem-1: the public-shape game compile peaks ~7.5 GiB at -j8 (my tree
+# only; cross-lane-contaminated 8.6 GiB samples discarded) but 2.36 GiB at
+# -j2, so small hosts also need capped compile parallelism to complete.
+DEFAULT_JOBS = 8
+LOWRAM_MAX_JOBS = 2
+
+
+def effective_jobs(requested_or_none, ram_gb_or_none):
+    """Build-wide --jobs resolution. An explicit --jobs always wins; without
+    one, hosts default to DEFAULT_JOBS, except known-small hosts (8 GB or
+    less) which get LOWRAM_MAX_JOBS so the compile phase fits."""
+    if requested_or_none is not None:
+        return requested_or_none
+    if ram_gb_or_none is not None and ram_gb_or_none <= 8:
+        return LOWRAM_MAX_JOBS
+    return DEFAULT_JOBS
+
+
 def check_capacity(work, target):
     """F15: fail before heavy work when the work filesystem is too full.
 
@@ -3152,7 +3218,7 @@ def check_capacity(work, target):
     total = host_memory_bytes()
     if total is not None and total < MIN_MEMORY_BYTES_WARN:
         print('warning: host RAM is %.1f GB; 8+ GB is recommended '
-              '(use --jobs 1 on small hosts)' % (total / 1024**3))
+              '(low-RAM auto: --jobs 2, ThinLTO jobs 1, Gradle heap 2 GB)' % (total / 1024**3))
     return True
 
 
@@ -4485,7 +4551,12 @@ def main():
     p.add_argument('--no-pgo', action='store_true', help='build without PGO even when a fresh bundled profile exists')
     p.add_argument('--suite', action='store_true', help='also build optional Mac development suite and its analyzer/recompiler fixtures')
     p.add_argument('--det', action='store_true', help='mac flavor with the VBlank det-hash tap (gate boots + tap unit tests; separate runner-build-det dir)')
-    p.add_argument('--jobs', type=int, default=8)
+    p.add_argument('--jobs', type=int, default=None,
+                   help='build-wide parallel jobs (default: 8, or 2 on 8 GB or smaller hosts)')
+    p.add_argument('--thinlto-jobs', type=int, default=None,
+                   help='ThinLTO backend threads for the Android game link (default: RAM-aware auto; 8 GB or smaller hosts use 1)')
+    p.add_argument('--gradle-heap-gb', type=int, default=None,
+                   help='Gradle daemon heap in GB (default: 2 on 8 GB or smaller hosts, else 4)')
     p.add_argument('--tricky-audio', default='auto', choices=['on', 'off', 'auto'],
                    help='tricky step audio phases (need local ffmpeg + vgmstream): '
                         'on fails without them, off skips them, auto runs them when present')
@@ -4526,8 +4597,16 @@ def main():
     a.work = a.work.resolve()
     if a.work == ROOT or ROOT in a.work.parents:
         p.error('--work must be outside the source checkout')
+    # link-mem-1: resolve --jobs before any step uses it (None = default:
+    # 2 on small hosts so the compile fits, else 8; explicit always wins).
+    _ram = host_memory_bytes()
+    a.jobs = effective_jobs(a.jobs, _ram / 1024**3 if _ram is not None else None)
     if a.jobs < 1 or a.jobs > 16:
         p.error('--jobs must be 1..16')
+    if a.thinlto_jobs is not None and not 1 <= a.thinlto_jobs <= 64:
+        p.error('--thinlto-jobs must be 1..64')
+    if a.gradle_heap_gb is not None and not 1 <= a.gradle_heap_gb <= 16:
+        p.error('--gradle-heap-gb must be 1..16')
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+', a.app_id):
         p.error('--app-id must be a dotted Android application id')
     if a.app_label is not None and not a.app_label.strip():
