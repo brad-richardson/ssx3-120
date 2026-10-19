@@ -78,9 +78,13 @@ disc. Tricky courses are converted to run inside SSX 3's engine — so SSX 3
 handling, tricks and scoring apply — which means converting every course's
 geometry, collision, resets, race lines, gems, HUD and menus, plus audio
 when you have the tools for it, then recompressing each course archive in
-the game's own archive format. That recompression is most of the time;
-end-to-end Tricky timing is TBD from the Air run (see
-[docs/known-issues.md](docs/known-issues.md)). The step is optional: skip
+the game's own archive format. Measured on a MacBook Air (M4, 10 cores, 16 GB), from a fresh clone:
+the Android build takes about **14 minutes** without Tricky, and about
+**1 h 10 min** with `--tricky-iso` (so the Tricky step adds roughly an
+hour); a rerun of the same command reuses everything and finishes in
+about 11 minutes. Faster machines are quicker (a 12-core Linux box
+converts the Tricky courses in about 40 minutes); older or smaller
+machines take longer. The step is optional: skip
 it by leaving out `--tricky-iso`. It runs once, then its outputs are
 cached in your work directory: a rerun reuses the layer when the disc,
 converter, audio mode and toolchain are unchanged, and otherwise refuses
