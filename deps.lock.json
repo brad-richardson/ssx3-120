@@ -3,7 +3,7 @@
   "engine": {
     "repo": "https://github.com/brad-richardson/PS2Recomp.git",
     "ref": "ssx3",
-    "pin": "1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe",
+    "pin": "3c0fa8889edb150eab0acec750220dc5b61b5a77",
     "submodule": "deps/PS2Recomp",
     "runner_invariant_base": "c5a9d02573410a2085a4b4b831b0b68ba3515440",
     "upstream_base": "2c5fbb9389e11dd95693385969490c9e8e6f57b4"
