@@ -113,17 +113,19 @@ class SizeCoursePoolTest(unittest.TestCase):
     probes so the table is deterministic on any machine.
     """
 
-    def sized(self, cores, ram_gb, jobs=None, nready=10):
+    def sized(self, cores, ram_gb, jobs=None, nready=10, peak=4.0):
         from unittest import mock
         with mock.patch.object(bt, 'cpu_budget', return_value=cores), \
              mock.patch.object(bt, 'free_gb', return_value=float(ram_gb)):
-            return bt.size_course_pool(nready, jobs if jobs is not None else cores)
+            return bt.size_course_pool(
+                nready, jobs if jobs is not None else cores, peak)
 
     def test_table(self):
-        table = {(8, 8): (1, 1), (8, 16): (2, 4), (8, 32): (6, 1),
-                 (10, 8): (1, 1), (10, 16): (2, 5), (10, 32): (6, 1),
-                 (12, 8): (1, 1), (12, 16): (2, 6), (12, 32): (6, 2),
-                 (16, 8): (1, 1), (16, 16): (2, 8), (16, 32): (6, 2)}
+        table = {(4, 8): (1, 1),
+                 (8, 8): (1, 1), (8, 16): (2, 4), (8, 32): (2, 4),
+                 (10, 8): (1, 1), (10, 16): (2, 5), (10, 32): (3, 3),
+                 (12, 8): (1, 1), (12, 16): (2, 6), (12, 32): (4, 3),
+                 (16, 8): (1, 1), (16, 16): (2, 8), (16, 32): (5, 3)}
         for (cores, ram), (courses, inner) in table.items():
             with self.subTest(cores=cores, ram=ram):
                 got_courses, got_inner, _note = self.sized(cores, ram)
@@ -153,8 +155,19 @@ class SizeCoursePoolTest(unittest.TestCase):
         from unittest import mock
         with mock.patch.object(bt, 'cpu_budget', return_value=12), \
              mock.patch.object(bt, 'free_gb', return_value=0.0):
-            courses, inner, _note = bt.size_course_pool(10, 12)
-        self.assertEqual((courses, inner), (10, 1))
+            courses, inner, _note = bt.size_course_pool(10, 12, 4.0)
+        self.assertEqual((courses, inner), (4, 3))
+
+    def test_serial_inner_capped_by_group_ram(self):
+        from unittest import mock
+        with mock.patch.object(bt, 'free_gb', return_value=16.0):
+            self.assertEqual(bt.serial_inner_jobs(), 6)
+        with mock.patch.object(bt, 'free_gb', return_value=8.0):
+            self.assertEqual(bt.serial_inner_jobs(), 1)
+        with mock.patch.object(bt, 'free_gb', return_value=0.0):
+            self.assertEqual(bt.serial_inner_jobs(), 6)
+        with mock.patch.object(bt, 'free_gb', return_value=16.0):
+            self.assertEqual(bt.serial_inner_jobs(2), 2)
 
 
 if __name__ == '__main__':

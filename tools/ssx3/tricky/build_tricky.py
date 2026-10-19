@@ -399,26 +399,41 @@ def size_inner_jobs(workers, group_peak_gb=0.5, reserve_gb=8.0):
     return max(1, min(by_cpu, by_mem))
 
 
-def size_course_pool(nready, jobs, peak_course_gb=4.0, group_peak_gb=0.5,
+# Per-course peak RSS in GiB for the RAM cap. Measured on the Mac
+# (merq course, inner 6; REPORT §12); the constant below is the measured
+# peak plus ~25% headroom. Until the measurement lands it holds the old
+# 4 GiB planning figure.
+COURSE_PEAK_GB = 4.0
+
+
+def size_course_pool(nready, jobs, peak_course_gb=None, group_peak_gb=0.5,
                      reserve_gb=8.0):
     """Joint (courses, inner) sizing from cores, RAM and the --jobs budget.
 
-    --jobs is the TOTAL thread budget (courses x inner <= jobs, and never
-    more than cores); RAM caps courses at (free-reserve)//peak per course
-    and inner groups at group_peak each. Serial (1 course, and inner 1
-    when RAM is short) when memory is tight. Independent groups pack in
-    parallel with order-independent assembly, so the counts are
-    scheduling only: byte-identical by construction (Part B proved 1-vs-2
-    worker equality). Returns (courses, inner, note).
+    Brad 10-18: courses = max(1, min(floor(cores/3), RAM cap)) with
+    RAM cap = floor((available - reserve) / per-course peak); inner =
+    max(1, floor(total / courses)) where total = min(jobs, cores), so
+    total worker processes stay around core count (the pool is
+    CPU-bound pure-Python RefPack search, not read I/O). Inner groups
+    are additionally capped by group RAM (assumed, not measured).
+    Serial (1 course, and inner 1 when RAM is short) when memory is
+    tight. Independent groups pack in parallel with order-independent
+    assembly, so counts are scheduling only: byte-identical by
+    construction (Part B proved 1-vs-2 worker equality). The
+    contention-adjusted makespan model (REPORT §12) shows fill-inner
+    tying oversubscribed inner on wall clock with ~half the processes.
+    Returns (courses, inner, note).
     """
+    if peak_course_gb is None:
+        peak_course_gb = COURSE_PEAK_GB
     cores = cpu_budget()
     total = min(max(1, jobs), cores)
     free = free_gb()
     if free > 0 and peak_course_gb > 0:
-        mem_courses = max(1, int((free - reserve_gb) // peak_course_gb))
+        ram_cap = max(1, int((free - reserve_gb) // peak_course_gb))
     else:
-        mem_courses = nready
-    courses = max(1, min(nready, total, mem_courses))
+        ram_cap = nready
+    courses = max(1, min(nready, cores // 3, ram_cap))
     inner = max(1, total // courses)
     if free > 0 and group_peak_gb > 0:
         inner = max(1, min(inner,
@@ -426,6 +441,23 @@ def size_course_pool(nready, jobs, peak_course_gb=4.0, group_peak_gb=0.5,
     note = (f'cores={cores} jobs={jobs} free={free:.1f}G peak={peak_course_gb}G '
             f'group={group_peak_gb}G reserve={reserve_gb}G -> {courses}x{inner}')
     return courses, inner, note
+
+
+def serial_inner_jobs(inner_req=0):
+    """Serial-path inner jobs: explicit request, else historic 6.
+
+    The historic 6 is capped by group RAM so old machines complete
+    (slow is fine); unchanged on machines with headroom. Exported via
+    TRICKY_INNER_JOBS by the caller (the pool default when unset is 6,
+    so the export is behavior-identical there and a safety cap where
+    RAM is short).
+    """
+    if inner_req:
+        return inner_req
+    free = free_gb()
+    if free > 0:
+        return max(1, min(6, int((free - 8.0) // 0.5)))
+    return 6
 
 
 def iso_member(iso, want):
@@ -525,11 +557,12 @@ class Build:
                         or getattr(self.a, 'inner_jobs', 0) or 0)
         want = getattr(self.a, 'course_workers', 0) or 0
         jobs = int(getattr(self.a, 'jobs', 0) or 0) or cpu_budget()
-        peak = float(getattr(self.a, 'course_mem_gb', 0) or 4.0)
+        peak = float(getattr(self.a, 'course_mem_gb', 0) or COURSE_PEAK_GB)
         if want == 1:
-            workers, inner = 1, (inner_req or 6)
-            if inner_req and 'TRICKY_INNER_JOBS' not in os.environ:
-                os.environ['TRICKY_INNER_JOBS'] = str(inner_req)
+            workers = 1
+            inner = serial_inner_jobs(inner_req)
+            if 'TRICKY_INNER_JOBS' not in os.environ:
+                os.environ['TRICKY_INNER_JOBS'] = str(inner)
             note = 'serial (--course-workers 1: exact path)'
         elif inner_req:
             # Explicit inner: legacy course count, bounded by the --jobs
