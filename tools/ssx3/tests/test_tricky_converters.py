@@ -32,6 +32,7 @@ mpf = load('mpf3to4')
 atlas = load('make_hud_atlas')
 mapnames = load('mapnames')
 slots = load('speech_slots')
+eng = load('english_base')
 sil = load('silence_intro_banks')
 song = load('song_eaxa')
 banner = load('patch_music_inf')
@@ -387,6 +388,112 @@ class GemToolImportTest(unittest.TestCase):
                         [sys.executable, str(TRICKY / tool), '--help'],
                         cwd=tmp, capture_output=True, text=True, timeout=120)
                     self.assertEqual(r.returncode, 0, r.stderr[-500:])
+
+
+class EnglishBaseTest(unittest.TestCase):
+    def _take(self, amp=9000, seed=0):
+        pcm = [[int(amp * math.sin((i + seed) / 4.0)) for i in range(56)]]
+        splits, chb = eaxa.encode_blocks(pcm, 56)
+        scdl = eaxa.packetize(splits, chb)
+        pt = bytes([0xFD, 0x82, 0x01, 0x02, 0x85, 0x01, 0x00, 0xFF])
+        sch = b'SCHl' + struct.pack('<I', 12 + len(pt)) + bytes(4) + pt
+        scel = b'SCEl' + struct.pack('<I', 8)
+        return sch + b'SCCl' + struct.pack('<I', 12) + struct.pack('<I', 1) + scdl[0] + scel
+
+    def _member(self):
+        return self._take(seed=0) + self._take(seed=40)
+
+    def _wav(self, path, frames=22050, channels=2):
+        import wave
+        with wave.open(str(path), 'wb') as w:
+            w.setnchannels(channels)
+            w.setsampwidth(2)
+            w.setframerate(22050)
+            w.writeframes(struct.pack('<' + 'h' * (frames * channels),
+                                      *([1000] * (frames * channels))))
+
+    def test_decisions_parse(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tsv = Path(tmp) / 'd.tsv'
+            tsv.write_text('slot\tsource\tgain_db\n'
+                           '0\ttricky-Knockdown-5\t+2.50\n'
+                           '3\tKEEP-ORIGINAL\t\n')
+            rows = eng.load_decisions(tsv)
+            self.assertEqual(rows, [(0, 'Knockdown', 5, 2.5),
+                                   (3, None, None, None)])
+
+    def test_decisions_bad_rows_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / 'b.tsv'
+            bad.write_text('slot\tsource\tgain_db\n0\tKnockdown-5\t+2.50\n')
+            with self.assertRaises(SystemExit):
+                eng.load_decisions(bad)
+            bad.write_text('slot\tsource\tgain_db\n0\ttricky-Knockdown-5\t\n')
+            with self.assertRaises(SystemExit):
+                eng.load_decisions(bad)
+
+    def test_bank_member_name(self):
+        self.assertEqual(eng.bank_member_name('Knockdown'),
+                         'data\\speech\\mc\\Knockdown.dat')
+        self.assertEqual(eng.bank_member_name('Pre_Race_Overlay_01'),
+                         'data\\speech\\narr\\Pre_Race_Overlay_01.dat')
+
+    def test_fill_all_slots(self):
+        member = self._member()
+        take = self._take(seed=99)[:100]
+        filled, n = eng.fill_all_slots(member, take, 'synth.dat')
+        self.assertEqual(n, 2)
+        self.assertEqual(len(filled), len(member))
+        bounds = eng.slot_bounds(member)
+        for s, size in bounds:
+            self.assertEqual(filled[s:s + len(take)], take)
+            self.assertTrue(all(b == 0 for b in filled[s + len(take):s + size]))
+
+    def test_fill_oversize_take_fails(self):
+        member = self._member()
+        with self.assertRaises(SystemExit):
+            eng.fill_all_slots(member, b'\1' * (len(member) + 1), 'synth.dat')
+
+    def test_slot_bounds_no_takes_fails(self):
+        with self.assertRaises(SystemExit):
+            eng.slot_bounds(b'\0' * 64)
+
+    def test_take_determinism_and_fit(self):
+        take = self._take()
+        template = take[:take.index(b'SCEl') + 8]
+        with tempfile.TemporaryDirectory() as tmp:
+            wav = Path(tmp) / 'rs.wav'
+            self._wav(wav, frames=56)
+            first = eng.build_take('ffmpeg', wav, 0.0, template, 56, len(take) + 64, 's')
+            second = eng.build_take('ffmpeg', wav, 0.0, template, 56, len(take) + 64, 's')
+            self.assertEqual(first, second)
+            self.assertTrue(first.startswith(b'SCHl'))
+            with self.assertRaises(SystemExit):
+                eng.build_take('ffmpeg', wav, 0.0, template, 56, 8, 's')
+
+    def test_shipped_decisions_schema(self):
+        decdir = Path(__file__).resolve().parents[1] / 'tricky' / 'data' / 'english-decisions'
+        names = ['DJ_Artist_Intro_2_eng.dat.decisions.tsv',
+                 'PA_Medal_Run_Intro_eng.dat.decisions.tsv',
+                 'PA_Rider_Intro_eng.dat.decisions.tsv',
+                 'PA_Rider_Race_Intro_eng.dat.decisions.tsv',
+                 'PA_Rider_Postition_eng.dat.decisions.tsv']
+        for name in names:
+            rows = eng.load_decisions(decdir / name)
+            self.assertTrue(rows, name)
+            seen = set()
+            for slot, bank, idx, gain in rows:
+                self.assertGreaterEqual(slot, 0)
+                self.assertNotIn(slot, seen)
+                seen.add(slot)
+                if bank is None:
+                    continue
+                self.assertGreaterEqual(idx, 0)
+                self.assertIsInstance(gain, float)
+        artist = eng.load_decisions(decdir / names[0])
+        self.assertEqual(len(artist), 9)
+        for slot, bank, idx, gain in artist:
+            self.assertEqual((bank, idx, gain), ('VenueIntro', 20, 1.3))
 
 
 if __name__ == '__main__':

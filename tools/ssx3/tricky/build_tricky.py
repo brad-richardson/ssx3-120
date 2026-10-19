@@ -21,8 +21,10 @@ audio gate is cross-host SNR, not exact hashes.
 
 Known skips (loud + recorded, not silent): mega world routes without a
 verified --routes-ref-dir (pending mega-h/u2/c tail), the 9-member speech
-merge (TK43b meter builders lost), the ENGLISH composite (lane-private
-tk-audio-2f base). The manifest then carries the built courses only.
+merge (TK43b meter builders lost). The ENGLISH base rebuilds from the
+user's discs (english_base.py); --english-base keeps an explicit
+lab composite on its exact path. The manifest then carries the built
+courses only.
 """
 import argparse
 import hashlib
@@ -193,7 +195,7 @@ MANIFEST_HEAD = '# build_tricky.py: course rows for the built courses only.\nmod
 ENGLISH_ALIAS = ('alias = /DATA/AUDIO/ENGLISH.BIG:/storage/emulated/0/Android/data/'
                  f'{APP_ID}/files/english-silent-big')
 ENGLISH_OMITTED = ('# ENGLISH.BIG omitted: english-silent-big not built '
-                   '(english-base missing; lost tk-audio-2 merge recipe)')
+                   '(Tricky audio off; the base rebuilds from the discs when audio is on)')
 MANIFEST_ALIASES = [
     'alias = /DATA/AUDIO/SPEECH.BIG:/storage/emulated/0/Android/data/'
     f'{APP_ID}/files/speech-tricky-big',
@@ -908,9 +910,19 @@ class Build:
     def phase_english(self):
         base = self.a.english_base
         if not base:
-            raise SystemExit('english-base-missing: the 8-member Tricky '
-                             'ENGLISH base needs the lost tk-audio-2 merge '
-                             'recipe (pass --english-base)')
+            # No explicit base: rebuild the 8-member Tricky ENGLISH base
+            # from the user's own discs (english_base.py, english-recipe-1).
+            # Audio tools are present here: the audio phases run only when
+            # both probes are clean, and off skips this phase entirely.
+            base = self.W / 'english-base-big'
+            run(self.logs, 'english-base', sys.executable,
+                T / 'english_base.py', '--tricky-iso', self.a.tricky_iso,
+                '--ssx3-iso', self.a.ssx3_iso,
+                '--ffmpeg', self.a.ffmpeg, '--vgmstream', self.a.vgmstream,
+                '--out-composite', base,
+                '--work-dir', self.W / 'english-base-work', cwd=self.W)
+        elif not Path(base).is_file():
+            raise SystemExit(f'english-base-missing: --english-base not found: {base}')
         out = self.W / 'english-silent-big'
         run(self.logs, 'english-silence', sys.executable,
             T / 'silence_intro_banks.py', '--iso', self.a.ssx3_iso,

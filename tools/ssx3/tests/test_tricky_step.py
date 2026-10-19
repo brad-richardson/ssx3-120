@@ -845,6 +845,78 @@ class BuildTrickyDriverTest(unittest.TestCase):
         for t in driver.SPEECH_TARGETS:
             self.assertTrue((decisions / (t + '.dat.decisions.tsv')).is_file())
 
+    def test_english_decisions_cover_all_members(self):
+        decisions = driver.T / 'data' / 'english-decisions'
+        for t in ['DJ_Artist_Intro_2_eng', 'PA_Medal_Run_Intro_eng',
+                  'PA_Rider_Intro_eng', 'PA_Rider_Race_Intro_eng',
+                  'PA_Rider_Postition_eng']:
+            self.assertTrue((decisions / (t + '.dat.decisions.tsv')).is_file())
+
+    def test_english_builds_base_from_discs_when_no_explicit_base(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            args = tricky_args(work, english_base=None,
+                               tricky_iso=work / 't.iso',
+                               ssx3_iso=work / 's.iso')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, args
+            b.logs = work / 'logs'
+            calls = []
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                calls.append((name, list(argv)))
+                if '--out-composite' in argv:
+                    out = Path(argv[argv.index('--out-composite') + 1])
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    out.write_bytes(b'base' if name == 'english-base' else b'silent')
+                return Path(logdir) / f'{name}.log'
+
+            with patch.object(driver, 'run', side_effect=fake_run):
+                out = b.phase_english()
+            self.assertEqual(out, work / 'english-silent-big')
+            base_call = [a for n, a in calls if n == 'english-base'][0]
+            self.assertTrue(str(base_call[1]).endswith('english_base.py'))
+            for flag, want in (('--tricky-iso', work / 't.iso'),
+                               ('--ssx3-iso', work / 's.iso'),
+                               ('--out-composite', work / 'english-base-big')):
+                self.assertEqual(Path(base_call[base_call.index(flag) + 1]), want)
+            silence_call = [a for n, a in calls if n == 'english-silence'][0]
+            self.assertEqual(
+                Path(silence_call[silence_call.index('--base-composite') + 1]),
+                work / 'english-base-big')
+
+    def test_english_uses_explicit_base_and_refuses_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'w'
+            work.mkdir()
+            explicit = work / 'lab-big'
+            explicit.write_bytes(b'lab')
+            args = tricky_args(work, english_base=str(explicit),
+                               ssx3_iso=work / 's.iso')
+            b = driver.Build.__new__(driver.Build)
+            b.W, b.skipped, b.a = work, {}, args
+            b.logs = work / 'logs'
+            calls = []
+
+            def fake_run(logdir, name, *argv, cwd=None):
+                calls.append((name, list(argv)))
+                if '--out-composite' in argv:
+                    Path(argv[argv.index('--out-composite') + 1]).write_bytes(b'silent')
+                return Path(logdir) / f'{name}.log'
+
+            with patch.object(driver, 'run', side_effect=fake_run):
+                b.phase_english()
+            names = [n for n, _ in calls]
+            self.assertNotIn('english-base', names)
+            silence_call = [a for n, a in calls if n == 'english-silence'][0]
+            self.assertEqual(
+                Path(silence_call[silence_call.index('--base-composite') + 1]), explicit)
+            args = tricky_args(work, english_base=str(work / 'absent-big'))
+            b.a = args
+            with self.assertRaisesRegex(SystemExit, 'english-base-missing'):
+                b.phase_english()
+
     def _layout_built(self, work, english=True):
         # Mix of already-in-layout outputs (top of --work) and nested
         # intermediates, mirroring main()'s built dict.
