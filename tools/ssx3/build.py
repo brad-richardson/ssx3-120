@@ -38,6 +38,7 @@ import zipfile
 # Sibling imports (toolchain, prebuilt) resolve when this file runs as a
 # script; they must also resolve when tests load it by path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_ux
 
 ROOT = Path(__file__).resolve().parents[2]
 # Product/engine split (repo-split-2 step 2): the runtime, recompiler and
@@ -2864,6 +2865,9 @@ def ios_onecmd(a):
 
     Resumable: prepare and ios-libs are skipped when their outputs are
     current for this disc. ios always runs (Xcode is incremental)."""
+    t0 = time.time()
+    color = build_ux.use_color()
+    print(_ux_table(a, 'ios'), flush=True)
     if a.tricky_iso:
         validate_tricky_iso(a.tricky_iso)
     if not a.work:
@@ -2883,25 +2887,67 @@ def ios_onecmd(a):
     a.work.mkdir(parents=True, exist_ok=True)
     # F15: disk preflight before anything heavy (measured budgets in README).
     check_capacity(a.work, 'ios')
-    doctor(a)
+    plan = _ux_plan(a, 'ios')
+    est = {name: (lo, hi) for name, lo, hi in plan}
+    total = len(plan)
+    skips = []
+    step_no = 0
+
+    def _step(name, func):
+        nonlocal step_no
+        step_no += 1
+        lo, hi = est[name]
+        return build_ux.run_step(a.work, step_no, total, name, lo, hi, func,
+                                 color=color)
+
+    _step('doctor', lambda: doctor(a))
     if a.dry_run:
-        ios(a)
+        _step('ios', lambda: ios(a))
         return
-    if prepare_current(a.work, a.iso):
-        print('prepare: outputs current for this disc, skipping')
-    else:
-        prepare(a)
-    if getattr(a, 'tricky_from', None):
-        import_tricky(a, a.tricky_iso, a.tricky_from)
-    elif a.tricky_iso:
-        build_tricky(a, a.tricky_iso)
-    if ios_libs_current(a.work):
-        print('ios-libs: staged libraries current, skipping')
-    else:
-        ios_libs(a)
-    ios(a)
+
+    def _prepare():
+        if prepare_current(a.work, a.iso):
+            print('prepare: outputs current for this disc, skipping')
+            skips.append('prepare reused (inputs.json current for this disc)')
+        else:
+            prepare(a)
+    _step('prepare', _prepare)
+    audio, audio_why = '', ''
+
+    def _tricky():
+        if getattr(a, 'tricky_from', None):
+            import_tricky(a, a.tricky_iso, a.tricky_from)
+        else:
+            build_tricky(a, a.tricky_iso)
+    if a.tricky_iso:
+        _step('tricky', _tricky)
+        audio, audio_why = _tricky_audio_summary(a)
+
+    def _libs():
+        if ios_libs_current(a.work):
+            print('ios-libs: staged libraries current, skipping')
+            skips.append('ios-libs reused (staged archives + receipt current)')
+        else:
+            ios_libs(a)
+    _step('ios-libs', _libs)
+    _step('ios', lambda: ios(a))
     if a.install:
-        ios_install(a)
+        _step('install', lambda: ios_install(a))
+    apps = sorted((a.work / 'ios-stage').glob('*.app'))
+    artifact = str(apps[0]) if len(apps) == 1 else str(a.work / 'ios-stage')
+    team = check_team(a)
+    build_ux.print_final_summary(
+        total_seconds=time.time() - t0, artifact=artifact,
+        install_cmd=None if a.install else
+        './build ios --ssx3-iso <ISO> --work %s --team %s --install '
+        '(plain install; existing cards and saves are kept)' % (a.work, team),
+        installed=('bundle on the connected device '
+                   '(plain install kept existing cards and saves)')
+        if a.install else None,
+        tricky=bool(a.tricky_iso), audio=audio, audio_why=audio_why,
+        skips=skips, color=color,
+        signing='Signed with your Apple Developer Team (%s); the bundle '
+        'keeps its own identity across rebuilds.' % team)
 
 
 def stage(a):
@@ -4183,6 +4229,108 @@ def ensure_android_toolchain(a):
     return env
 
 
+def _ux_table(a, target):
+    """Host-scaled estimate table for this run; never blocks the build."""
+    try:
+        cores, ram_gb = build_ux.host_facts()
+        audio_on = False
+        if getattr(a, 'tricky_iso', None):
+            try:
+                audio_on = tricky_resolve_audio(a) == 'on'
+            except ValueError:
+                audio_on = False
+        return build_ux.estimate_table_text(
+            target=target, tricky=bool(getattr(a, 'tricky_iso', None)),
+            audio_on=audio_on, cores=cores, ram_gb=ram_gb,
+            jobs=getattr(a, 'jobs', 8) or 8,
+            install=bool(getattr(a, 'install', False)))
+    except Exception as error:
+        return 'estimates unavailable (%s); continuing.' % error
+
+
+def _ux_plan(a, target):
+    """[(step, lo, hi)] for this run's banners (install included)."""
+    try:
+        cores, ram_gb = build_ux.host_facts()
+        return build_ux.estimate_steps(
+            target=target, tricky=bool(getattr(a, 'tricky_iso', None)),
+            cores=cores, ram_gb=ram_gb, jobs=getattr(a, 'jobs', 8) or 8,
+            install=bool(getattr(a, 'install', False)))
+    except Exception:
+        libs = 'android-libs' if target == 'android' else 'ios-libs'
+        build_step = 'android' if target == 'android' else 'ios'
+        names = ['doctor', 'prepare'] + (
+            ['tricky'] if getattr(a, 'tricky_iso', None) else []) + \
+            [libs, build_step] + (
+            ['install'] if getattr(a, 'install', False) else [])
+        return [(name, 1, 1) for name in names]
+
+
+def _tricky_audio_summary(a):
+    """(audio_mode, why) for the final summary (probe-only, no downloads)."""
+    req = getattr(a, 'tricky_audio', None) or 'auto'
+    try:
+        mode = tricky_resolve_audio(a)
+    except ValueError as error:
+        return 'unknown', str(error)
+    if req == 'off':
+        return mode, 'requested --tricky-audio=off; SSX 3 audio fallback'
+    if mode == 'on':
+        return mode, 'local ffmpeg + vgmstream found'
+    return mode, ('auto resolved off (local ffmpeg/vgmstream missing); '
+                  'SSX 3 audio fallback')
+
+
+def _dry_step_status(work, probe):
+    """Read-only dry-run status: current / MISSING / needs attention."""
+    if work is None or not Path(work).is_dir():
+        return 'MISSING (would run)'
+    try:
+        return 'current (would skip)' if probe() else 'MISSING (would run)'
+    except ValueError as error:
+        return 'needs attention: %s' % error
+
+
+def onecmd_dry_run(a, target):
+    """Plan + estimates without downloads, builds or installs (build-ux-1)."""
+    libs = 'android-libs' if target == 'android' else 'ios-libs'
+    build_step = 'android' if target == 'android' else 'ios'
+    print(_ux_table(a, target), flush=True)
+    work = getattr(a, 'work', None)
+    print('[dry-run] prepare: %s' % _dry_step_status(
+        work, lambda: prepare_current(Path(work))), flush=True)
+    if getattr(a, 'tricky_iso', None):
+        record = tricky_record(Path(work)) if work is not None and \
+            Path(work).is_dir() else None
+        print('[dry-run] tricky: %s' %
+              ('present (would skip)' if record is not None
+               else 'absent (would build; needs --iso Tricky disc check)'),
+              flush=True)
+        mode, why = _tricky_audio_summary(a)
+        print('[dry-run] tricky audio: %s (%s)' % (mode, why), flush=True)
+    current = android_libs_current if target == 'android' else ios_libs_current
+    print('[dry-run] %s: %s' % (libs, _dry_step_status(
+        work, lambda: current(Path(work)))), flush=True)
+    print('[dry-run] %s: would run (%s is incremental)'
+          % (build_step, 'Gradle' if target == 'android' else 'Xcode'),
+          flush=True)
+    if getattr(a, 'install', False):
+        print('[dry-run] install: would push to the connected device '
+              '(device check runs in the real build)', flush=True)
+    a.target = target
+    try:
+        doctor(a)
+    except ValueError as error:
+        # Dry-run reports the missing prerequisites without a traceback;
+        # the real build fails the same way before downloading anything.
+        print('[dry-run] doctor found missing prerequisites: %s' % error,
+              flush=True)
+        print('[dry-run] nothing was built, downloaded or installed.',
+              flush=True)
+        raise SystemExit(2)
+    print('[dry-run] nothing was built, downloaded or installed.', flush=True)
+
+
 def android_onecmd(a):
     """One-command Android build: doctor → prepare → android-libs → android (→ install).
 
@@ -4190,6 +4338,12 @@ def android_onecmd(a):
     current for this disc. android always runs (Gradle is incremental); pass
     --install to push to a connected device afterwards.
     """
+    if getattr(a, 'dry_run', False):
+        onecmd_dry_run(a, 'android')
+        return
+    t0 = time.time()
+    color = build_ux.use_color()
+    print(_ux_table(a, 'android'), flush=True)
     if a.tricky_iso:
         validate_tricky_iso(a.tricky_iso)
     if not a.work:
@@ -4201,6 +4355,20 @@ def android_onecmd(a):
     a.work.mkdir(parents=True, exist_ok=True)
     if not a.ssx3_iso:
         raise ValueError('android one-command needs --ssx3-iso <your-USA-disc>')
+    plan = _ux_plan(a, 'android')
+    names = [name for name, _lo, _hi in plan]
+    est = {name: (lo, hi) for name, lo, hi in plan}
+    total = len(names)
+    skips = []
+    step_no = 0
+
+    def _step(name, func):
+        nonlocal step_no
+        step_no += 1
+        lo, hi = est[name]
+        return build_ux.run_step(a.work, step_no, total, name, lo, hi, func,
+                                 color=color)
+
     # F15: disk preflight before anything heavy (measured budgets in README).
     check_capacity(a.work, 'android')
     # F12: disc identity and native host tools before any JDK/SDK download.
@@ -4208,28 +4376,50 @@ def android_onecmd(a):
     preflight_host_tools()
     ensure_android_toolchain(a)
     a.target = 'android'
-    doctor(a)
-    if prepare_current(a.work, a.iso):
-        print('prepare: outputs current for this disc, skipping')
-    else:
-        prepare(a)
-    if a.tricky_iso:
+    _step('doctor', lambda: doctor(a))
+
+    def _prepare():
+        if prepare_current(a.work, a.iso):
+            print('prepare: outputs current for this disc, skipping')
+            skips.append('prepare reused (inputs.json current for this disc)')
+        else:
+            prepare(a)
+    _step('prepare', _prepare)
+    audio, audio_why = '', ''
+
+    def _tricky():
         if getattr(a, 'tricky_from', None):
             import_tricky(a, a.tricky_iso, a.tricky_from)
         else:
             build_tricky(a, a.tricky_iso)
-    if android_libs_current(a.work):
-        print('android-libs: staged libraries current, skipping')
-    else:
-        android_libs(a)
+    if a.tricky_iso:
+        _step('tricky', _tricky)
+        audio, audio_why = _tricky_audio_summary(a)
+
+    def _libs():
+        if android_libs_current(a.work):
+            print('android-libs: staged libraries current, skipping')
+            skips.append('android-libs reused (staged libraries + pins current)')
+        else:
+            android_libs(a)
+    _step('android-libs', _libs)
     if not a.prebuilt:
         # Source route: the staged libraries are current (just built or
         # skipped as current), so android must not rebuild them. With
         # --prebuilt the bundle lookup in android() decides instead.
         a.jnilibs = a.work / 'jniLibs'
-    android(a)
+    _step('android', lambda: android(a))
     if a.install:
-        install(a)
+        _step('install', lambda: install(a))
+    apk = ROOT / 'apps/android/app/build/outputs/apk/release/app-release.apk'
+    build_ux.print_final_summary(
+        total_seconds=time.time() - t0, artifact=str(apk),
+        install_cmd=None if a.install else 'adb install -r %s, then run '
+        'install to push the disc data' % apk,
+        installed=('%s on the connected device (adb install -r preserved '
+                   'app data)' % a.app_id) if a.install else None,
+        tricky=bool(a.tricky_iso), audio=audio, audio_why=audio_why,
+        skips=skips, color=color)
 
 
 def check_tricky_cli(a, fail):

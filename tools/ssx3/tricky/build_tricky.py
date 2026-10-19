@@ -46,6 +46,14 @@ from iso_extract import extract_member, big_member  # noqa: E402
 import tool_paths  # noqa: E402
 from run_chain import COURSES, TKP5_FINALS  # noqa: E402
 
+# build-ux-1: per-course/phase progress lines + 60 s heartbeat. Optional:
+# any import failure leaves plain prints in place and never breaks a build.
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import build_ux as _ux
+except Exception:
+    _ux = None
+
 
 def _ssx3_build():
     """tools/ssx3/build.py loaded by path (disc identity + SSX3 pins).
@@ -488,6 +496,13 @@ class Build:
         t0 = time.time()
         out = func(*args, **kwargs)
         self.phase_walls[name] = time.time() - t0
+        if _ux is not None:
+            try:
+                print('tricky: phase %s done in %s'
+                      % (name, _ux.fmt_elapsed(self.phase_walls[name])),
+                      flush=True)
+            except Exception:
+                pass
         return out
 
     def world_final_rel(self, c):
@@ -584,8 +599,12 @@ class Build:
         cores, free = cpu_budget(), free_gb()
         print(f'tricky: {workers} courses x {inner} jobs '
               f'(cores {cores}, RAM {free:.1f} GiB)', flush=True)
+        # build-ux-1: modest-rate per-course lines + 60 s heartbeat.
+        prog = _ux.TrickyProgress(len(BUILD_COURSES)) if _ux else None
         if workers <= 1:
             for c in BUILD_COURSES:
+                if prog is not None:
+                    prog.course_started(c)
                 status, key, msg = self.run_one_course(c, host_bam)
                 if status == 'skip':
                     if key == 'mega':
@@ -597,10 +616,14 @@ class Build:
                               f'GameCube donor (pass --gc-dir); continuing '
                               f'without it')
                     self.skipped[key] = msg
+                    if prog is not None:
+                        prog.course_finished(c)
                     continue
                 if status == 'fail':
                     raise SystemExit(msg)
                 self.world_final(c)
+                if prog is not None:
+                    prog.course_finished(c)
             print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
             return
         # Inner pack pools were sized with the course pool above
@@ -623,10 +646,17 @@ class Build:
             rest = list(order)
             for c in rest[:workers]:
                 pending[ex.submit(self.run_one_course, c, host_bam)] = c
+                if prog is not None:
+                    prog.course_started(c)
             rest = rest[workers:]
             aloha_done = 'aloha' not in order
             while pending:
-                finished, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+                # Timeout only wakes the waiter for the 60 s heartbeat;
+                # scheduling is unchanged (FIRST_COMPLETED still wins).
+                finished, _ = wait(list(pending), timeout=60,
+                                   return_when=FIRST_COMPLETED)
+                if not finished and prog is not None:
+                    prog.maybe_heartbeat(force=True)
                 for fut in finished:
                     c = pending.pop(fut)
                     try:
@@ -650,13 +680,19 @@ class Build:
                     else:
                         self.world_final(c)
                     done[c] = status
+                    if prog is not None:
+                        prog.course_finished(c)
                 if not aloha_done and done.get('aloha') in ('ok', 'skip'):
                     aloha_done = True
                     pending[ex.submit(self.run_one_course, 'mesa',
                                       host_bam)] = 'mesa'
+                    if prog is not None:
+                        prog.course_started('mesa')
                 while rest and len(pending) < workers:
                     c = rest.pop(0)
                     pending[ex.submit(self.run_one_course, c, host_bam)] = c
+                    if prog is not None:
+                        prog.course_started(c)
         print(f'worlds done; skipped: {sorted(self.skipped)}', flush=True)
 
     def resume_worlds(self, reuse):
