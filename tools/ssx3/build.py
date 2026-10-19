@@ -41,6 +41,16 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_ux
 
+# Shared Tricky converter inputs live in tools/ssx3/tricky/tricky_common.py
+# (converter-scope-1): the driver imports them from there, so build.py edits
+# no longer invalidate the cached Tricky layer. Loaded by path like
+# tricky_tools() below; names are re-exported for existing callers/tests.
+_TRICKY_COMMON_SPEC = importlib.util.spec_from_file_location(
+    'tricky_common',
+    Path(__file__).resolve().parent / 'tricky' / 'tricky_common.py')
+_TRICKY_COMMON = importlib.util.module_from_spec(_TRICKY_COMMON_SPEC)
+_TRICKY_COMMON_SPEC.loader.exec_module(_TRICKY_COMMON)
+
 ROOT = Path(__file__).resolve().parents[2]
 # Product/engine split (repo-split-2 step 2): the runtime, recompiler and
 # vendor adapters live in the pinned engine checkout; product metadata,
@@ -57,7 +67,7 @@ ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
 # identical; each prepare re-proves it via the register SHA.
 GENERATOR = '467e86e85fee4dd73c8252f40a02c6394116888e'
 FORK = 'https://github.com/brad-richardson/PS2Recomp.git'
-ISO_SHA = '3c2f8eb182c9c6208a6e8172a41e61c98f420abe3f42c845f6829aeb9761ebf5'
+ISO_SHA = _TRICKY_COMMON.ISO_SHA
 ELF_SHA = '1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc'
 PUBLIC_APP_ID = 'com.ssx3.recomp'
 PLAY_APP_ID = 'com.ps2x.runner'
@@ -80,7 +90,7 @@ def resolve_app_label(a):
     if label:
         return label
     return default_app_label(getattr(a, 'app_id', PUBLIC_APP_ID))
-SECTOR = 2048
+SECTOR = _TRICKY_COMMON.SECTOR
 SLIM_MAGIC = b'PS2XSLM2'
 MOVIE_PREFIX_SECTORS = 512  # 1 MiB; observed reads end by sector 272.
 
@@ -273,12 +283,7 @@ def run(*args, cwd=None):
     subprocess.run(list(map(str, args)), cwd=cwd, check=True)
 
 
-def sha(path):
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for block in iter(lambda: f.read(1024 * 1024), b''):
-            h.update(block)
-    return h.hexdigest()
+sha = _TRICKY_COMMON.sha
 
 
 def verified_driver(name, entry, cache):
@@ -346,39 +351,7 @@ def extract_elf(iso, dest):
     raise ValueError('SLUS_207.72 missing from disc root')
 
 
-def iso_records(iso):
-    """Yield (path, first LBA, byte size) from the pinned ISO9660 tree."""
-    with iso.open('rb') as f:
-        f.seek(16 * SECTOR)
-        pvd = f.read(SECTOR)
-        if pvd[:7] != b'\x01CD001\x01':
-            raise ValueError('expected ISO9660 primary volume descriptor')
-
-        def walk(path, extent, length):
-            f.seek(extent * SECTOR)
-            directory = f.read(length)
-            pos = 0
-            while pos < length:
-                size = directory[pos]
-                if not size:
-                    pos = (pos // SECTOR + 1) * SECTOR
-                    continue
-                entry = directory[pos:pos + size]
-                pos += size
-                if len(entry) < 34 or entry[32] == 1 and entry[33] in (0, 1):
-                    continue
-                name = entry[33:33 + entry[32]].decode('ascii').split(';')[0]
-                lba = struct.unpack_from('<I', entry, 2)[0]
-                bytes_ = struct.unpack_from('<I', entry, 10)[0]
-                child = path + '/' + name if path else name
-                if entry[25] & 2:
-                    yield from walk(child, lba, bytes_)
-                else:
-                    yield child, lba, bytes_
-
-        root = pvd[156:190]
-        yield from walk('', struct.unpack_from('<I', root, 2)[0],
-                        struct.unpack_from('<I', root, 10)[0])
+iso_records = _TRICKY_COMMON.iso_records
 
 
 def slim_holes(iso):
@@ -3589,16 +3562,7 @@ def tricky_supported():
     return ((ROOT / 'games' / 'tricky').is_dir() or TRICKY_DRIVER.is_file())
 
 
-def check_tricky_iso_file(path):
-    """Cheap --tricky-iso checks (exists + ISO9660); no driver gate."""
-    iso = Path(path)
-    if not iso.is_file():
-        raise ValueError('tricky ISO not found: ' + str(iso))
-    with iso.open('rb') as f:
-        f.seek(16 * SECTOR)
-        if f.read(7) != b'\x01CD001\x01':
-            raise ValueError('not an ISO9660 disc image: ' + str(iso))
-    return iso
+check_tricky_iso_file = _TRICKY_COMMON.check_tricky_iso_file
 
 
 def validate_tricky_iso(path):
@@ -3737,19 +3701,15 @@ def android_libs_current(work):
     return True
 
 
-TRICKY_ELF_NAME = 'SLUS_203.26'
-# Pinned Tricky disc identities: full-ISO SHA-256 -> serial, region, exact
-# byte size and MD5. Only locally measured dumps are keys (see
-# docs/tricky-inputs.md); any other pressing, including PAL/JP, is refused
-# until its dump is measured and keyed here.
-TRICKY_DISCS = {
-    'deae53c10447e59c2c4cd1d3a904a1ed04cbc818444f4883962a0060da837970': {
-        'serial': 'SLUS-20326', 'region': 'NTSC-U', 'bytes': 2902425600,
-        'md5': '7d8ee567145bdf0c236ce5f5c679108a'},
-}
+TRICKY_ELF_NAME = _TRICKY_COMMON.TRICKY_ELF_NAME
+# Pinned Tricky disc identities live in tools/ssx3/tricky/tricky_common.py
+# (converter-scope-1); re-exported here for existing callers/tests.
+# Any other pressing, including PAL/JP, is refused until its dump is
+# measured and keyed there (see docs/tricky-inputs.md).
+TRICKY_DISCS = _TRICKY_COMMON.TRICKY_DISCS
 # Internal markers after the ELF name: the per-course model archive and the
 # music archive whose v3 .mpf members the music converter checks itself.
-TRICKY_MARKERS = ('DATA/MODELS/GARI.BIG', 'DATA/AUDIO/MUSIC.BIG')
+TRICKY_MARKERS = _TRICKY_COMMON.TRICKY_MARKERS
 # Device-bound Tricky payload the stage step copies from <work>/tricky/:
 # top-level files push beside ps2x.env; tricky-ov/ pushes as one tree.
 # music-inf-tricky-big is always built; english-silent-big only when the
@@ -3775,29 +3735,7 @@ def sha2(path):
     return first
 
 
-def tricky_disc_identity(iso):
-    """Full disc identity for a validated Tricky ISO (slow: hashes 2.9 GB).
-
-    Checks the pinned key table, the exact byte size, the ELF name in the
-    disc root and the internal markers, in that order. Refuses with the
-    docs/tricky-inputs.md pointer on any mismatch.
-    """
-    iso = Path(iso)
-    digest = sha(iso)
-    try:
-        disc = TRICKY_DISCS[digest]
-    except KeyError:
-        raise ValueError('unsupported Tricky disc SHA256; see docs/tricky-inputs.md')
-    if iso.stat().st_size != disc['bytes']:
-        raise ValueError('Tricky ISO byte size mismatch for ' + disc['serial'])
-    names = {name.upper() for name, _, _ in iso_records(iso)}
-    if TRICKY_ELF_NAME not in names:
-        raise ValueError(TRICKY_ELF_NAME + ' missing from the Tricky disc root')
-    for marker in TRICKY_MARKERS:
-        if marker not in names:
-            raise ValueError('Tricky disc marker missing: ' + marker)
-    return {'sha256': digest, 'serial': disc['serial'], 'region': disc['region'],
-            'bytes': disc['bytes'], 'md5': disc['md5']}
+tricky_disc_identity = _TRICKY_COMMON.tricky_disc_identity
 
 
 def tricky_inputs_path(work):
@@ -3820,10 +3758,11 @@ def tricky_tools():
     return _TRICKY_TOOLS
 
 
-# Other repo paths the driver imports besides tools/ssx3/tricky/**: the
-# driver reads the pinned disc table from this wrapper via _ssx3_build
-# (tools/ssx3/build.py), so the wrapper file itself is a converter input.
-TRICKY_CONVERTER_EXTRA = ('tools/ssx3/build.py',)
+# No repo paths outside tools/ssx3/tricky/** affect converter output
+# (converter-scope-1): the driver and the wrapper both import the shared
+# inputs from tools/ssx3/tricky/tricky_common.py, so the tricky/** hash
+# covers them. Re-exported here for existing callers/tests.
+TRICKY_CONVERTER_EXTRA = _TRICKY_COMMON.TRICKY_CONVERTER_EXTRA
 
 
 def tricky_converter_table(root=ROOT):
@@ -3833,33 +3772,12 @@ def tricky_converter_table(root=ROOT):
     (code + data, excluding tests/ and __pycache__) plus
     TRICKY_CONVERTER_EXTRA (repo paths the driver imports).
     """
-    root = Path(root)
-    tricky = root / 'tools' / 'ssx3' / 'tricky'
-    candidates = []
-    for candidate in sorted(tricky.rglob('*')):
-        if not candidate.is_file():
-            continue
-        relparts = candidate.relative_to(tricky).parts
-        if 'tests' in relparts or '__pycache__' in relparts:
-            continue
-        if candidate.suffix in ('.pyc', '.md'):
-            # Docs never change converter output; a README edit must not
-            # invalidate a user's cached Tricky layer.
-            continue
-        candidates.append(candidate.relative_to(root).as_posix())
-    candidates.extend(TRICKY_CONVERTER_EXTRA)
-    table = []
-    for rel in sorted(candidates):
-        table.append((rel, hashlib.sha256((root / rel).read_bytes()).hexdigest()))
-    return table
+    return _TRICKY_COMMON.tricky_converter_table(root)
 
 
 def tricky_converter_version(root=ROOT):
     """SHA-256 over the sorted converter-input table (tricky-manifest-1)."""
-    h = hashlib.sha256()
-    for rel, digest in tricky_converter_table(root):
-        h.update((rel + '\0' + digest + '\n').encode())
-    return h.hexdigest()
+    return _TRICKY_COMMON.tricky_converter_version(root)
 
 
 def tricky_current_toolchain(a=None):

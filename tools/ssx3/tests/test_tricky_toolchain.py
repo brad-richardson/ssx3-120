@@ -371,7 +371,7 @@ class AudioModeTest(unittest.TestCase):
         tricky_sha = driver.sha(tricky)
         sb = FakeSB(tricky_sha, driver.sha(ssx3))
         a = self.args(tmp, tricky, ssx3, **over)
-        with patch.object(driver, '_SSX3_BUILD', sb, create=True), \
+        with patch.object(driver, '_TRICKY_COMMON', sb, create=True), \
              patch.object(driver, 'check_tricky_markers',
                           lambda iso: None), \
              patch.object(driver, 'check_capacity',

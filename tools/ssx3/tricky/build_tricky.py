@@ -57,21 +57,23 @@ except Exception:
     _ux = None
 
 
-def _ssx3_build():
-    """tools/ssx3/build.py loaded by path (disc identity + SSX3 pins).
+def _tricky_common():
+    """tools/ssx3/tricky/tricky_common.py loaded by path (disc identity + SSX3 pins).
 
-    The driver consumes the wrapper's pinned disc table instead of
-    carrying its own copy, so the two can never drift apart.
+    The driver and the wrapper both import the pinned tables from here,
+    so the two can never drift apart, and wrapper-only edits never move
+    the converter version.
     """
-    global _SSX3_BUILD
+    global _TRICKY_COMMON
     try:
-        return _SSX3_BUILD
+        return _TRICKY_COMMON
     except NameError:
         spec = importlib.util.spec_from_file_location(
-            'ssx3_build', T.parent / 'build.py')
-        _SSX3_BUILD = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(_SSX3_BUILD)
-        return _SSX3_BUILD
+            'tricky_common', T / 'tricky_common.py')
+        _TRICKY_COMMON = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_TRICKY_COMMON)
+        return _TRICKY_COMMON
+
 
 # -- course plan ------------------------------------------------------------
 # aloha runs before mesa (mesa's s3 rung borrows aloha-b's receipt);
@@ -1111,7 +1113,7 @@ def check_ssx3_iso(ssx3_iso):
     modified ISO must not slip through (the skip-check stays size-based
     for speed; this gate is hash-based).
     """
-    sb = _ssx3_build()
+    sb = _tricky_common()
     iso = Path(ssx3_iso)
     if not iso.is_file():
         raise SystemExit(f'SSX3 ISO not found: {iso}')
@@ -1142,7 +1144,7 @@ def check_tricky_markers(tricky_iso):
     Serial + size gate the disc; this gates its shape, so a same-size
     non-Tricky image fails in seconds instead of mid-pipeline.
     """
-    sb = _ssx3_build()
+    sb = _tricky_common()
     names = {name.upper() for name, _, _ in
              sb.iso_records(Path(tricky_iso))}
     for marker in ('DATA/AUDIO/SPEECH.BIG', 'DATA/AUDIO/MUSIC.BIG',
@@ -1205,7 +1207,7 @@ def preflight(a):
     mode = getattr(a, 'tricky_audio', None) or 'auto'
     if mode not in ('on', 'off', 'auto'):
         raise SystemExit("--tricky-audio must be on|off|auto: %r" % (mode,))
-    sb = _ssx3_build()
+    sb = _tricky_common()
     try:
         sb.check_tricky_iso_file(a.tricky_iso)
         tricky_ident = sb.tricky_disc_identity(a.tricky_iso)
@@ -1336,7 +1338,7 @@ def main(argv=None):
     receipt['pins'] = exact_pins()
     receipt['toolchain'] = {'ffmpeg': ident['ffmpeg'],
                             'vgmstream': ident['vgmstream']}
-    receipt['converter_version'] = _ssx3_build().tricky_converter_version()
+    receipt['converter_version'] = _tricky_common().tricky_converter_version()
     (b.W / 'tools.json').write_text(json.dumps(receipt, indent=2) + '\n')
     t0 = time.time()
     if a.from_phase == 'speech':

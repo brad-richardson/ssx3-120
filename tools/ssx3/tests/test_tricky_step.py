@@ -1081,6 +1081,7 @@ class ConverterVersionTest(unittest.TestCase):
         (tricky / 'tests').mkdir(parents=True)
         (tricky / '__pycache__').mkdir(parents=True)
         (tricky / 'a.py').write_text('print(1)\n')
+        (tricky / 'tricky_common.py').write_text('COMMON = 1\n')
         (tricky / 'data.tsv').write_text('a\tb\n')
         (tricky / 'tests' / 'b.py').write_text('test\n')
         (tricky / '__pycache__' / 'c.pyc').write_bytes(b'\x00')
@@ -1091,8 +1092,9 @@ class ConverterVersionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             table = dict(build.tricky_converter_table(self.fake_root(tmp)))
             self.assertIn('tools/ssx3/tricky/a.py', table)
+            self.assertIn('tools/ssx3/tricky/tricky_common.py', table)
             self.assertIn('tools/ssx3/tricky/data.tsv', table)
-            self.assertIn('tools/ssx3/build.py', table)
+            self.assertNotIn('tools/ssx3/build.py', table)
             self.assertNotIn('tools/ssx3/tricky/tests/b.py', table)
             self.assertFalse([k for k in table if '__pycache__' in k])
             for digest in table.values():
@@ -1115,12 +1117,22 @@ class ConverterVersionTest(unittest.TestCase):
             (root / 'tools' / 'ssx3' / 'tricky' / 'tests' / 'b.py').write_text('changed\n')
             self.assertEqual(edited, build.tricky_converter_version(root))
 
+    def test_wrapper_edit_does_not_move_version_but_common_does(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.fake_root(tmp)
+            before = build.tricky_converter_version(root)
+            (root / 'tools' / 'ssx3' / 'build.py').write_text('build v2\n')
+            self.assertEqual(before, build.tricky_converter_version(root))
+            (root / 'tools' / 'ssx3' / 'tricky' / 'tricky_common.py').write_text('COMMON = 2\n')
+            self.assertNotEqual(before, build.tricky_converter_version(root))
+
     def test_live_tree_hashes(self):
         table = build.tricky_converter_table()
         self.assertTrue(table)
         rels = [r for r, _ in table]
         self.assertEqual(rels, sorted(rels))
-        self.assertIn('tools/ssx3/build.py', rels)
+        self.assertNotIn('tools/ssx3/build.py', rels)
+        self.assertIn('tools/ssx3/tricky/tricky_common.py', rels)
         self.assertTrue(any(r.startswith('tools/ssx3/tricky/') for r in rels))
         self.assertFalse([r for r in rels if '/tests/' in r or '__pycache__' in r])
         self.assertRegex(build.tricky_converter_version(), r'^[0-9a-f]{64}$')
