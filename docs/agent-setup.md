@@ -26,7 +26,7 @@ says. Do not improvise toolchains, flags, or signing.
 4. **Checkout.** This repo needs its engine submodule: clone with
    `git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git`, or recover with
    `git submodule update --init -- deps/PS2Recomp`. Every builder command
-   below fails closed with that recovery line when the submodule is
+   below prints that recovery line and stops when the submodule is
    missing or stale.
 5. **Prerequisites.** The `./build` wrapper runs the builder through uv
    (pinned Python plus the font-pack libraries, no system Python setup).
