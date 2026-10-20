@@ -6,7 +6,7 @@ Tricky and Online are **Alpha**. This page lists the rough edges that are alread
 
 - **Tokyo Megaplex has no gems yet.** The gem tables cover the other courses; the Megaplex gem pass is still pending, so its gems are skipped at build time.
 - **Tricky gem spin is off for now.** Collectible gems don't spin: wrong-object spins (trees, fences) still showed on device, so asset animation is disabled for v0 and returns afterwards.
-- **Tricky course launch is still being polished.** Race mode on the six race courses jumps straight from the course list into the race; other courses plus Slopestyle/Showoff still go through the navigator fallback.
+- **Tricky course launch is still being polished.**
 - **Tricky DJ intros depend on the audio choice.** With Tricky audio on (local `ffmpeg` + `vgmstream` present), the build silences the stock SSX 3 DJ intros on Tricky courses. With Tricky audio off, the layer builds without the audio aliases and the stock intros can still be heard there.
 - **Tricky audio needs local tools.** Tricky music/speech build only when local `ffmpeg` (>= 6.0) + `vgmstream-cli` (r1900+) installs are present (probed, never fetched). Without them the Tricky layer builds without the audio aliases and those courses play SSX 3's soundtrack.
 - **Tricky courses still show work-in-progress symptoms (mostly Elysium and Merqury):** oversaturated lighting, missing building collisions, rail gaps, animated assets standing still, see-through terrain patches, and the Mesablanca bridge vanishing at some angles.

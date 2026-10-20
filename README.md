@@ -271,12 +271,13 @@ Online in the menu; the in-game settings panel has no Online row.
 Build it with `--tricky-iso <Tricky.iso>` (supported discs:
 [docs/tricky-inputs.md](docs/tricky-inputs.md)); without it the app boots
 stock SSX 3 only. Tricky courses run inside SSX 3's engine, so SSX 3
-handling, tricks and scoring apply on Tricky blocks and gems. Race mode on
-the six race courses jumps straight from the course list into the race;
-other courses plus Slopestyle/Showoff still go through the navigator. The
-Tricky course picker and Tricky audio stay default-off until they are
-polished. See [docs/known-issues.md](docs/known-issues.md) for what is
-still rough.
+handling, tricks and scoring apply on Tricky blocks and gems. With a
+Tricky build, the main menu gets a "Tricky Courses (Alpha)" row: pick a
+course and a mode (Race or Showoff) and you're taken into it. Tricky
+music and the announcer come from your Tricky disc when `ffmpeg` and
+`vgmstream-cli` are installed (`--tricky-audio auto`); otherwise Tricky
+courses use SSX 3's soundtrack. See [docs/known-issues.md](docs/known-issues.md)
+for what is still rough.
 
 ## Known issues
 
