@@ -9,8 +9,8 @@ APK; Mac hosts also get a local runner for testing. No game data, art,
 BIOS, or derived assets are published here or in any release: bring your own
 USA disc (`SLUS_207.72`).
 
-Gameplay is **120-only**: physics, tricks and rider update at 120/s at
-normal wall-clock speed. The 60 option is plain stock 60.
+While you ride, the game runs at a real 120 updates a second; menus stay
+at stock speed. A 60 option is in settings.
 
 > **Fastest way: let a coding agent do it.** Send the repo link and paste this:
 >
@@ -24,13 +24,16 @@ normal wall-clock speed. The 60 option is plain stock 60.
 ## Build from your own disc
 
 ```sh
-./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses
-./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10>
+./build android --ssx3-iso ~/SSX3.iso --accept-android-licenses --install
+./build ios --ssx3-iso ~/SSX3.iso --team <TEAM10> --install
 ```
 
-Add `--tricky-iso <Tricky.iso>` to validate your Tricky disc and build the
-Tricky layer from it with the in-tree converter driver. The Tricky build
-takes longer because every course is converted into SSX 3's engine. Without
+The Android line installs to a phone plugged in with USB debugging on;
+for wireless or no phone attached, see [docs/android.md](docs/android.md).
+For iOS with several devices attached, add `--device <udid>`.
+
+Add `--tricky-iso <Tricky.iso>` to also build the SSX Tricky courses
+(it takes longer: every course is converted into SSX 3's engine). Without
 it the app boots stock SSX 3 only. Platform setup lives in [docs/android.md](docs/android.md)
 and [docs/ios.md](docs/ios.md); the builder prints the exact install line
 when something is missing (`./build doctor --target android --work <dir>`).
@@ -48,17 +51,20 @@ when something is missing (`./build doctor --target android --work <dir>`).
 Use a controller if you can: pair it in your phone's settings before launching.
 If no controller is connected you get touch controls instead — they appear on their own and hide while a controller is connected (Touch=On in settings forces them on).
 Buttons follow the PlayStation layout: face buttons are Cross/Circle/Square/Triangle, shoulders are L1/R1/L2/R2, and Menu/View act as Start/Select.
+Settings: hold Start, press Select+Start, or tap the … button.
 
 ## Tricky (Alpha)
 
 Build it with `--tricky-iso <Tricky.iso>` (supported discs: [docs/tricky-inputs.md](docs/tricky-inputs.md)); without it the app boots stock SSX 3 only.
 Tricky courses run inside SSX 3's engine, so SSX 3 handling, tricks and scoring apply on Tricky blocks and gems.
+With a Tricky build, the main menu gets a "Tricky Courses (Alpha)" row: pick a course and a mode (Race or Showoff) and you're taken into it.
+Tricky music and the announcer come from your Tricky disc when `ffmpeg` and `vgmstream-cli` are installed; otherwise Tricky courses use SSX 3's soundtrack.
 See [docs/known-issues.md](docs/known-issues.md) for what is still rough.
 
 ## Online Quick Play (Alpha)
 
-Quick Matchup connects to a lobby server you (or a friend) operate — match + UDP relay, no direct peer IPs. The default server is `ssx.bradr.dev` (single definition: `presets/online.env`).
-Quick Play needs another player searching at the same time — there is no bot fallback. To play offline, just don't pick Online in the menu.
+The main menu has a "Quick Play (Alpha)" row that goes straight to Quick Matchup: match + UDP relay, no direct peer IPs. The default server is `ssx.bradr.dev` (single definition: `presets/online.env`).
+Quick Play needs another player searching at the same time — there is no bot fallback. To play offline, just don't pick Quick Play in the menu.
 
 ## Known issues
 
