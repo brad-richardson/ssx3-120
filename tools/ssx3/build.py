@@ -4614,7 +4614,7 @@ def check_tricky_cli(a, fail):
         fail('--tricky-from needs --tricky-iso for the disc check')
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'tricky', 'vu0'])
     p.add_argument('--work', type=Path, help='external private output directory')
@@ -4671,7 +4671,7 @@ def main():
                    help='lab/dev build: keep get-task-allow + session recording newest 10 (iOS), debuggable + shell-profileable (Android)')
     p.add_argument('--engine', type=Path, default=None,
                    help='engine checkout (default: SSX3_ENGINE_DIR or deps/PS2Recomp submodule)')
-    a = p.parse_args()
+    a = p.parse_args(argv)
     device_flag_error = check_device_flags(a.step, a.device, a.serial)
     if device_flag_error:
         p.error(device_flag_error)
@@ -4694,6 +4694,8 @@ def main():
         p.error('supported hosts: macOS Apple silicon, Linux x86_64/arm64; Windows users run Ubuntu in WSL2')
     if a.step in ('mac', 'mac-libs', 'run', 'ios', 'ios-libs') and platform.system() != 'Darwin':
         p.error(a.step + ' requires macOS Apple silicon; Linux hosts build Android APKs')
+    if a.work is None and a.step in ('android', 'ios') and a.ssx3_iso:
+        a.work = Path.home() / 'ssx3-work'
     if not a.work:
         p.error('--work is required for build steps')
     if a.tools_only and a.step != 'prepare':

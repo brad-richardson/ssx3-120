@@ -979,6 +979,65 @@ class WorkDirCreationTest(unittest.TestCase):
             self.assertEqual(args.work, (home / 'ssx3-work').resolve())
             self.assertTrue((home / 'ssx3-work').is_dir())
 
+class EntrypointDefaultWorkTest(unittest.TestCase):
+    """B1: the documented one-command omits --work; main() must apply the
+    ~/ssx3-work default before the shared --work guard (P1)."""
+
+    def test_android_entrypoint_without_work_reaches_onecmd(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            make_iso(iso)
+            seen = {}
+            def fake_android(a):
+                seen['work'] = a.work
+                seen['ssx3_iso'] = a.ssx3_iso
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build, 'engine_status', return_value=(True, '')), \
+                 patch.object(build, 'engine_pin_error', return_value=None), \
+                 patch.object(build.subprocess, 'check_output', return_value='abc'), \
+                 patch.object(build, 'supported_host', return_value=True), \
+                 patch.object(build, 'android_onecmd', side_effect=fake_android):
+                build.main(['android', '--ssx3-iso', str(iso),
+                            '--accept-android-licenses'])
+            self.assertEqual(seen['work'], (home / 'ssx3-work').resolve())
+            self.assertEqual(Path(seen['ssx3_iso']), iso)
+
+    def test_ios_entrypoint_without_work_reaches_onecmd(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            iso = Path(tmp) / 'SSX3.iso'
+            make_iso(iso)
+            seen = {}
+            def fake_ios(a):
+                seen['work'] = a.work
+                seen['ssx3_iso'] = a.ssx3_iso
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build, 'engine_status', return_value=(True, '')), \
+                 patch.object(build, 'engine_pin_error', return_value=None), \
+                 patch.object(build.subprocess, 'check_output', return_value='abc'), \
+                 patch.object(build, 'supported_host', return_value=True), \
+                 patch.object(build.platform, 'system', return_value='Darwin'), \
+                 patch.object(build, 'ios_onecmd', side_effect=fake_ios):
+                build.main(['ios', '--ssx3-iso', str(iso), '--team', 'ABCDE12345'])
+            self.assertEqual(seen['work'], (home / 'ssx3-work').resolve())
+            self.assertEqual(Path(seen['ssx3_iso']), iso)
+
+    def test_step_without_ssx3_iso_still_requires_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build, 'engine_status', return_value=(True, '')), \
+                 patch.object(build, 'engine_pin_error', return_value=None), \
+                 patch.object(build.subprocess, 'check_output', return_value='abc'), \
+                 patch.object(build, 'supported_host', return_value=True):
+                with self.assertRaises(SystemExit):
+                    build.main(['android-libs'])
+
+
 class AdbResolutionTest(unittest.TestCase):
     """F01: install shells the selected SDK's adb, and the doctor checks it."""
 
