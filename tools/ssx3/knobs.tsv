@@ -143,6 +143,9 @@ PS2X_SSX3_LOD_SCALE	user-toggle	LOD1
 PS2X_SSX3_PATCH_CACHE_GROW	play-default	TK34
 PS2X_SSX3_PATCH_CACHE_GUARD	play-default	TK15
 PS2X_SSX3_SPATIAL_LIST_GUARD	play-default	TK38
+PS2X_SSX3_TRICKY_DIRECT	active-lane	tricky-direct-2
+PS2X_SSX3_TRICKY_DIRECT_COURSE	diag	tricky-direct-2
+PS2X_SSX3_TRICKY_DIRECT_PROBE	diag	tricky-direct-1
 PS2X_SSX3_TRICKY_MENU	play-default	TK11
 PS2X_SSX3_VIS_NATIVE	play-default	VNP1
 PS2X_STRETCH_FEED	play-default	AU16
@@ -210,3 +213,4 @@ PS2X_NETSYNC_RELAY	guest-affecting-when-on	online-v0-1
 PS2X_NETSYNC_EVERY	guest-affecting-when-on	online-v0-1
 PS2X_NETSYNC_IDELAY	guest-affecting-when-on	online-v0-1
 PS2X_NETSYNC_TIMEOUT_MS	guest-affecting-when-on	online-v0-1
+PS2X_DEV_TOASTS	diag	toast-audit-1
