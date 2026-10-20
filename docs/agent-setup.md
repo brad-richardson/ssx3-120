@@ -31,7 +31,7 @@ says. Do not improvise toolchains, flags, or signing.
 5. **Prerequisites.** The `./build` wrapper runs the builder through uv
    (pinned Python plus the font-pack libraries, no system Python setup).
    Then run the doctor before anything heavy, from the repo root with
-   your work directory so managed-toolchain probes resolve:
+   your work directory so the managed-toolchain probes resolve:
    `./build doctor --target android --work <dir>`
    (or `--target ios` on a Mac). It prints the exact install line for
    anything missing. `python3 build.py doctor` without uv can report a
