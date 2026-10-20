@@ -327,7 +327,7 @@ remain for device acceptance. The remaster pack and Tricky
 preparation have not been validated by this route.
 
 After building, follow [Android setup/save protection](../../apps/android/README.md)
-for the 60/120 launcher layers. `build.py
+for the single-launcher 60/120 modes. `build.py
 android` creates a per-user signing keystore once at
 `~/.config/ssx3-120/android-signing.keystore` (outside any work dir) and
 reuses it on every later build, with a monotonic `versionCode` from

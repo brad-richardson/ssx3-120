@@ -237,10 +237,11 @@ hashes don't prove graphics or cost: pair them with fixed captures
   5+ GiB RAM) use panel-native rendering on a 1080p panel, otherwise 2×
   with CAS 0.25; smaller devices use 1× with no CAS. The in-game
   Resolution setting overrides the default.
-- Mode (60/120) and Resolution changes need a full app restart (settings
-  are read once per process): fully close the app before switching.
-  Select+Start together (within ~200 ms) or the "…" button opens the
-  settings panel.
+- One launcher icon ("SSX 3"). Mode (60/120) and Resolution changes need
+  a full app restart (settings are read once per process): fully close
+  the app before switching. The Mode lives in settings and persists
+  across launches (default 120). Select+Start together (within ~200 ms)
+  or the "…" button opens the settings panel.
 - Upscale recipe: stage the resolution env layer, confirm the fixed capture
   set is clean, then ride. See `docs/facts.md` (upscale evidence) and
   `apps/android/README.md`.

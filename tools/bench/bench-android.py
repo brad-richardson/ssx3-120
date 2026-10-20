@@ -174,7 +174,12 @@ def sf_latch_summary(perf_dir, present_latency_text):
 
 
 def is_120_leg(meta):
-    """A leg targeting 120: the 120 launcher alias or a full120 preset."""
+    """A leg targeting 120: the persisted launch-hz mode, the single launcher
+    alias with a 120 mode, or a full120 preset."""
+    if meta.get('hz') in ('120', '60'):
+        return meta.get('hz') == '120'
+    if 'Launch60' in str(meta.get('activity', '')):
+        return False
     if 'Launch120' in str(meta.get('activity', '')):
         return True
     return any(e.split('=', 1) == ['PS2X_SSX3_FULL120', 'events']
@@ -729,7 +734,8 @@ def build_arg_parser():
     ap.add_argument('--lifecycle', type=int, default=0)
     ap.add_argument('--sf-dump-tick', default='')
     ap.add_argument('--activity', default='android.app.NativeActivity',
-                    help='component to am start (.Launch60 / .Launch120 launcher aliases)')
+                    help='component to am start (single launcher alias .Launch120; '
+                         'a legacy .Launch60 value starts .Launch120 with a 60 mode file)')
     ap.add_argument('--aspect', choices=('', '4:3', '16:9', 'native'), default='')
     ap.add_argument('--vk', choices=('', '0', '1'), default='')
     ap.add_argument('--pad-probe', action='store_true')
@@ -857,7 +863,13 @@ def run_leg(a):
     sf_tracker = sh("dumpsys SurfaceFlinger | grep -aE 'mDisplayModePtr|mPeriodConfirmationInProgress'")
     open(f'{OUT}/sf-tracker-pre.txt', 'w').write(sf_tracker)
     log(f"SFTRACKER pre: {sf_tracker.strip().replace(chr(10), ' | ')[:300]}")
-    is_120_pre = ('Launch120' in (a.activity or '')) or any(
+    # Single launcher icon: the 60/120 mode persists in files/launch-hz
+    # (default 120). A legacy --activity naming .Launch60 starts the single
+    # alias with a 60 mode file instead.
+    hz = '60' if 'Launch60' in (a.activity or '') else '120'
+    if 'Launch60' in (a.activity or ''):
+        a.activity = a.activity.replace('.Launch60', '.Launch120')
+    is_120_pre = (hz == '120' and 'Launch120' in (a.activity or '')) or any(
         e.split('=', 1) == ['PS2X_SSX3_FULL120', 'events'] for e in (a.env or []) if '=' in e)
     if is_120_pre and ('vsyncRate=60.00' in sf_tracker or 'mPeriodConfirmationInProgress=1' in sf_tracker):
         sys.exit('INFRA-BLOCKED: SF vsync tracker stuck at 60 (see sf-tracker-pre.txt; '
@@ -955,6 +967,9 @@ def run_leg(a):
     adb('push', f'{OUT}/ps2x.env', f'{FILES}/ps2x.env', check=True)
     env_sha = sh(f'sha256sum {FILES}/ps2x.env').split()[0]
     log(f'ENV {env_sha}')
+    open(f'{OUT}/launch-hz', 'w').write(hz + '\n')
+    adb('push', f'{OUT}/launch-hz', f'{FILES}/launch-hz', check=True)
+    log(f'HZ {hz}')
     sh(f'am force-stop {PKG}')
     adb('logcat', '-c')
     # PT2: snapshot the on-device perf ring so the post-stop pull takes only
@@ -1062,7 +1077,7 @@ def run_leg(a):
     json.dump({'T0': T0[0], 'layer': layer, 'env': env, 'variant': a.variant, 'serial': D,
                'leg': a.label, 'mode': a.mode, 'stop_tick': stop_tick, 'app_id': PKG,
                'apk': a.apk, 'apk_sha': h1, 'env_base': a.env_base, 'activity': a.activity,
-               'fast_poll': a.fast_poll},
+               'hz': hz, 'fast_poll': a.fast_poll},
               open(f'{OUT}/meta.json', 'w'), indent=1)
 
     rate_re = re.compile(r'\[vsync-rate\] tick=(\d+) rate=([\d.]+)')

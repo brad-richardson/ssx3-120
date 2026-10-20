@@ -78,13 +78,13 @@ class LauncherAliasTest(unittest.TestCase):
     every public './build android --install' failed at the bootstrap.
     v0-builder-fix-1 S2: the always-enabled bootstrap alias (.LaunchAdb,
     no launcher icon) is tried first so custom --app-id builds with hidden
-    launcher icons still bootstrap."""
+    launcher icons still bootstrap. Item 5: one launcher icon (.Launch120);
+    the 60/120 mode persists in files/launch-hz, not in the alias name."""
 
     def test_components_are_fully_qualified_in_the_java_namespace(self):
         self.assertEqual(build.launcher_components('com.ssx3.recomp'),
                          ['com.ssx3.recomp/com.ps2x.runner.LaunchAdb',
-                          'com.ssx3.recomp/com.ps2x.runner.Launch120',
-                          'com.ssx3.recomp/com.ps2x.runner.Launch60'])
+                          'com.ssx3.recomp/com.ps2x.runner.Launch120'])
 
     def test_bootstrap_alias_is_tried_first(self):
         args = types.SimpleNamespace(app_id='com.example.test', serial='test')
@@ -113,21 +113,54 @@ class LauncherAliasTest(unittest.TestCase):
 
 
 class ManifestBootstrapAliasTest(unittest.TestCase):
-    """S2: the manifest carries the always-enabled bootstrap alias."""
+    """S2: the manifest carries the always-enabled bootstrap alias.
+    Item 5: one launcher icon (.Launch120); .Launch60 is gone."""
 
-    def test_launch_adb_is_exported_enabled_and_has_no_launcher_entry(self):
+    def aliases(self):
         import xml.etree.ElementTree as ET
         manifest = Path(build.ROOT / 'apps/android/app/src/main/AndroidManifest.xml')
         tree = ET.parse(str(manifest))
-        aliases = {e.get('{http://schemas.android.com/apk/res/android}name'): e
-                   for e in tree.getroot().iter('activity-alias')}
-        adb = aliases.get('.LaunchAdb')
+        return {e.get('{http://schemas.android.com/apk/res/android}name'): e
+                for e in tree.getroot().iter('activity-alias')}
+
+    def test_launch_adb_is_exported_enabled_and_has_no_launcher_entry(self):
+        adb = self.aliases().get('.LaunchAdb')
         self.assertIsNotNone(adb, 'missing .LaunchAdb bootstrap alias')
         self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}enabled'), 'true')
         self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}exported'), 'true')
         self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}targetActivity'),
                          '.LaunchActivity')
         self.assertEqual(list(adb.iter('intent-filter')), [])
+
+    def test_single_launcher_icon_with_the_plain_app_label(self):
+        aliases = self.aliases()
+        self.assertNotIn('.Launch60', aliases)
+        launcher = aliases.get('.Launch120')
+        self.assertIsNotNone(launcher, 'missing .Launch120 single launcher alias')
+        self.assertEqual(launcher.get('{http://schemas.android.com/apk/res/android}label'),
+                         '${ps2xAppLabel}')
+        self.assertEqual(len(list(launcher.iter('intent-filter'))), 1)
+
+
+class LaunchModeFileTest(unittest.TestCase):
+    """Item 5: the 60/120 mode persists in files/launch-hz (default 120);
+    LaunchActivity reads the file, Set2Relaunch writes it and relaunches
+    the single alias."""
+
+    def test_launch_activity_reads_the_mode_file_with_a_120_default(self):
+        src = (Path(build.ROOT / 'apps/android/app/src/main/java/com/ps2x/runner'
+                     ) / 'LaunchActivity.java').read_text()
+        self.assertIn('launch-hz', src)
+        self.assertIn('HZ_120', src)
+        self.assertNotIn('.Launch60', src)
+        self.assertNotIn('targetFor', src)
+
+    def test_set2_relaunch_writes_the_mode_file_and_targets_the_single_alias(self):
+        src = (Path(build.ROOT / 'apps/android/app/src/main/java/com/ps2x/runner'
+                     ) / 'Set2Relaunch.java').read_text()
+        self.assertIn('launch-hz', src)
+        self.assertIn('.Launch120', src)
+        self.assertNotIn('.Launch60', src)
 
 
 if __name__ == '__main__':

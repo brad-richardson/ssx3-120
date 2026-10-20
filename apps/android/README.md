@@ -83,14 +83,16 @@ restart
 ([touch overlay](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_runtime.cpp#L8290),
 [chord](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/include/ps2_settings_overlay.h#L25)).
 
-The 60 launcher reads only `ps2x.env`; the 120 launcher overlays `full120.env`
-in the same directory. Fully close the app before switching; env is read once
+One launcher icon ("SSX 3"): the 60/120 Mode lives in settings and persists
+in the app files dir (`launch-hz`, default 120). The 60 mode reads only
+`ps2x.env`; the 120 mode overlays `full120.env` in the same directory.
+Fully close the app before switching; env is read once
 per process ([launcher](app/src/main/java/com/ps2x/runner/LaunchActivity.java#L16),
-[loader](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_android_runtime.cpp#L61)). The 60 entry is
+[loader](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/ps2_android_runtime.cpp#L61)). The 60 mode is
 the stock game; the full-120 layer uses
 `PS2X_SSX3_FULL120=events`, with the validated fix groups and display/pacing
 settings for that build. Full 120 is the intended play default; stock 60 is
-the user's option. The separate layer must be staged: selecting the launcher
+the user's option. The separate layer must be staged: changing the mode
 alone does not generate it ([layer semantics](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/ios/full120.env#L5)).
 Render defaults are automatic (capable devices with 5+ GiB RAM: native
 panel on 1080p else 2× with CAS 0.25; smaller devices: 1×, no CAS;

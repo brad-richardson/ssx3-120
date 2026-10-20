@@ -3465,12 +3465,12 @@ def adb(a, *args, capture=False):
 
 # The launcher aliases are declared in the Java namespace (com.ps2x.runner),
 # not under the installed applicationId (public com.ssx3.recomp), so a
-# relative '<app_id>/.Launch60' resolves to a class that does not exist.
+# relative '<app_id>/.Launch120' resolves to a class that does not exist.
 # Always name them fully qualified; the always-enabled bootstrap alias
 # first (no launcher icon, works for custom ids with hidden icons), then
-# 120 (the product mode), then 60.
-LAUNCHER_ALIASES = ('com.ps2x.runner.LaunchAdb', 'com.ps2x.runner.Launch120',
-                    'com.ps2x.runner.Launch60')
+# the single launcher alias. The 60/120 mode lives in settings and persists
+# in files/launch-hz (default 120), not in the alias name.
+LAUNCHER_ALIASES = ('com.ps2x.runner.LaunchAdb', 'com.ps2x.runner.Launch120')
 
 
 def launcher_components(app_id):

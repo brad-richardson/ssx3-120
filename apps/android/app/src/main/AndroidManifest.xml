@@ -25,11 +25,11 @@
             android:resource="@xml/game_mode_config" />
 
         <!-- F6 (appsec-fix-1): non-exported so only the LaunchActivity
-             trampoline (via the exported LaunchAdb/Launch60/Launch120
-             aliases) can start the runtime with its RAM/panel policy and
-             60/120 selection. Tooling bootstraps through the LaunchAdb
-             alias. singleTask: one runtime per process; a relaunch brings
-             the running game forward. -->
+             trampoline (via the exported LaunchAdb bootstrap alias and the
+             single Launch120 launcher alias) can start the runtime with its
+             RAM/panel policy and 60/120 selection. Tooling bootstraps
+             through the LaunchAdb alias. singleTask: one runtime per
+             process; a relaunch brings the running game forward. -->
         <activity
             android:name="android.app.NativeActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation"
@@ -43,9 +43,10 @@
                 android:value="ps2EntryRunner" />
         </activity>
 
-        <!-- TG1: 60/120 launch choice. Two launcher entries alias one
-             trampoline; the 120 one layers files/full120.env (see
-             LaunchActivity.java). Own empty affinity + excludeFromRecents so
+        <!-- TG1: single launcher entry aliasing the trampoline (see
+             LaunchActivity.java). The chosen mode persists in the app
+             files dir (launch-hz, default 120) and the 120 mode layers
+             files/full120.env. Own empty affinity + excludeFromRecents so
              Recents shows only the game task. -->
         <activity
             android:name=".LaunchActivity"
@@ -56,22 +57,8 @@
             android:exported="false" />
 
         <activity-alias
-            android:name=".Launch60"
-            android:label="${ps2xAlias60}"
-            android:enabled="${ps2xAliasEnabled}"
-            android:icon="@mipmap/ic_ssx_60"
-            android:roundIcon="@mipmap/ic_ssx_60"
-            android:targetActivity=".LaunchActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
             android:name=".Launch120"
-            android:label="${ps2xAlias120}"
+            android:label="${ps2xAppLabel}"
             android:enabled="${ps2xAliasEnabled}"
             android:icon="@mipmap/ic_ssx_120"
             android:roundIcon="@mipmap/ic_ssx_120"

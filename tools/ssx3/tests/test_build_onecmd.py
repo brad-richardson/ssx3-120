@@ -176,14 +176,16 @@ class AppLabelTest(unittest.TestCase):
         # and drops the other key (release-pb71-1: label placeholder lost).
         self.assertEqual(len(re.findall(r'manifestPlaceholders\s*=\s*\[', gradle)), 1)
 
-    def test_launcher_aliases_derive_from_app_label(self):
+    def test_single_launcher_alias_carries_the_plain_app_label(self):
         manifest = (ROOT / 'apps/android/app/src/main/AndroidManifest.xml').read_text()
-        self.assertIn('${ps2xAlias60}', manifest)
-        self.assertIn('${ps2xAlias120}', manifest)
+        self.assertIn('${ps2xAppLabel}', manifest)
         self.assertIn('${ps2xAliasEnabled}', manifest)
+        self.assertNotIn('${ps2xAlias60}', manifest)
+        self.assertNotIn('${ps2xAlias120}', manifest)
+        self.assertNotIn('.Launch60', manifest)
         gradle = (ROOT / 'apps/android/app/build.gradle').read_text()
-        self.assertIn('ps2xAlias60', gradle)
-        self.assertIn('ps2xAlias120', gradle)
+        self.assertNotIn('ps2xAlias60', gradle)
+        self.assertNotIn('ps2xAlias120', gradle)
         self.assertIn('ps2xAliasEnabled', gradle)
 
     def test_builder_passes_label_to_both_platforms(self):
