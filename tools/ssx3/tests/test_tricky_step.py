@@ -167,7 +167,7 @@ def atlas_test_bake():
     baked = []
 
     def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
-        art = Path(ov_dir) / 'tklist-art.bin'
+        art = Path(ov_dir) / 'TKLIST.BIN'
         art.write_bytes(b'atlas-test-bake')
         baked.append(art)
         return art
@@ -1926,7 +1926,7 @@ class AtlasStepTest(unittest.TestCase):
         self.codes.write_text(self.CODES_TEXT)
         (self.tricky / 'tricky.env').write_text(
             '# stub\nPS2X_SSX3_COURSE_PICKER=1\n')
-        (self.tricky / 'tricky-ov' / 'tklist-art.bin').write_bytes(b'atlas-stub')
+        (self.tricky / 'tricky-ov' / 'TKLIST.BIN').write_bytes(b'atlas-stub')
         (self.work / 'tricky_inputs.json').write_text(
             json.dumps({'converter_version': 'stub', 'outputs': {}}))
 
@@ -1938,7 +1938,7 @@ class AtlasStepTest(unittest.TestCase):
 
     def art_row(self):
         return ('PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
-                + build.PUBLIC_APP_ID + '/files/tricky-ov/tklist-art.bin')
+                + build.PUBLIC_APP_ID + '/files/tricky-ov/TKLIST.BIN')
 
     def test_env_row_append_idempotent_and_migrates(self):
         self.assertTrue(tricky_atlas.ensure_env_row(self.tricky))
@@ -1948,7 +1948,7 @@ class AtlasStepTest(unittest.TestCase):
         # A stale path row (older layout) migrates to the current value.
         text = (self.tricky / 'tricky.env').read_text()
         (self.tricky / 'tricky.env').write_text(
-            text.replace('tricky-ov/tklist-art.bin', 'tklist-art.bin'))
+            text.replace('tricky-ov/TKLIST.BIN', 'tklist-art.bin'))
         self.assertTrue(tricky_atlas.ensure_env_row(self.tricky))
         self.assertIn(self.art_row(),
                       (self.tricky / 'tricky.env').read_text().splitlines())
@@ -1956,7 +1956,7 @@ class AtlasStepTest(unittest.TestCase):
     def test_record_extension_shape_and_idempotent(self):
         self.assertTrue(tricky_atlas.extend_tricky_record(self.work))
         record = json.loads((self.work / 'tricky_inputs.json').read_text())
-        for relative in ('tricky-ov/tklist-art.bin', 'tricky.env'):
+        for relative in ('tricky-ov/TKLIST.BIN', 'tricky.env'):
             self.assertIn(relative, record['outputs'])
             entry = record['outputs'][relative]
             self.assertEqual(set(entry), {'sha256', 'bytes'})
@@ -1966,7 +1966,7 @@ class AtlasStepTest(unittest.TestCase):
         baked = []
 
         def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
-            art = Path(ov_dir) / 'tklist-art.bin'
+            art = Path(ov_dir) / 'TKLIST.BIN'
             art.write_bytes(b'atlas-stub')
             baked.append(True)
             return art
@@ -1989,7 +1989,7 @@ class AtlasStepTest(unittest.TestCase):
 
     def test_ensure_reapplies_record_drift_without_rebake(self):
         def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
-            art = Path(ov_dir) / 'tklist-art.bin'
+            art = Path(ov_dir) / 'TKLIST.BIN'
             art.write_bytes(b'atlas-stub')
             return art
 
@@ -1999,7 +1999,7 @@ class AtlasStepTest(unittest.TestCase):
             self.assertEqual(tricky_atlas.ensure(*args), 'baked')
             record_path = self.work / 'tricky_inputs.json'
             record = json.loads(record_path.read_text())
-            del record['outputs']['tricky-ov/tklist-art.bin']
+            del record['outputs']['tricky-ov/TKLIST.BIN']
             record_path.write_text(json.dumps(record, indent=2) + '\n')
             with patch.object(tricky_atlas, 'bake_atlas') as rebake:
                 self.assertEqual(tricky_atlas.ensure(*args), 're-applied')
@@ -2007,13 +2007,13 @@ class AtlasStepTest(unittest.TestCase):
 
     def test_check_only_reports_stale_without_writing(self):
         # Missing atlas file with no record is stale, and nothing is written.
-        (self.tricky / 'tricky-ov' / 'tklist-art.bin').unlink()
+        (self.tricky / 'tricky-ov' / 'TKLIST.BIN').unlink()
         with _bake_stub_ctx():
             self.assertEqual(
                 tricky_atlas.ensure(self.work, Path(self.tmp.name) / 'ssx3.iso',
                                     str(self.ui), str(self.codes),
                                     check_only=True), 'stale')
-        self.assertFalse((self.tricky / 'tricky-ov' / 'tklist-art.bin').exists())
+        self.assertFalse((self.tricky / 'tricky-ov' / 'TKLIST.BIN').exists())
         self.assertFalse((self.work / 'tklist-atlas.json').exists())
 
     def test_refuses_without_layer_or_record(self):
@@ -2066,11 +2066,11 @@ class AtlasDriftTest(unittest.TestCase):
             self.assertEqual(
                 row.replace(build.PUBLIC_APP_ID, 'com.example.game'),
                 'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
-                'com.example.game/files/tricky-ov/tklist-art.bin')
+                'com.example.game/files/tricky-ov/TKLIST.BIN')
             self.assertEqual(
                 row.replace(prefix, '${BUNDLE}/tricky/'),
                 'PS2X_SSX3_TRICKY_LIST_ART='
-                '${BUNDLE}/tricky/tricky-ov/tklist-art.bin')
+                '${BUNDLE}/tricky/tricky-ov/TKLIST.BIN')
 
 
 class ImportStagesAtlasTest(unittest.TestCase):
@@ -2101,31 +2101,31 @@ class ImportStagesAtlasTest(unittest.TestCase):
                 self.assertIn('imported', out.getvalue())
                 # The imported layer carries no atlas; import baked one.
                 self.assertEqual(len(baked), 1)
-            art = work / 'tricky/tricky-ov/tklist-art.bin'
+            art = work / 'tricky/tricky-ov/TKLIST.BIN'
             self.assertTrue(art.is_file())
             self.assertTrue((work / 'tklist-atlas.json').is_file())
             env = (work / 'tricky/tricky.env').read_text()
             self.assertIn(
                 'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
-                + build.PUBLIC_APP_ID + '/files/tricky-ov/tklist-art.bin',
+                + build.PUBLIC_APP_ID + '/files/tricky-ov/TKLIST.BIN',
                 env.splitlines())
             record = json.loads((work / 'tricky_inputs.json').read_text())
-            for relative in ('tricky-ov/tklist-art.bin', 'tricky.env'):
+            for relative in ('tricky-ov/TKLIST.BIN', 'tricky.env'):
                 self.assertIn(relative, record['outputs'])
             # Android stage carries the atlas and rewrites the row's id.
             files = Path(tmp) / 'files'
             files.mkdir()
             _, trees = build.stage_tricky(args, files)
             self.assertIn('tricky-ov', trees)
-            staged_art = files / 'tricky-ov/tklist-art.bin'
+            staged_art = files / 'tricky-ov/TKLIST.BIN'
             self.assertTrue(staged_art.is_file())
             self.assertEqual(
                 build.sha2(staged_art),
-                record['outputs']['tricky-ov/tklist-art.bin']['sha256'])
+                record['outputs']['tricky-ov/TKLIST.BIN']['sha256'])
             staged_env = (files / 'tricky.env').read_text()
             self.assertIn(
                 'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
-                'com.example.game/files/tricky-ov/tklist-art.bin',
+                'com.example.game/files/tricky-ov/TKLIST.BIN',
                 staged_env.splitlines())
             self.assertNotIn(build.PUBLIC_APP_ID, staged_env)
             # iOS stage carries the atlas under ${BUNDLE} paths.
@@ -2134,14 +2134,27 @@ class ImportStagesAtlasTest(unittest.TestCase):
             (app / 'ps2x.env').write_text('PS2X_SOUND=1\n')
             build.stage_ios_tricky(types.SimpleNamespace(work=work), app)
             self.assertTrue(
-                (app / 'tricky/tricky-ov/tklist-art.bin').is_file())
+                (app / 'tricky/tricky-ov/TKLIST.BIN').is_file())
             ios_env = (app / 'tricky/tricky.env').read_text()
             self.assertIn(
                 'PS2X_SSX3_TRICKY_LIST_ART='
-                '${BUNDLE}/tricky/tricky-ov/tklist-art.bin',
+                '${BUNDLE}/tricky/tricky-ov/TKLIST.BIN',
                 ios_env.splitlines())
             self.assertNotIn('/storage/emulated', ios_env)
 
+
+
+class AtlasIsoNameTest(unittest.TestCase):
+    """10-20: tklist-art.bin inside tricky-ov/ made ps2_cd_overlay::build refuse
+    the WHOLE Tricky overlay on device (non-ISO9660 name) -> no Tricky world."""
+
+    def test_staged_atlas_name_is_iso9660_legal(self):
+        import re
+        atlas = build.tricky_atlas()
+        name = atlas.ATLAS_NAME
+        self.assertRegex(name, r'^[A-Z0-9_]+\.[A-Z0-9_]+$')
+        self.assertLessEqual(len(name), 30)
+        self.assertTrue(atlas.ATLAS_REL.startswith('tricky-ov/'))
 
 if __name__ == '__main__':
     unittest.main()

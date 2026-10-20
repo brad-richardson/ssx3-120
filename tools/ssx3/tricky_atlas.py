@@ -25,12 +25,12 @@ key is stale. It also repairs record drift: a reconverted layer whose
 `tricky_inputs.json` lost the atlas entries gets them re-applied without
 a rebake when the atlas bytes still match.
 
-Placement: the atlas lands at `<work>/tricky/tricky-ov/tklist-art.bin`.
+Placement: the atlas lands at `<work>/tricky/tricky-ov/TKLIST.BIN` (ISO-legal: the overlay builder refuses non-ISO names).
 `tricky-ov/` is an allowlisted whole tree, so both stage paths copy it
 with zero builder changes, and the record glob already covers tree
 contents — the step only extends `tricky_inputs.json` `outputs` (atlas +
 re-hashed `tricky.env`). The env row
-`PS2X_SSX3_TRICKY_LIST_ART=.../files/tricky-ov/tklist-art.bin` is
+`PS2X_SSX3_TRICKY_LIST_ART=.../files/tricky-ov/TKLIST.BIN` is
 maintained in the staged `tricky.env` by this step (same Android device
 prefix the driver bakes, so the iOS `${BUNDLE}/tricky/` rewrite applies).
 No game bytes land in git: only parsers, rects and short names.
@@ -43,6 +43,7 @@ Everything fails closed with the exact field named.
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -84,7 +85,12 @@ def _bake_module():
 HERE = Path(__file__).resolve().parent
 DEFAULT_CODES = HERE / 'tklist-codes.tsv'
 
-ATLAS_NAME = 'tklist-art.bin'
+# The atlas sits inside tricky-ov/, which the runtime also mounts as a CD
+# overlay; ps2_cd_overlay::build refuses the WHOLE overlay on any non-ISO9660
+# name (A-Z 0-9 _ and one dot), so the staged file must be ISO-legal.
+# The bake script still writes tklist-art.bin; bake_atlas renames it.
+BAKE_OUTPUT_NAME = 'tklist-art.bin'
+ATLAS_NAME = 'TKLIST.BIN'
 ATLAS_REL = 'tricky-ov/' + ATLAS_NAME
 ENV_KEY = 'PS2X_SSX3_TRICKY_LIST_ART'
 ATLAS_RECORD_NAME = 'tklist-atlas.json'
@@ -165,7 +171,10 @@ def bake_atlas(ssx3_iso, ui_dir, codes_path, ov_dir):
            '--ssx3-iso', str(ssx3_iso), '--tricky-ui', str(ui),
            '--codes', str(codes_path), '--out', str(ov_dir)]
     subprocess.run(cmd, check=True)
+    baked = Path(ov_dir) / BAKE_OUTPUT_NAME
     art = Path(ov_dir) / ATLAS_NAME
+    if baked.is_file():
+        os.replace(baked, art)
     if not art.is_file():
         raise ValueError('picker atlas bake left no ' + ATLAS_NAME + ' at ' + str(art))
     return art
