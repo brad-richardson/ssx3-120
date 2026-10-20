@@ -194,6 +194,7 @@ address	kind	name	role	source	evidence	confidence
 0x1509c0	code	cBEEconInterface_getTotalMoneyEarned	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:173	prior map SYM1	decomp-unverified
 0x152398	code	cBECharProfileDB_getScoreStats	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:145	prior map SYM1	decomp-unverified
 0x152638	code	cBESaveInterface_getThis	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:150	prior map SYM1	decomp-unverified
+0x152758	code	tricky_records_serialize	SET0001 serializer entry wrapped to restore the user's records/settings before the CRC; stock/exact path unchanged engine: constexpr kSerializePc (deps/PS2Recomp/games/ssx3/module/src/tricky_records_patch.cpp:16)	engine	deps/PS2Recomp/games/ssx3/module/src/tricky_records_patch.cpp:16	inferred
 0x152bb0	code	profile_block_copy_apply	copies 0x288-byte profile block on load, then applies via 0x228c08	labels.tsv:W1 [codegen read] (NM1)	W1 notes	inferred
 0x153088	code	cBERaceState_getState	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:140	prior map SYM1	decomp-unverified
 0x153200	code	resume_entry_153200	boot-proven indirect-call resume entry (ssx3.toml extra_function_starts) in sub_1530e0	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:225	inferred
@@ -2080,7 +2081,10 @@ address	kind	name	role	source	evidence	confidence
 0x52be04	data	ssx3_sregs1_addr	engine hook/const kSsx3Sregs1Addr	engine	deps/PS2Recomp/games/ssx3/module/src/sif_handshake.cpp:105	inferred
 0x535538	data	stat_bank_base	live stat bank: 0x535538 + player*70 + char*7, seven attribute bytes per rider (raw 5..55, level=raw/5); physics getters read it live every mode	netsync-spike-1	netsync-spike-1 notes	verified
 0x535610	data	options_block	options block; bits 20-21 widescreen (0 off / 1 16:9 / 2 anamorphic)	W1	docs/facts.md:19	verified
+0x535898	data	tricky_records_settings	engine hook/const kSettings: 0x288-byte user settings block preserved across Tricky races	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_records.h:23	inferred
+0x535b20	data	tricky_records_profiles	engine hook/const kProfiles: six packed profile flag words (stride 28) preserved across Tricky races	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_records.h:25	inferred
 0x535c08	data	g_current_event_index	BSS word alt: g_current_event_index (BSS) (TK1)	labels.tsv:TK1 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
+0x535c18	data	tricky_records_data	engine hook/const kRecords: 0xa28-byte user records block preserved across Tricky races	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_records.h:24	inferred
 0x536640	data	res_base	engine hook/const kResBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_netsync.h:55	inferred
 0x53ff48	data	player_camera_target_snowjam	RiderCameraTarget on Snow Jam race alt: player RiderCameraTarget on the Snow Jam race (a1 of 0x15F568) (TK4)	labels.tsv:TK4 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x53ff4c	data	ssx3_rider_ptr	per-course AP rider pointer (SSX 3)	TK43d	docs/facts.md:298	verified

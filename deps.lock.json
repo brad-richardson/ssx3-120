@@ -3,7 +3,7 @@
   "engine": {
     "repo": "https://github.com/brad-richardson/PS2Recomp.git",
     "ref": "ssx3",
-    "pin": "0d8a0868813a374d9c3219dd29ebb94db0b8bc31",
+    "pin": "5d2a340e5a3d1af8937abb240ccebc50f5e3f7f2",
     "submodule": "deps/PS2Recomp",
     "runner_invariant_base": "c5a9d02573410a2085a4b4b831b0b68ba3515440",
     "upstream_base": "2c5fbb9389e11dd95693385969490c9e8e6f57b4"
@@ -221,7 +221,7 @@
     }
   },
   "archive_identity": {
-    "contract": "07b580e26986201e2f82f1bdaa82634d692d2a81faef02e722441ee574848543",
+    "contract": "aea99b0ecd14fd5b518c6cee2d71a8062c8a63ca2460eed9a4c9fe6e22f54708",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
   },
   "inputs": {

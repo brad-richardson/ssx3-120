@@ -126,7 +126,7 @@ tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	f14d8b98432dc2162da4ba5a5f
 tools/ssx3/build.py.lock	authored:tk-toolchain-1	-	da63d38c6e2aa2dcdad4473445f246b9df04ab6709ecb53799233e238e468bf1	11292	new
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	814a1727f0063cf8f815599f70a5f73711ee5ab21428b85d672ccfe3eca2a1e1	3715	verbatim
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	6580e91212155f0abab3772b249f601e842377fb4f67a5be020d78fea6951b4e	6849	composition:main-guard-import-safe-tricky-picker-2
-tools/ssx3/knobs.tsv	fork@0d8a0868	tools/ssx3/knobs.tsv	8923d06fbb089d1c41289e82d48ac660b2d5f644f7113c79e7a9fdddd2fc1bab	7718	verbatim
+tools/ssx3/knobs.tsv	fork@5d2a340e	tools/ssx3/knobs.tsv	7cc534be195665a54210fbd50d98370c186aafac05a049f4976adf5d974ae3a5	7767	verbatim
 tools/ssx3/mac-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/mac-libs/CMakeLists.txt	4c424127104bab98cb841f66447a28dd241064fb523ffe5b22dc31577d5152a0	2927	verbatim
 tools/ssx3/offline-core/OM1StubHost.cpp	fork@f7a96f23	tools/ssx3/offline-core/OM1StubHost.cpp	15f36302ded2b8c984a61ab8b99185de95c7dda849d6a1b624aed67ac560d5be	672	verbatim
 tools/ssx3/offline-core/OfflineBridge.cpp	fork@5235b114	tools/ssx3/offline-core/OfflineBridge.cpp	7f9af23c0316c499e2aac1cfaee64b08d61675727c085a31607acc88b2144186	13616	verbatim
