@@ -49,7 +49,7 @@ when something is missing (`./build doctor --target android --work <dir>`).
 ## Controls
 
 Use a controller if you can: pair it in your phone's settings before launching.
-If no controller is connected you get touch controls instead — they appear on their own and hide while a controller is connected (Touch=On in settings forces them on).
+If no controller is connected you get touch controls instead — they appear on their own and hide while a controller is connected ("On-screen controls" in settings forces them on).
 Buttons follow the PlayStation layout: face buttons are Cross/Circle/Square/Triangle, shoulders are L1/R1/L2/R2, and Menu/View act as Start/Select.
 Settings: hold Start, press Select+Start, or tap the … button.
 
