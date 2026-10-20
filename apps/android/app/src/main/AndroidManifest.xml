@@ -25,11 +25,11 @@
             android:resource="@xml/game_mode_config" />
 
         <!-- F6 (appsec-fix-1): non-exported so only the LaunchActivity
-             trampoline (via the exported Launch60/Launch120 aliases) can
-             start the runtime with its RAM/panel policy and 60/120
-             selection. Tooling bootstraps through the Launch60 alias.
-             singleTask: one runtime per process; a relaunch brings the
-             running game forward. -->
+             trampoline (via the exported LaunchAdb/Launch60/Launch120
+             aliases) can start the runtime with its RAM/panel policy and
+             60/120 selection. Tooling bootstraps through the LaunchAdb
+             alias. singleTask: one runtime per process; a relaunch brings
+             the running game forward. -->
         <activity
             android:name="android.app.NativeActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation"
@@ -82,6 +82,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <!-- v0-builder-fix-1 S2: always-enabled bootstrap alias with no
+             launcher entry. Custom app-id builds disable both launcher
+             icons, so the installer stages through this alias first; it is
+             never a launcher icon (no intent-filter) and never hidden. -->
+        <activity-alias
+            android:name=".LaunchAdb"
+            android:enabled="true"
+            android:targetActivity=".LaunchActivity"
+            android:exported="true" />
 
         <!-- TKM1: the TKO1 "SSX 3 · Tricky" launcher entry is gone (Brad
              10-11). The Tricky layer is always on in the base env and entered

@@ -62,7 +62,7 @@ class PublicInstallStageTest(unittest.TestCase):
                 build.install(args)
             self.assertFalse(any('mkdir' in str(part) for call in calls for part in call))
             self.assertLess(calls.index(('shell', 'am', 'start', '-n',
-                                         'com.ssx3.recomp/com.ps2x.runner.Launch120')),
+                                         'com.ssx3.recomp/com.ps2x.runner.LaunchAdb')),
                             next(i for i, call in enumerate(calls) if call[0] == 'push'))
             self.assertIn(('shell', 'chmod', '-R', 'o+rX',
                            '/sdcard/Android/data/com.ssx3.recomp/files/ge1-resources'), calls)
@@ -75,26 +75,59 @@ class PublicInstallStageTest(unittest.TestCase):
 class LauncherAliasTest(unittest.TestCase):
     """10-19 Odin: '<app_id>/.Launch60' resolved to com.ssx3.recomp.Launch60,
     which does not exist (aliases live in the com.ps2x.runner namespace), so
-    every public './build android --install' failed at the bootstrap."""
+    every public './build android --install' failed at the bootstrap.
+    v0-builder-fix-1 S2: the always-enabled bootstrap alias (.LaunchAdb,
+    no launcher icon) is tried first so custom --app-id builds with hidden
+    launcher icons still bootstrap."""
 
     def test_components_are_fully_qualified_in_the_java_namespace(self):
         self.assertEqual(build.launcher_components('com.ssx3.recomp'),
-                         ['com.ssx3.recomp/com.ps2x.runner.Launch120',
+                         ['com.ssx3.recomp/com.ps2x.runner.LaunchAdb',
+                          'com.ssx3.recomp/com.ps2x.runner.Launch120',
                           'com.ssx3.recomp/com.ps2x.runner.Launch60'])
+
+    def test_bootstrap_alias_is_tried_first(self):
+        args = types.SimpleNamespace(app_id='com.example.test', serial='test')
+        seen = []
+        def ok_first(_a, *parts, capture=False):
+            seen.append(parts[-1])
+            return 'Starting: Intent { cmp=' + parts[-1] + ' }'
+        with patch.object(build, 'adb', side_effect=ok_first):
+            self.assertEqual(build.bootstrap_app(args),
+                             'com.example.test/com.ps2x.runner.LaunchAdb')
+        self.assertEqual(seen, ['com.example.test/com.ps2x.runner.LaunchAdb'])
 
     def test_falls_back_to_the_next_alias_and_fails_loudly(self):
         args = types.SimpleNamespace(app_id='com.ssx3.recomp', serial='test')
         seen = []
-        def missing_120(_a, *parts, capture=False):
+        def missing_adb(_a, *parts, capture=False):
             seen.append(parts[-1])
-            if parts[-1].endswith('Launch120'):
+            if parts[-1].endswith('LaunchAdb'):
                 return 'Error type 3\nError: Activity class {' + parts[-1] + '} does not exist.'
             return 'Starting: Intent { cmp=' + parts[-1] + ' }'
-        with patch.object(build, 'adb', side_effect=missing_120):
-            self.assertEqual(build.bootstrap_app(args), 'com.ssx3.recomp/com.ps2x.runner.Launch60')
+        with patch.object(build, 'adb', side_effect=missing_adb):
+            self.assertEqual(build.bootstrap_app(args), 'com.ssx3.recomp/com.ps2x.runner.Launch120')
         with patch.object(build, 'adb', return_value='Error: Activity class does not exist.'):
             with self.assertRaises(ValueError):
                 build.bootstrap_app(args)
+
+
+class ManifestBootstrapAliasTest(unittest.TestCase):
+    """S2: the manifest carries the always-enabled bootstrap alias."""
+
+    def test_launch_adb_is_exported_enabled_and_has_no_launcher_entry(self):
+        import xml.etree.ElementTree as ET
+        manifest = Path(build.ROOT / 'apps/android/app/src/main/AndroidManifest.xml')
+        tree = ET.parse(str(manifest))
+        aliases = {e.get('{http://schemas.android.com/apk/res/android}name'): e
+                   for e in tree.getroot().iter('activity-alias')}
+        adb = aliases.get('.LaunchAdb')
+        self.assertIsNotNone(adb, 'missing .LaunchAdb bootstrap alias')
+        self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}enabled'), 'true')
+        self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}exported'), 'true')
+        self.assertEqual(adb.get('{http://schemas.android.com/apk/res/android}targetActivity'),
+                         '.LaunchActivity')
+        self.assertEqual(list(adb.iter('intent-filter')), [])
 
 
 if __name__ == '__main__':
