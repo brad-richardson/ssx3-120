@@ -328,9 +328,12 @@ preparation have not been validated by this route.
 
 After building, follow [Android setup/save protection](../../apps/android/README.md)
 for the 60/120 launcher layers. `build.py
-android` creates a per-user signing keystore once in your work directory
-(`ssx3-signing.keystore`) and reuses it on every later build, with a
-monotonic `versionCode` from `version-code.txt` in the same directory.
+android` creates a per-user signing keystore once at
+`~/.config/ssx3-120/android-signing.keystore` (outside any work dir) and
+reuses it on every later build, with a monotonic `versionCode` from
+`version-code.txt` in each work directory. An existing work-dir
+`ssx3-signing.keystore` is preferred when present so current installs
+keep upgrading; `--keystore` overrides.
 **Back up your keystore; a different key forces an uninstall, which wipes
 saves.** Do not distribute generated code or apps containing it.
 

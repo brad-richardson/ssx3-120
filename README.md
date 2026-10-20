@@ -44,8 +44,11 @@ something is missing.
 
 Everything the build makes goes in `~/ssx3-work` (pass `--work <dir>` to
 use another folder outside this checkout). Plan on ~25 GB. It holds your
-APK and your app signing key (`ssx3-signing.keystore` plus
-`version-code.txt`): keep them, and back up the key, because a
+APK and per-work `version-code.txt`. Your Android signing key lives
+outside any work dir at `~/.config/ssx3-120/android-signing.keystore`
+(created once, reused by every work dir; an existing work-dir
+`ssx3-signing.keystore` is preferred when present so current installs
+keep upgrading; `--keystore` overrides): back it up, because a
 different key forces an uninstall, which wipes saves.
 
 That one command runs doctor → prepare → android-libs → android in order

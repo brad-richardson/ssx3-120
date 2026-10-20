@@ -115,13 +115,15 @@ Never seed or overwrite an existing card when staging a new build. Keep backups
 private. Restore only deliberately, with the app stopped.
 
 Builds through `tools/ssx3/build.py android` sign with a per-user keystore
-created once in your work directory (`ssx3-signing.keystore`, never in the
-checkout) and reused on every later build, with a monotonic `versionCode`
-from a counter in the same directory (`version-code.txt`); `versionName`
-stays `0.1.0` ([configuration](app/build.gradle#L41)). **Back up your
-keystore; a different key forces an uninstall, which wipes saves.** Copy
-both files with your backups and restore them before rebuilding on another
-machine. A direct Gradle invocation without the `ps2xKeystore*` /
+created once at `~/.config/ssx3-120/android-signing.keystore` (outside any
+work dir, never in the checkout) and reused on every later build, with a
+monotonic `versionCode` from a counter in each work directory
+(`version-code.txt`); `versionName` stays `0.1.0`
+([configuration](app/build.gradle#L41)). An existing work-dir
+`ssx3-signing.keystore` is preferred when present; `--keystore` overrides.
+**Back up your keystore; a different key forces an uninstall, which wipes
+saves.** Copy the keystore with your backups and restore it before
+rebuilding on another machine. A direct Gradle invocation without the `ps2xKeystore*` /
 `ps2xVersionCode` properties still uses the debug key and `versionCode 1`.
 Preserve your key; a signing error is not a reason to uninstall a
 save-bearing app. See [troubleshooting](../../docs/ssx3-troubleshooting.md).

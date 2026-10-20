@@ -1038,6 +1038,71 @@ class EntrypointDefaultWorkTest(unittest.TestCase):
                     build.main(['android-libs'])
 
 
+class SharedKeystoreTest(unittest.TestCase):
+    """S1: the default signing key lives outside --work so fresh work dirs
+    keep upgrading the same install."""
+
+    def fake_keytool_run(self, *args, **kwargs):
+        parts = list(map(str, args))
+        if '-keystore' in parts:
+            Path(parts[parts.index('-keystore') + 1]).write_bytes(b'fake-keystore')
+        return None
+
+    def test_two_fresh_work_dirs_share_the_same_signer(self):
+        import io
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            first = Path(tmp) / 'w1'
+            second = Path(tmp) / 'w2'
+            first.mkdir()
+            second.mkdir()
+            stream = io.StringIO()
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build.shutil, 'which', return_value='/fake/keytool'), \
+                 patch.object(build, 'run', side_effect=self.fake_keytool_run), \
+                 patch.object(sys, 'stdout', stream):
+                one = build.ensure_keystore(first)
+                two = build.ensure_keystore(second)
+            self.assertEqual(one, two)
+            self.assertEqual(one, home / '.config' / 'ssx3-120' / 'android-signing.keystore')
+            self.assertTrue(one.is_file())
+            self.assertFalse((first / build.SIGNING_KEYSTORE).exists())
+            self.assertFalse((second / build.SIGNING_KEYSTORE).exists())
+            out = stream.getvalue()
+            self.assertIn('Back up your keystore', out)
+            self.assertNotIn(str(home), out)
+            self.assertNotIn(str(one), out)
+
+    def test_legacy_work_dir_key_wins_for_upgrades(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            legacy = work / build.SIGNING_KEYSTORE
+            legacy.write_bytes(b'legacy-key')
+            with patch.object(build.Path, 'home', return_value=home), \
+                 patch.object(build.shutil, 'which', return_value='/fake/keytool'), \
+                 patch.object(build, 'run', side_effect=self.fake_keytool_run):
+                self.assertEqual(build.ensure_keystore(work), legacy)
+                self.assertEqual(build.resolve_keystore_path(work, None), legacy)
+
+    def test_explicit_keystore_wins_over_both(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / 'home'
+            home.mkdir()
+            work = Path(tmp) / 'work'
+            work.mkdir()
+            (work / build.SIGNING_KEYSTORE).write_bytes(b'legacy-key')
+            custom = Path(tmp) / 'custom.keystore'
+            custom.write_bytes(b'custom-key')
+            with patch.object(build.Path, 'home', return_value=home):
+                self.assertEqual(build.resolve_keystore_path(work, custom), custom)
+                self.assertEqual(build.ensure_keystore(work, custom), custom)
+
+
 class AdbResolutionTest(unittest.TestCase):
     """F01: install shells the selected SDK's adb, and the doctor checks it."""
 

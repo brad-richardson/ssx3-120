@@ -64,8 +64,10 @@ extracted/remastered packs as receipts.
   courses. Nothing is downloaded: on Linux install `ffmpeg` by apt and
   build `vgmstream-cli` from https://github.com/vgmstream/vgmstream when
   your distro does not ship it.
-- **Keys:** Android signs every build with the per-user
-  `ssx3-signing.keystore` in your work directory (`version-code.txt`
-  beside it). Back both up before rebuilding anywhere else: a different
-  key forces an uninstall, which wipes saves — including Tricky
-  progress.
+- **Keys:** Android signs every build with the per-user key at
+  `~/.config/ssx3-120/android-signing.keystore` (shared across work
+  dirs; an existing work-dir `ssx3-signing.keystore` wins so current
+  installs keep upgrading; `--keystore` overrides). `version-code.txt`
+  stays per work dir. Back up the keystore before rebuilding anywhere
+  else: a different key forces an uninstall, which wipes saves —
+  including Tricky progress.

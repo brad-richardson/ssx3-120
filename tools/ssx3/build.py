@@ -887,15 +887,34 @@ def vu0(a):
 SIGNING_KEYSTORE = 'ssx3-signing.keystore'
 SIGNING_ALIAS = 'ssx3'
 SIGNING_PASSWORD = 'ssx3local'
+SHARED_KEYSTORE_RELPATH = Path('.config') / 'ssx3-120' / 'android-signing.keystore'
 
 
-def ensure_keystore(work):
-    # Per-user signing key, created once in the work dir (never in the
-    # checkout) and reused on every later build. The password is not a
-    # secret; possession of this file is what must be preserved.
-    keystore = work / SIGNING_KEYSTORE
-    if keystore.exists():
-        return keystore
+def shared_keystore_path():
+    """Stable per-user default signing key outside any --work dir."""
+    return Path.home() / SHARED_KEYSTORE_RELPATH
+
+
+def resolve_keystore_path(work, explicit=None):
+    """Which keystore to use: explicit --keystore wins, then the legacy
+    work-dir key (kept so current installs keep upgrading), else the
+    shared per-user default."""
+    if explicit:
+        return Path(explicit)
+    legacy = Path(work) / SIGNING_KEYSTORE
+    if legacy.is_file():
+        return legacy
+    return shared_keystore_path()
+
+
+def ensure_keystore(work, keystore=None):
+    # Per-user signing key (never in the checkout) reused on every later
+    # build. The password is not a secret; possession of this file is what
+    # must be preserved. The resolved path is never printed (it contains
+    # the home directory); docs say where it lives and to back it up.
+    resolved = resolve_keystore_path(work, keystore)
+    if resolved.exists():
+        return resolved
     keytool = shutil.which('keytool')
     if not keytool and os.environ.get('JAVA_HOME'):
         candidate = Path(os.environ['JAVA_HOME'], 'bin/keytool')
@@ -903,14 +922,16 @@ def ensure_keystore(work):
             keytool = str(candidate)
     if not keytool:
         raise ValueError('keytool not found; install JDK 17 and set JAVA_HOME')
-    print('Creating local signing keystore: ' + str(keystore))
+    if resolved == shared_keystore_path():
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+    print('Creating local signing keystore.')
     print('Back up your keystore; a different key forces an uninstall, which wipes saves.')
-    run(keytool, '-genkeypair', '-keystore', keystore, '-alias', SIGNING_ALIAS,
+    run(keytool, '-genkeypair', '-keystore', resolved, '-alias', SIGNING_ALIAS,
         '-storepass', SIGNING_PASSWORD, '-keypass', SIGNING_PASSWORD,
         '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000',
         '-dname', 'CN=SSX3 Local Build, OU=Local, O=Local, L=Local, ST=Local, C=US',
         '-noprompt')
-    return keystore
+    return resolved
 
 
 # Android versionCode must always increase across work dirs. A rebuild in a
@@ -1084,7 +1105,7 @@ def android(a):
             android_libs(a)
         finally:
             a.prebuilt = original
-    keystore = ensure_keystore(a.work)
+    keystore = ensure_keystore(a.work, getattr(a, 'keystore', None))
     version_code = next_version_code(a.work)
     jnilibs = a.work / ('public-jniLibs-' + str(version_code))
     shutil.copytree(a.jnilibs.resolve(), jnilibs, dirs_exist_ok=True)
@@ -1142,7 +1163,7 @@ def android(a):
         except (OSError, ValueError, zipfile.BadZipFile) as e:
             turnip_path.unlink(missing_ok=True)
             print('Turnip unavailable (' + str(e) + '); continuing with system Vulkan.', file=sys.stderr)
-    print('Signing with local keystore ' + str(keystore) + ' (versionCode ' + str(version_code) + ').')
+    print('Signing with the local keystore (versionCode ' + str(version_code) + ').')
     print('Back up your keystore; a different key forces an uninstall, which wipes saves.')
     pgo_data = resolve_pgo(a.work, 'android', explicit=getattr(a, 'pgo_profile', None),
                            disabled=getattr(a, 'no_pgo', False))
@@ -4665,6 +4686,8 @@ def main(argv=None):
                    help='tricky step audio phases (need local ffmpeg + vgmstream): '
                         'on fails without them, off skips them, auto runs them when present')
     p.add_argument('--app-id', default=PUBLIC_APP_ID, help='Android package id for android, stage and install')
+    p.add_argument('--keystore', type=Path, default=None,
+                   help='explicit Android signing keystore (default: the work-dir key when present, else ~/.config/ssx3-120/android-signing.keystore)')
     p.add_argument('--app-label', default=None,
                    help="home-screen name for android and ios (default: 'SSX3 120' for product ids, 'SSX3 120 Test' otherwise)")
     p.add_argument('--dev', action='store_true',
