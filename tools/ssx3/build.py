@@ -51,6 +51,37 @@ _TRICKY_COMMON_SPEC = importlib.util.spec_from_file_location(
 _TRICKY_COMMON = importlib.util.module_from_spec(_TRICKY_COMMON_SPEC)
 _TRICKY_COMMON_SPEC.loader.exec_module(_TRICKY_COMMON)
 
+# Tricky list-art atlas step (tricky-picker-2): loaded by path like the
+# driver (never `import`ed — under `./build` the builder runs as __main__
+# and the step must stay outside tricky_converter_version()'s hashed
+# scope, so the module object is resolved here, not on sys.path).
+_TRICKY_ATLAS = None
+
+
+def tricky_atlas():
+    """tools/ssx3/tricky_atlas.py loaded by path (unhashed post-step)."""
+    global _TRICKY_ATLAS
+    if _TRICKY_ATLAS is None:
+        spec = importlib.util.spec_from_file_location(
+            'tricky_atlas',
+            Path(__file__).resolve().parent / 'tricky_atlas.py')
+        _TRICKY_ATLAS = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_TRICKY_ATLAS)
+    return _TRICKY_ATLAS
+
+
+def ensure_tricky_atlas(work, ssx3_iso):
+    """(Re)bake the TRICKY_LIST_ART atlas (returns the step status).
+
+    Runs after the Tricky convert and after --tricky-from import alike:
+    import_tricky() copies only the allowlisted device payload, so an
+    imported layer carries no atlas until this runs. ensure() bakes when
+    missing or stale, refreshes the tricky.env row, and extends the
+    record; without <work>/tricky/ it raises (both callers just wrote
+    one). Fails closed with the exact field named.
+    """
+    return tricky_atlas().ensure(work, ssx3_iso)
+
 ROOT = Path(__file__).resolve().parents[2]
 # Product/engine split (repo-split-2 step 2): the runtime, recompiler and
 # vendor adapters live in the pinned engine checkout; product metadata,
@@ -4069,6 +4100,7 @@ def build_tricky(a, iso):
     toolchain = tricky_current_toolchain(a)
     if tricky_current(a.work, iso, audio_on=audio_on, toolchain=toolchain):
         print(tricky_reuse_line(tricky_record(a.work)))
+        ensure_tricky_atlas(a.work, ssx3_ident['path'])
         return tricky_inputs_path(a.work)
     tricky = Path(a.work) / 'tricky'
     if tricky.exists():
@@ -4095,6 +4127,7 @@ def build_tricky(a, iso):
     wall_seconds = time.time() - t0
     record = record_tricky_inputs(a.work, iso, identity, argv, ssx3_ident,
                                   wall_seconds=wall_seconds)
+    ensure_tricky_atlas(a.work, ssx3_ident['path'])
     print('Tricky layer ready: %d files in %s.' % (len(record['outputs']), tricky))
     return tricky_inputs_path(a.work)
 
@@ -4176,6 +4209,7 @@ def import_tricky(a, iso, srcdir):
     }, indent=2) + '\n')
     record = record_tricky_inputs(a.work, iso, identity,
                                   ['tricky', '--from', str(src)], ssx3_ident)
+    ensure_tricky_atlas(a.work, ssx3_ident['path'])
     print('Tricky layer imported: %d files from %s.' % (len(copied), src))
     return tricky_inputs_path(a.work)
 

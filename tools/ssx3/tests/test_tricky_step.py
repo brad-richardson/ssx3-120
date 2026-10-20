@@ -15,7 +15,7 @@ import sys
 import tempfile
 import types
 import unittest
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -109,6 +109,12 @@ a = p.parse_args()
 work = Path(a.work)
 (work / 'tricky-ov/DATA/WORLDS').mkdir(parents=True, exist_ok=True)
 (work / 'tricky-ov/DATA/WORLDS/MEGA.BIG').write_bytes(b'mega-world-bytes')
+# TP panes the atlas step keys on: keep in sync with tools/ssx3/tklist-codes.tsv
+# (AtlasScopeTest pins the event set; pane names pin the driver TP_PANES).
+ui = work / 'tricky-ov/DATA/UI'
+ui.mkdir(parents=True, exist_ok=True)
+for code in ('ARA1', 'BRA2', 'CRA3', 'ERA5', 'DSS2', 'ESS3', 'BHP1', 'ABC1', 'EBC3'):
+    (ui / ('TP' + code + '.SSH')).write_bytes(b'tp-' + code.encode() + b'-stub')
 for name in ('speech-tricky-big', 'music-tricky-big', 'music2-tricky-big',
              'trickyhud.bin', 'tricky-song.wav', 'tricky-gems.tsv',
              'tricky-resetvol.tsv'):
@@ -131,6 +137,44 @@ def write_stub_driver(path):
     path.write_text(STUB_DRIVER)
     path.chmod(0o755)
     return path
+
+
+# TP pane codes the atlas step keys on (mirrors the STUB_DRIVER list and
+# tools/ssx3/tklist-codes.tsv).
+ATLAS_TEST_CODES = ('ARA1', 'BRA2', 'CRA3', 'ERA5', 'DSS2', 'ESS3',
+                    'BHP1', 'ABC1', 'EBC3')
+
+
+def write_atlas_test_panes(ui_dir):
+    """TP pane stubs so ensure() keys without a real Tricky disc."""
+    ui = Path(ui_dir)
+    ui.mkdir(parents=True, exist_ok=True)
+    for code in ATLAS_TEST_CODES:
+        (ui / ('TP' + code + '.SSH')).write_bytes(
+            b'tp-' + code.encode() + b'-stub')
+
+
+@contextmanager
+def atlas_test_bake():
+    """Fake only the atlas bake's disc reads + atlas write.
+
+    build.build_tricky/import_tricky now call ensure_tricky_atlas(); unit
+    tests keep the step's key/env-row/record logic real and stub only the
+    SSX 3 FE_1.SSH bytes and the Pillow bake. Yields the baked paths.
+    """
+    stub = types.ModuleType('build_tk_list_art')
+    stub.iso_read = lambda path, name: b'FE1STUB'
+    baked = []
+
+    def fake_bake(ssx3_iso, ui_dir, codes_path, ov_dir):
+        art = Path(ov_dir) / 'tklist-art.bin'
+        art.write_bytes(b'atlas-test-bake')
+        baked.append(art)
+        return art
+
+    with patch.dict(sys.modules, {'build_tk_list_art': stub}), \
+         patch.object(build.tricky_atlas(), 'bake_atlas', fake_bake):
+        yield baked
 
 
 def tricky_args(work, **over):
@@ -207,7 +251,8 @@ class BuildTrickyTest(unittest.TestCase):
         driver = write_stub_driver(Path(tmp) / 'build_tricky.py')
         args = tricky_args(work, iso=iso)
         with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
-             patch.object(build, 'TRICKY_DRIVER', driver):
+             patch.object(build, 'TRICKY_DRIVER', driver), \
+             atlas_test_bake():
             out = io.StringIO()
             with redirect_stdout(out):
                 result = build.build_tricky(args, iso)
@@ -241,8 +286,14 @@ class BuildTrickyTest(unittest.TestCase):
                             '--tricky-iso', str(iso), '--ssx3-iso', ssx3,
                             '--work', str(work / 'tricky')],
                            check=True)
+            # A driver write wipes the atlas env row; production always
+            # runs the step after the driver (fresh convert and import
+            # alike), so re-apply it before the skip check.
+            with atlas_test_bake():
+                build.ensure_tricky_atlas(work, ssx3)
             with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
-                 patch.object(build, 'TRICKY_DRIVER', driver):
+                 patch.object(build, 'TRICKY_DRIVER', driver), \
+                 atlas_test_bake():
                 self.assertTrue(build.tricky_current(work, iso))
                 out = io.StringIO()
                 with redirect_stdout(out):
@@ -376,7 +427,8 @@ class InstallTrickyTest(unittest.TestCase):
             text = out.getvalue()
             self.assertIn('speech-tricky-big', text)
             self.assertIn('tricky-ov/', text)
-            self.assertRegex(text, r'tricky-ov \(1 files, \d+ bytes\)')
+            # Stub layer tree: MEGA.BIG + 9 TP panes + the baked atlas.
+            self.assertRegex(text, r'tricky-ov \(11 files, \d+ bytes\)')
 
     def test_dry_run_without_a_layer_says_stock_only(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1248,6 +1300,7 @@ class ImportTrickyTest(unittest.TestCase):
             (src / name).write_bytes(name.encode() + b'-device')
         (src / 'tricky-ov/DATA/WORLDS').mkdir(parents=True)
         (src / 'tricky-ov/DATA/WORLDS/GARI.BIG').write_bytes(b'gari-world')
+        write_atlas_test_panes(src / 'tricky-ov/DATA/UI')
         for name in ('build-gari', 'donor', 'w-pipe-s5', 'logs', 'effects'):
             (src / name).mkdir()
             (src / name / 'intermediate.bin').write_bytes(b'x' * 100)
@@ -1275,7 +1328,8 @@ class ImportTrickyTest(unittest.TestCase):
             src = self.source_dir(tmp, build.sha(iso),
                                   converter=build.tricky_converter_version())
             args = self.import_args(work)
-            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+                 atlas_test_bake():
                 out = io.StringIO()
                 with redirect_stdout(out):
                     result = build.import_tricky(args, iso, src)
@@ -1298,7 +1352,8 @@ class ImportTrickyTest(unittest.TestCase):
             self.assertEqual(set(record['host']), {'system', 'arch', 'cpus'})
             self.assertRegex(record['builder_version'], r'^[0-9a-f]{40}(-dirty)?$')
             # The imported layer verifies and skips.
-            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+                 atlas_test_bake():
                 self.assertTrue(build.tricky_current(
                     work, iso, audio_on=False,
                     toolchain={'ffmpeg': None, 'vgmstream': None}))
@@ -1547,6 +1602,7 @@ class StageIosTrickyTest(unittest.TestCase):
             (src / name).write_text(payloads.get(name, name + '-device'))
         (src / 'tricky-ov/DATA/WORLDS').mkdir(parents=True)
         (src / 'tricky-ov/DATA/WORLDS/PIPE.BIG').write_bytes(b'pipe-world')
+        write_atlas_test_panes(src / 'tricky-ov/DATA/UI')
         (src / 'tools.json').write_text(json.dumps({
             'tricky': {'sha256': iso_digest}, 'ssx3': {'sha256': 's' * 64},
             'audio': audio, 'pins': {}, 'toolchain': {'ffmpeg': None, 'vgmstream': None},
@@ -1560,7 +1616,8 @@ class StageIosTrickyTest(unittest.TestCase):
         src = self.ios_layer_source(tmp, build.sha(iso), audio=audio)
         args = types.SimpleNamespace(work=work, jobs=2, tricky_audio='auto',
                                      ffmpeg='ffmpeg-pinned', vgmstream='vgm-pinned')
-        with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True):
+        with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+             atlas_test_bake():
             build.import_tricky(args, iso, src)
         return work
 
@@ -1772,7 +1829,8 @@ class IosOneCommandBuildsAndStagesTest(unittest.TestCase):
                  patch.object(build, 'build_tricky',
                               side_effect=lambda a, i: build.import_tricky(
                                   a, i, src)), \
-                 patch.object(build, 'ios', side_effect=fake_ios):
+                 patch.object(build, 'ios', side_effect=fake_ios), \
+                 atlas_test_bake():
                 build.ios_onecmd(args)
             self.assertEqual(len(apps), 1)
             app = apps[0]
@@ -1816,8 +1874,9 @@ ATLAS_SPEC.loader.exec_module(tricky_atlas)
 
 
 def _bake_stub_ctx():
-    import contextlib
-    return contextlib.nullcontext()
+    stub = types.ModuleType('build_tk_list_art')
+    stub.iso_read = lambda path, name: b'FE1STUB'
+    return patch.dict(sys.modules, {'build_tk_list_art': stub})
 
 
 class AtlasScopeTest(unittest.TestCase):
@@ -1966,6 +2025,123 @@ class AtlasStepTest(unittest.TestCase):
             (self.work / 'tricky_inputs.json').unlink()
             with self.assertRaises(ValueError):
                 tricky_atlas.extend_tricky_record(self.work)
+
+
+class AtlasDriftTest(unittest.TestCase):
+    """The step's inlined build mirrors must not drift.
+
+    tricky_atlas.py never `import`s build (build.py calls the step under
+    `./build` __main__, and the step stays out of the hashed converter
+    scope), so these tests pin the three mirrors to the builder.
+    """
+
+    def test_app_id_matches_builder(self):
+        self.assertEqual(tricky_atlas._PUBLIC_APP_ID, build.PUBLIC_APP_ID)
+
+    def test_sha2_matches_builder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate = Path(tmp) / 'candidate.bin'
+            candidate.write_bytes(b'drift-check')
+            self.assertEqual(tricky_atlas._sha2(candidate),
+                             build.sha2(candidate))
+
+    def test_inputs_path_matches_builder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(
+                tricky_atlas._tricky_inputs_path(Path(tmp) / 'work'),
+                build.tricky_inputs_path(Path(tmp) / 'work'))
+
+    def test_env_row_matches_stage_rewrites(self):
+        prefix = ('/storage/emulated/0/Android/data/'
+                  + build.PUBLIC_APP_ID + '/files/')
+        with tempfile.TemporaryDirectory() as tmp:
+            tricky = Path(tmp) / 'tricky'
+            tricky.mkdir()
+            (tricky / 'tricky.env').write_text('# stub\n')
+            self.assertTrue(tricky_atlas.ensure_env_row(tricky))
+            row = (tricky / 'tricky.env').read_text().splitlines()[-1]
+            value = row.split('=', 1)[1]
+            self.assertTrue(value.startswith(prefix), row)
+            # Android stage rewrites the id; iOS stage rewrites the prefix.
+            self.assertEqual(
+                row.replace(build.PUBLIC_APP_ID, 'com.example.game'),
+                'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
+                'com.example.game/files/tricky-ov/tklist-art.bin')
+            self.assertEqual(
+                row.replace(prefix, '${BUNDLE}/tricky/'),
+                'PS2X_SSX3_TRICKY_LIST_ART='
+                '${BUNDLE}/tricky/tricky-ov/tklist-art.bin')
+
+
+class ImportStagesAtlasTest(unittest.TestCase):
+    """An import-path build stages the atlas.
+
+    Regression test for the missing-previews build: import_tricky() copies
+    only the allowlisted device payload, so without the ensure() call the
+    staged app has no tklist-art.bin and no env row. This runs the real
+    import, then the real Android and iOS stage paths.
+    """
+
+    def test_import_bakes_and_both_stages_carry_atlas(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = prepared_work(tmp)
+            iso = Path(tmp) / 'tricky.iso'
+            make_tricky_iso(iso)
+            src = StageIosTrickyTest().ios_layer_source(
+                tmp, build.sha(iso), audio='off')
+            args = types.SimpleNamespace(
+                work=work, jobs=2, app_id='com.example.game',
+                tricky_audio='auto', ffmpeg='ffmpeg-pinned',
+                vgmstream='vgm-pinned')
+            with patch.dict(build.TRICKY_DISCS, pin_disc(iso), clear=True), \
+                 atlas_test_bake() as baked:
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    build.import_tricky(args, iso, src)
+                self.assertIn('imported', out.getvalue())
+                # The imported layer carries no atlas; import baked one.
+                self.assertEqual(len(baked), 1)
+            art = work / 'tricky/tricky-ov/tklist-art.bin'
+            self.assertTrue(art.is_file())
+            self.assertTrue((work / 'tklist-atlas.json').is_file())
+            env = (work / 'tricky/tricky.env').read_text()
+            self.assertIn(
+                'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
+                + build.PUBLIC_APP_ID + '/files/tricky-ov/tklist-art.bin',
+                env.splitlines())
+            record = json.loads((work / 'tricky_inputs.json').read_text())
+            for relative in ('tricky-ov/tklist-art.bin', 'tricky.env'):
+                self.assertIn(relative, record['outputs'])
+            # Android stage carries the atlas and rewrites the row's id.
+            files = Path(tmp) / 'files'
+            files.mkdir()
+            _, trees = build.stage_tricky(args, files)
+            self.assertIn('tricky-ov', trees)
+            staged_art = files / 'tricky-ov/tklist-art.bin'
+            self.assertTrue(staged_art.is_file())
+            self.assertEqual(
+                build.sha2(staged_art),
+                record['outputs']['tricky-ov/tklist-art.bin']['sha256'])
+            staged_env = (files / 'tricky.env').read_text()
+            self.assertIn(
+                'PS2X_SSX3_TRICKY_LIST_ART=/storage/emulated/0/Android/data/'
+                'com.example.game/files/tricky-ov/tklist-art.bin',
+                staged_env.splitlines())
+            self.assertNotIn(build.PUBLIC_APP_ID, staged_env)
+            # iOS stage carries the atlas under ${BUNDLE} paths.
+            app = Path(tmp) / 'app'
+            app.mkdir()
+            (app / 'ps2x.env').write_text('PS2X_SOUND=1\n')
+            build.stage_ios_tricky(types.SimpleNamespace(work=work), app)
+            self.assertTrue(
+                (app / 'tricky/tricky-ov/tklist-art.bin').is_file())
+            ios_env = (app / 'tricky/tricky.env').read_text()
+            self.assertIn(
+                'PS2X_SSX3_TRICKY_LIST_ART='
+                '${BUNDLE}/tricky/tricky-ov/tklist-art.bin',
+                ios_env.splitlines())
+            self.assertNotIn('/storage/emulated', ios_env)
+
 
 if __name__ == '__main__':
     unittest.main()

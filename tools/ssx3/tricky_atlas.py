@@ -47,10 +47,26 @@ import subprocess
 import sys
 from pathlib import Path
 
-try:
-    import build as _build
-except ImportError:  # package mode: repo root on sys.path, not tools/ssx3
-    from tools.ssx3 import build as _build
+# No `import build` here by design: build.py calls this step, so importing
+# it back would cycle under `./build` (where the builder runs as
+# __main__). The three inlined helpers below mirror build.py exactly;
+# AtlasDriftTest asserts they stay in sync.
+_PUBLIC_APP_ID = 'com.ssx3.recomp'
+
+
+def _sha2(path):
+    """Double-read SHA-256 (mirrors build.sha2)."""
+    path = Path(path)
+    first = hashlib.sha256(path.read_bytes()).hexdigest()
+    second = hashlib.sha256(path.read_bytes()).hexdigest()
+    if first != second:
+        raise ValueError('unstable read (two SHAs differ): ' + str(path))
+    return first
+
+
+def _tricky_inputs_path(work):
+    """Mirror of build.tricky_inputs_path."""
+    return Path(work) / 'tricky_inputs.json'
 
 
 def _bake_module():
@@ -95,7 +111,7 @@ def pane_bytes(ui_dir, code):
     ui = Path(ui_dir)
     if ui.is_dir():
         return (ui / ('TP' + code + '.SSH')).read_bytes()
-    return _tkart.iso_read(ui, 'DATA/UI/TP' + code + '.SSH')
+    return _bake_module().iso_read(ui, 'DATA/UI/TP' + code + '.SSH')
 
 
 def atlas_key(codes_path, ui_dir, ssx3_iso):
@@ -170,7 +186,7 @@ def ensure_env_row(tricky_dir):
     # build.PUBLIC_APP_ID), so the stage id rewrites (Android --app-id,
     # iOS ${BUNDLE}/tricky/) apply untouched.
     want = (ENV_KEY + '=/storage/emulated/0/Android/data/'
-            + _build.PUBLIC_APP_ID + '/files/' + ATLAS_REL)
+            + _PUBLIC_APP_ID + '/files/' + ATLAS_REL)
     changed = False
     out = []
     seen = False
@@ -194,7 +210,7 @@ def ensure_env_row(tricky_dir):
 
 def file_entry(candidate):
     candidate = Path(candidate)
-    return {'sha256': _build.sha2(candidate),
+    return {'sha256': _sha2(candidate),
             'bytes': candidate.stat().st_size}
 
 
@@ -206,7 +222,7 @@ def extend_tricky_record(work):
     predates (fresh converts) or lost (reconverted layers).
     """
     tricky = Path(work) / 'tricky'
-    record_path = _build.tricky_inputs_path(work)
+    record_path = _tricky_inputs_path(work)
     try:
         record = json.loads(record_path.read_text())
     except (OSError, ValueError):
