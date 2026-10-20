@@ -12,11 +12,11 @@ Tricky and Online are **Alpha**. This page lists the rough edges that are alread
 ## Online (Alpha)
 
 - **Quick Play pairs two players; there is no bot fallback.** Matchmaking needs two real players in the queue on the same lobby server (default `ssx.bradr.dev`). To play offline, just don't pick Online in the menu; the in-game settings panel has no Online row.
-- **Session resume is limited on default builds.** The build stages the lobby env, and lifecycle session save/resume refuse while networking is enabled — even if you never pick Online. Cold launches still show the Continue prompt, but there may be no session to continue.
+- **Session resume is for offline play.** Backgrounding requests a bounded session save; paired/racing online sessions are excluded. Networking being enabled by itself does not prevent an offline save. A kill before the save finishes, or a changed build/settings combination, may leave no usable recent session. Cold launches still show the Continue prompt, but there may be no session to continue.
 
 ## Build times
 
-- **Build time and memory.** On a MacBook Air (M4, 16 GB) the Android build takes about 14 minutes, or about 1 h 10 min with Tricky; it peaks near the full 16 GB of RAM, so close other apps. Smaller machines take longer (8 GB machines get conservative job counts automatically). A rerun of the same command needs about 25 GB free even when everything is reused.
+- **Build time and memory.** Reported Android timings on a MacBook Air (M4, 16 GB) are about 14 minutes, or about 1 h 10 min with Tricky. Smaller machines take longer (8 GB machines get conservative job counts automatically). Fully cached reruns require 5 GiB free; cold Android builds require 25 GiB and a Tricky conversion requires 30 GiB.
 
 ## iOS
 

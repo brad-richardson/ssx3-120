@@ -20,12 +20,17 @@ Supported build hosts: macOS Apple silicon, Linux x86_64/arm64 (Windows
 users: Ubuntu in WSL2). Play targets: Android arm64, iOS. Install the host
 toolchain **before** cloning (a clean machine has no git yet):
 
-- macOS: Xcode command-line tools (provides git and the Metal toolchain),
+- macOS: Xcode command-line tools (provides git),
   then `brew install cmake ninja llvm python pkg-config autoconf automake libtool bison`.
 - Linux (Ubuntu 24.04):
   `sudo apt-get update && sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk`.
   Windows users run all of this inside WSL2 Ubuntu, on its Linux
   filesystem (never `/mnt/c`).
+
+Linux arm64 also requires working x86_64 translation and x86_64 runtime
+libraries for Google's Android SDK/NDK binaries; see the Linux-arm64
+section in `tools/ssx3/README.md`. iOS needs full Xcode and its Metal
+component, as described below.
 
 Then install [`uv`](https://docs.astral.sh/uv/) — the `./build` wrapper runs
 the builder through it, provisioning Python plus the font-pack libraries,
@@ -130,8 +135,11 @@ from your disc into `work/om1-stage` by the builder:
 
 Find the 10-character id in Xcode > Settings > Accounts after signing in
 with your Apple ID (free personal teams work but must re-sign weekly).
-Xcode's automatic signing creates the Apple Development certificate the
-build uses — a Distribution certificate installs but refuses to launch.
+Before running the builder, confirm Xcode has an Apple Development
+certificate and its private key for that team — create one in Xcode
+first if needed; doctor requires it before the automatic-signing build
+runs. Use Apple Development, not Distribution: a Distribution certificate
+installs but refuses to launch.
 Add `--install` to push to the connected device (plain install; saves
 are kept — never uninstall the app): connect over USB, trust the
 computer, enable Developer Mode (Settings > Privacy & Security), and

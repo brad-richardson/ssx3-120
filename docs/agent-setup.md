@@ -77,7 +77,10 @@ under the work directory (`~/ssx3-work` unless `--work` is given; README budgets
 
 One user value is required to build: the Apple Development **team id**
 (10 characters, Xcode > Settings > Accounts > Team — sign in with an
-Apple ID first; free personal teams work, re-sign weekly). A connected
+Apple ID first; free personal teams work, re-sign weekly). Before running
+the builder, confirm Xcode has an Apple Development certificate and its
+private key for that team (create one in Xcode first if needed; doctor
+requires it before the automatic-signing build runs). A connected
 device is required only for `--install`: connect it over USB, trust the
 computer, enable Developer Mode (Settings > Privacy & Security), and find
 its UDID with `xcrun devicectl list devices`. The offline-VU1 microVU
