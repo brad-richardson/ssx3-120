@@ -3007,9 +3007,9 @@ def stage(a):
         return files
     print('Push it with these commands (stage prints them; it does not run them):')
     print('  adb install -r ' + str(apk))
-    # F6: bootstrap through the exported Launch60 alias (the trampoline),
+    # F6: bootstrap through an exported launcher alias (the trampoline),
     # never the non-exported NativeActivity directly.
-    print('  adb shell am start -n ' + a.app_id + '/.Launch60')
+    print('  adb shell am start -n ' + launcher_components(a.app_id)[0])
     print('  adb shell am force-stop ' + a.app_id)
     print('  adb shell test -d ' + device + '/ge1-data')
     print('  adb shell test -d ' + device + '/mc0')
@@ -3389,6 +3389,30 @@ def adb(a, *args, capture=False):
     run(*command)
 
 
+# The launcher aliases are declared in the Java namespace (com.ps2x.runner),
+# not under the installed applicationId (public com.ssx3.recomp), so a
+# relative '<app_id>/.Launch60' resolves to a class that does not exist.
+# Always name them fully qualified; 120 first (the product mode), then 60.
+LAUNCHER_ALIASES = ('com.ps2x.runner.Launch120', 'com.ps2x.runner.Launch60')
+
+
+def launcher_components(app_id):
+    return [app_id + '/' + alias for alias in LAUNCHER_ALIASES]
+
+
+def bootstrap_app(a):
+    """Start the app once through an exported launcher alias (F6: never the
+    non-exported NativeActivity). am start exits 0 even when the component is
+    missing, so read its output and try the next alias."""
+    tried = []
+    for component in launcher_components(a.app_id):
+        out = adb(a, 'shell', 'am', 'start', '-n', component, capture=True)
+        if 'Error' not in out:
+            return component
+        tried.append(component + ': ' + (out.splitlines()[-1] if out else ''))
+    raise ValueError('no launchable alias for ' + a.app_id + ' (' + '; '.join(tried) + ')')
+
+
 def apk_package(apk):
     sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
     if not sdk:
@@ -3493,9 +3517,9 @@ def install(a):
     # the app before the native activity loads. A boot without staged disc data
     # may exit immediately; only directory creation is needed here.
     try:
-        # F6: bootstrap through the exported Launch60 alias (the trampoline),
+        # F6: bootstrap through an exported launcher alias (the trampoline),
         # never the non-exported NativeActivity directly.
-        adb(a, 'shell', 'am', 'start', '-n', a.app_id + '/.Launch60')
+        bootstrap_app(a)
         # am start returns before Application.onCreate runs. Wait for the app
         # to create both directories before stopping its bootstrap process.
         deadline = time.monotonic() + 30

@@ -36,6 +36,8 @@ class PublicInstallStageTest(unittest.TestCase):
                 calls.append(parts)
                 if parts[:3] == ('shell', 'pm', 'path'):
                     return 'package:/data/app/base.apk'
+                if parts[:3] == ('shell', 'am', 'start'):
+                    return 'Starting: Intent { cmp=' + parts[-1] + ' }'
                 if parts[:2] == ('shell', 'sha256sum'):
                     remote = parts[2]
                     local = (resources / 'shader.bin') if remote.endswith('shader.bin') else \
@@ -60,7 +62,7 @@ class PublicInstallStageTest(unittest.TestCase):
                 build.install(args)
             self.assertFalse(any('mkdir' in str(part) for call in calls for part in call))
             self.assertLess(calls.index(('shell', 'am', 'start', '-n',
-                                         'com.ssx3.recomp/.Launch60')),
+                                         'com.ssx3.recomp/com.ps2x.runner.Launch120')),
                             next(i for i, call in enumerate(calls) if call[0] == 'push'))
             self.assertIn(('shell', 'chmod', '-R', 'o+rX',
                            '/sdcard/Android/data/com.ssx3.recomp/files/ge1-resources'), calls)
@@ -68,6 +70,31 @@ class PublicInstallStageTest(unittest.TestCase):
                 '/sdcard/Android/data/com.ssx3.recomp/files/ge1-data': 2,
                 '/sdcard/Android/data/com.ssx3.recomp/files/mc0': 2,
             })
+
+
+class LauncherAliasTest(unittest.TestCase):
+    """10-19 Odin: '<app_id>/.Launch60' resolved to com.ssx3.recomp.Launch60,
+    which does not exist (aliases live in the com.ps2x.runner namespace), so
+    every public './build android --install' failed at the bootstrap."""
+
+    def test_components_are_fully_qualified_in_the_java_namespace(self):
+        self.assertEqual(build.launcher_components('com.ssx3.recomp'),
+                         ['com.ssx3.recomp/com.ps2x.runner.Launch120',
+                          'com.ssx3.recomp/com.ps2x.runner.Launch60'])
+
+    def test_falls_back_to_the_next_alias_and_fails_loudly(self):
+        args = types.SimpleNamespace(app_id='com.ssx3.recomp', serial='test')
+        seen = []
+        def missing_120(_a, *parts, capture=False):
+            seen.append(parts[-1])
+            if parts[-1].endswith('Launch120'):
+                return 'Error type 3\nError: Activity class {' + parts[-1] + '} does not exist.'
+            return 'Starting: Intent { cmp=' + parts[-1] + ' }'
+        with patch.object(build, 'adb', side_effect=missing_120):
+            self.assertEqual(build.bootstrap_app(args), 'com.ssx3.recomp/com.ps2x.runner.Launch60')
+        with patch.object(build, 'adb', return_value='Error: Activity class does not exist.'):
+            with self.assertRaises(ValueError):
+                build.bootstrap_app(args)
 
 
 if __name__ == '__main__':
