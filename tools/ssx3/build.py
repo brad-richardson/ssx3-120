@@ -913,7 +913,29 @@ def ensure_keystore(work):
     return keystore
 
 
-def next_version_code(work):
+# Android versionCode must always increase across work dirs. A rebuild in a
+# fresh --work dir used to restart the per-dir counter at 2, so
+# `adb install -r` over an already-installed app failed with
+# INSTALL_FAILED_VERSION_DOWNGRADE (vcode-fix-1). The code is derived from
+# UTC time instead of per-dir state, and never drops below the work-dir
+# counter when one exists (max of both).
+VERSION_CODE_EPOCH = 1767225600  # 2026-01-01T00:00:00Z
+ANDROID_MAX_VERSION_CODE = 2100000000
+
+
+def version_code_for_now(now=None):
+    """Whole minutes since VERSION_CODE_EPOCH (UTC).
+
+    Fits int32 for decades and stays under ANDROID_MAX_VERSION_CODE for
+    millennia. `now` is seconds since the epoch (time.time()); tests pass
+    an explicit clock, production passes None for the wall clock.
+    """
+    if now is None:
+        now = time.time()
+    return int(now - VERSION_CODE_EPOCH) // 60
+
+
+def next_version_code(work, now=None):
     counter = work / 'version-code.txt'
     last = 1
     if counter.exists():
@@ -921,7 +943,7 @@ def next_version_code(work):
             last = int(counter.read_text().strip())
         except ValueError:
             last = 1
-    code = last + 1
+    code = max(version_code_for_now(now), last + 1)
     counter.write_text(str(code) + '\n')
     return code
 
