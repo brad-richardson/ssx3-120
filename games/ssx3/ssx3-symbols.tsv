@@ -1057,6 +1057,8 @@ address	kind	name	role	source	evidence	confidence
 0x372058	code	mmio_site_372058	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:789	inferred
 0x372070	code	mmio_site_372070	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:918	inferred
 0x3720ac	code	mmio_site_3720ac	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:797	inferred
+0x374298	code	patch-cache slot helper (called from 0x3747a0 at 0x37495c)	guard-less Aloha/Untrack abort site (ra 0x374964 / 0x374950, wild jump 0x80000080) when the type's free stack is empty; PATCH_CACHE_GUARD=1 skips the caller	tk-three-opus-1	local/research/tk-three-opus-1/REPORT.md D2; tk-racedonor-1 REPORT crash diagnosis	inferred
+0x3747a0	code	terrain patch-cache slot alloc (cache a0, patch a1, type a2; caps 900/220/140)	pops a tessellation slot; empty stack takes slot -1 and corrupts neighbours; hooked by PATCH_CACHE_GUARD/PATCH_CACHE_GROW (deps/PS2Recomp/ps2xRuntime/src/lib/ps2_runtime.cpp kSsx3PatchCacheAlloc)	TK15/TK17/TK34; tk-three-opus-1	ps2_runtime.cpp:681; local/research/tk-three-opus-1/REPORT.md D2	verified
 0x374b38	code	array_pass	Array-pass loop at 0x374bc0 (~30i, many sw, fixed count)	labels.tsv:WL1 [codegen read] (NM1)	WL1 notes	inferred
 0x374d00	code	fp_store_kernel	FP store kernel (108 swc1, 6 branches)	labels.tsv:GT1 [codegen read] (NM1)	GT1 notes	inferred
 0x375a00	code	resume_entry_375a00	boot-proven indirect-call resume entry (ssx3.toml extra_function_starts) in sub_3759e8	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:237	inferred
