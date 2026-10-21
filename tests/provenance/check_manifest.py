@@ -66,6 +66,17 @@ def main():
                         bad.append((new, 'differs from engine@%s:%s' % (pin[:8], old)))
                         continue
                     engine_checked += 1
+                elif status == 'moved':
+                    # split-p1-prep-1: product-owned since the split; the engine
+                    # checkout no longer carries these bytes, so they verify
+                    # against the frozen source commit named by the fork@ origin.
+                    ref = origin.split('@', 1)[1]
+                    exp = hashlib.sha256(subprocess.check_output(
+                        ['git', '-C', str(engine), 'show', ref + ':' + old])).hexdigest()
+                    if exp != want:
+                        bad.append((new, 'differs from %s:%s' % (origin, old)))
+                        continue
+                    engine_checked += 1
                 elif status.startswith('composition:'):
                     expected.append((new, status))
                 else:

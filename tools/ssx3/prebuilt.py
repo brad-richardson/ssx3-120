@@ -22,6 +22,16 @@ ROOT = Path(__file__).resolve().parents[2]
 # consume fork-published archives. Product composition (product SHA + engine
 # SHA) is recorded separately in deps.lock.json, not in the archive stamp.
 ENGINE = Path(os.environ.get('SSX3_ENGINE_DIR', str(ROOT / 'deps/PS2Recomp')))
+
+
+def _repo_for(rel):
+    """Git dir holding a contract relpath (split-p1-prep-1).
+
+    The SSX 3 game module is product-owned: its rows keep the same
+    engine-relative spellings (and the stamp keeps the same keys), only
+    the checkout they are read from moved.
+    """
+    return ROOT if rel.startswith('games/ssx3/module/') else ENGINE
 NDK = '28.2.13676358'
 # ARMSX2 source for the support bundle: the same tree android_libs()
 # builds (build.py ANDROID_GE1_VENDOR_PIN) and deps.lock.json pins.
@@ -442,25 +452,29 @@ def _contract_paths():
 
 
 def _ls_entries(paths):
-    out = subprocess.check_output(
-        ['git', '-C', str(ENGINE), 'ls-files', '-s', '--', *paths],
-        stderr=subprocess.DEVNULL, text=True)
+    by_repo = {}
+    for p in paths:
+        by_repo.setdefault(_repo_for(p), []).append(p)
     entries = []
-    for line in out.splitlines():
-        head, _, path = line.partition('\t')
-        fields = head.split()
-        if len(fields) != 3:
-            continue
-        mode, blob, _ = fields
-        if mode == '120000' or path == RELEASES_FILE or Path(path).name.startswith('._'):
-            continue  # symlinks, the release-pin file and AppleDouble were never hashed
-        entries.append((path, blob))
+    for repo, rels in by_repo.items():
+        out = subprocess.check_output(
+            ['git', '-C', str(repo), 'ls-files', '-s', '--', *rels],
+            stderr=subprocess.DEVNULL, text=True)
+        for line in out.splitlines():
+            head, _, path = line.partition('\t')
+            fields = head.split()
+            if len(fields) != 3:
+                continue
+            mode, blob, _ = fields
+            if mode == '120000' or path == RELEASES_FILE or Path(path).name.startswith('._'):
+                continue  # symlinks, the release-pin file and AppleDouble were never hashed
+            entries.append((path, blob))
     return sorted(entries)
 
 
 def _tracked_entries():
     """(relpath, blob) pairs from git, or None when .git is unavailable."""
-    if not (ENGINE / '.git').exists():
+    if not (ENGINE / '.git').exists() and not (ROOT / '.git').exists():
         return None
     try:
         return _ls_entries(_contract_paths())
@@ -475,17 +489,18 @@ def contract_paths():
 
 
 def _walked_entries():
-    paths = set()
+    by_rel = {}
     for name in (*CONTRACT_FILES, *CONTRACT_EXPLICIT):
-        p = ENGINE / name
+        p = _repo_for(name) / name
         if p.is_file() and not p.is_symlink() and not _is_junk(p):
-            paths.add(p)
+            by_rel[name] = p
     for name in CONTRACT_GLOB_DIRS:
-        paths.update(p for p in (ENGINE / name).rglob('*') if p.is_file()
-                     and not p.is_symlink() and not _is_junk(p))
-    paths = [p for p in paths if p.relative_to(ENGINE).as_posix() != RELEASES_FILE]
-    return sorted((p.relative_to(ENGINE).as_posix(), digest(p))
-                  for p in set(paths))
+        for p in (ENGINE / name).rglob('*'):
+            if not p.is_file() or p.is_symlink() or _is_junk(p):
+                continue
+            by_rel[p.relative_to(ENGINE).as_posix()] = p
+    return sorted((rel, digest(p)) for rel, p in by_rel.items()
+                  if rel != RELEASES_FILE)
 
 
 def contract():
@@ -518,23 +533,26 @@ def contract_drift():
     with these paths named. Junk droppings and gitignored outputs are
     ignored. Returns [] when git is unavailable.
     """
-    try:
-        out = subprocess.check_output(
-            ['git', '-C', str(ENGINE), 'status', '--porcelain',
-             '--untracked-files=all', '--',
-             *_contract_paths()],
-            stderr=subprocess.DEVNULL, text=True)
-    except (OSError, subprocess.CalledProcessError):
-        return []
+    by_repo = {}
+    for p in _contract_paths():
+        by_repo.setdefault(_repo_for(p), []).append(p)
     drift = []
-    for line in out.splitlines():
-        if len(line) < 4:
-            continue
-        # "XY <path>[ -> <new>]" — renames report the new path.
-        path = line[3:].split(' -> ')[-1].strip('"')
-        if line[:2] == '??' and _is_junk(Path(path)):
-            continue
-        drift.append(path)
+    for repo, rels in by_repo.items():
+        try:
+            out = subprocess.check_output(
+                ['git', '-C', str(repo), 'status', '--porcelain',
+                 '--untracked-files=all', '--', *rels],
+                stderr=subprocess.DEVNULL, text=True)
+        except (OSError, subprocess.CalledProcessError):
+            return []
+        for line in out.splitlines():
+            if len(line) < 4:
+                continue
+            # "XY <path>[ -> <new>]" — renames report the new path.
+            path = line[3:].split(' -> ')[-1].strip('"')
+            if line[:2] == '??' and _is_junk(Path(path)):
+                continue
+            drift.append(path)
     return drift
 
 
@@ -749,7 +767,8 @@ def build(a):
               'PS2X_BUILD_STUDIO', 'PS2X_ENABLE_SCCACHE', 'PS2X_ENABLE_DIAG_TAPS', 'PS2X_ENABLE_DIAG_WATCH',
               'PS2X_ENABLE_TS2_DIAG', 'PS2X_ENABLE_RUNTIME_LOGS', 'PS2X_ENABLE_AGRESSIVE_LOGS',
               'PS2X_ENABLE_IOP_RPC_TRACE', 'PS2X_ENABLE_DEBUG_UI')]
-    run(a.cmake, '-S', ENGINE, '-B', runtime, '-G', 'Ninja', *flags)
+    run(a.cmake, '-S', ENGINE, '-B', runtime, '-G', 'Ninja',
+        '-DPS2X_GAME_MODULE_DIR=' + str(ROOT / 'games/ssx3/module'), *flags)
     run(a.cmake, '--build', runtime, '--parallel', a.jobs, '--target', 'ps2EntryRunner', 'hardware')
     bundle = a.work / 'bundle'
     if bundle.exists():

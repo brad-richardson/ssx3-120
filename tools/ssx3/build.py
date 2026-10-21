@@ -613,6 +613,7 @@ def mac(a):
     # play builds keep it off. Separate dirs so flavors never mix.
     build_dir = a.work / ('runner-build-det' if a.det else 'runner-build')
     configure(ENGINE, build_dir, '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+        '-DPS2X_GAME_MODULE_DIR=' + str(ROOT / 'games/ssx3/module'),
         '-DPS2X_VU0_RECOMP_DIR=' + resolve_vu0_stage(a),
         '-DPS2X_BUILD_RECOMP=' + extra, '-DPS2X_BUILD_ANALYZER=' + extra,
         '-DPS2X_BUILD_TEST=' + extra, '-DPS2X_ENABLE_DEBUG_UI=OFF', '-DPS2X_ENABLE_RUNTIME_LOGS=OFF',
@@ -2872,6 +2873,7 @@ def ios(a):
             '-DPS2X_ENABLE_FFMPEG=ON', '-DPS2X_FFMPEG_IOS_ROOT=' + str(a.work / 'ios-ffmpeg'),
             '-DSDL2_DIR=' + str(a.work / 'ios-sdl2/lib/cmake/SDL2'),
             '-DPS2X_GAME_CODEGEN_DIR=' + str(a.work / 'codegen'),
+            '-DPS2X_GAME_MODULE_DIR=' + str(ROOT / 'games/ssx3/module'),
             '-DPS2X_GE1_IOS_BUILD=' + str(ge1_build),
             '-DPS2X_GE1_PCSX2_ROOT=' + str(vendor),
             '-DPS2X_OM1_STAGE=' + str(om1_stage), '-DPS2X_OM1_LIB=' + str(om1_lib),
