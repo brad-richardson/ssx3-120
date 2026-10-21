@@ -16,7 +16,7 @@
   "vendor": {
     "armsx2": {
       "repo": "https://github.com/brad-richardson/armsx2.git",
-      "pin": "e8ed655ec66eeba12ae3029cc26b45927964b476"
+      "pin": "4b75f70677dd8089c3c6c0d4771d11a7b0a98d18"
     },
     "plutovg": "v1.1.0",
     "plutosvg": "v0.0.7",
@@ -30,7 +30,7 @@
     },
     "ge1": {
       "repo": "https://github.com/brad-richardson/armsx2.git",
-      "pin": "e8ed655ec66eeba12ae3029cc26b45927964b476",
+      "pin": "4b75f70677dd8089c3c6c0d4771d11a7b0a98d18",
       "note": "same tree as armsx2 pin (D01); iOS and Android share it"
     },
     "om1": {
@@ -221,7 +221,7 @@
     }
   },
   "archive_identity": {
-    "contract": "41deac79e5cb8b046c8572e29ba73b910d0be6db6ef351ae625eee2d985477f1",
+    "contract": "60b9d4324ff1739dfc845afda450e605bfe150b5b94af1129ccd250136d2e13e",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
   },
   "inputs": {

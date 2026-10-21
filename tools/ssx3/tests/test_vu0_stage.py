@@ -268,8 +268,8 @@ class VendorPinTest(unittest.TestCase):
     def test_android_ge1_pin_is_the_shipped_pin(self):
         self.assertEqual(build.ANDROID_GE1_VENDOR_PIN, build.GE1_VENDOR_PIN)
         self.assertEqual(build.ANDROID_GE1_VENDOR_PIN,
-                         'e8ed655ec66eeba12ae3029cc26b45927964b476')
-        self.assertEqual(build.ANDROID_GE1_VENDOR_SHORT, 'e8ed655ec6')
+                         '4b75f70677dd8089c3c6c0d4771d11a7b0a98d18')
+        self.assertEqual(build.ANDROID_GE1_VENDOR_SHORT, '4b75f70677')
 
     def test_lock_pin_matches(self):
         lock = json.loads((ROOT / 'deps.lock.json').read_text())

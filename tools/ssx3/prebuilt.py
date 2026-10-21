@@ -36,7 +36,7 @@ NDK = '28.2.13676358'
 # ARMSX2 source for the support bundle: the same tree android_libs()
 # builds (build.py ANDROID_GE1_VENDOR_PIN) and deps.lock.json pins.
 # Keep them equal (test_prebuilt.py VendorAgreementTest enforces it).
-VENDOR = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
+VENDOR = '4b75f70677dd8089c3c6c0d4771d11a7b0a98d18'
 RELEASES = 'https://github.com/brad-richardson/PS2Recomp/releases/download/'
 FORMAT = 1
 ARCHIVES = ('libps2EntryRunner.a', 'libps2_runtime.a', 'libps2_gs_shadow.a',

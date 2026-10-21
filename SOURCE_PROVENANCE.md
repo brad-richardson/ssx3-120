@@ -14,7 +14,7 @@ reviewable diffs on top).
 | The private lab repo (stays private) | `ed718e09` | det gate (`mac_gate.sh`, `boot/`, knob checks), replay scripts, generic bench basis, curated docs — all generalized for public use; no briefs, receipts, cards or device tooling copied |
 | Public infra tree (staged, never committed anywhere) | the staged public-infra tree per the online-open plan §8 (never committed anywhere) | `infra/` (terraform, deploy/harden/backup scripts, lobby service files) minus `.terraform/` provider binaries |
 | Generator (separate source pin, same upstream repo) | `467e86e85fee4dd73c8252f40a02c6394116888e` | drives `prepare`; never repinned implicitly (landed linux-host-1 commit; `ps2xRecomp/` tree byte-identical to the original lane commit `03c10b5a`) |
-| Vendor `brad-richardson/armsx2` | `e8ed655ec66eeba12ae3029cc26b45927964b476` | renderer/VU source; support-archive identity in `deps.lock.json` |
+| Vendor `brad-richardson/armsx2` | `4b75f70677dd8089c3c6c0d4771d11a7b0a98d18` | renderer/VU source; support-archive identity in `deps.lock.json` |
 | Turnip (optional Vulkan driver) | StevenMXZ Gen8 V37 community zip (`tools/ssx3/turnip.json`) | archive + driver + notices hashes in `deps.lock.json`; double-SHA pin is the integrity check (unattested third-party build; see trust note in `tools/ssx3/README.md`) |
 
 ## Path remaps (rename-only, bytes preserved)
@@ -61,7 +61,7 @@ reviewable diffs on top).
   tail. Vendor armsx2 stayed `afad5a04` at split time (the engine at the
   new pin still pins it in `build.py`/`prebuilt.py`); build-parity-fix-1
   moves the product Android recipe and `deps.lock.json` to the shipped
-  `e8ed655ec6` (same tree as the iOS `GE1_VENDOR_PIN`), keeping microVU
+  `4b75f70677` (same tree as the iOS `GE1_VENDOR_PIN`), keeping microVU
   no-LTO.
 - engine-pin-1 (engine `5235b114` → `b9bf530a`, trains 41–49): re-synced
   `knobs.tsv` (achievements `PS2X_ACHIEVEMENTS`/`PS2X_ACH_SET` removed per
@@ -72,7 +72,7 @@ reviewable diffs on top).
   game module), `presets/ps2x.env`/`presets/ios.env` (achievements comments
   removed); contract `f7aec344…` in `deps.lock.json`. Product `ENGINE`
   retarget and play-policy preset tail preserved. Vendor armsx2 stays
-  `e8ed655ec6`.
+  `4b75f70677`.
 
 ## Bundled PGO profiles (pgo-public-1)
 

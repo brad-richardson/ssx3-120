@@ -1530,8 +1530,8 @@ def pin_android_deps(deps_root):
 # import, font/word prescale and the icon-row/default-on commits. microVU
 # stays no-LTO (android_libs builds the shared tree with LTO_PCSX2_CORE=OFF).
 ANDROID_GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
-ANDROID_GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
-ANDROID_GE1_VENDOR_SHORT = 'e8ed655ec6'
+ANDROID_GE1_VENDOR_PIN = '4b75f70677dd8089c3c6c0d4771d11a7b0a98d18'
+ANDROID_GE1_VENDOR_SHORT = '4b75f70677'
 
 
 def android_libs(a):
@@ -1609,8 +1609,8 @@ def android_libs(a):
 # kept as an override.
 
 GE1_VENDOR_REPO = 'https://github.com/brad-richardson/armsx2.git'
-GE1_VENDOR_PIN = 'e8ed655ec66eeba12ae3029cc26b45927964b476'
-GE1_VENDOR_SHORT = 'e8ed655ec6'
+GE1_VENDOR_PIN = '4b75f70677dd8089c3c6c0d4771d11a7b0a98d18'
+GE1_VENDOR_SHORT = '4b75f70677'
 # OM1 archive vendor: the commit that embedded the microVU/GIF test hooks
 # (10-02). The stage references the full hook set, so the island must define
 # it; older trees (including the pre-growth parent 35213339f) miss three
