@@ -39,6 +39,7 @@ address	kind	name	role	source	evidence	confidence
 0x111408	code	countdown_vs_ride_dispatcher	jump-table dispatcher selecting countdown vs mode-1 ride case engine: constexpr kSelectorDispatch (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1027)	labels.tsv:TM4 [trace] (NM1)	prior labels	inferred
 0x111538	code	rider_ctl_state_set	sets P+0xde4 engine: hook-tgt 0x111538 (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:2586)	labels.tsv:FH9 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x111728	code	input_consumer	engine hook/const kInputConsumer	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_np_rider.h:17	inferred
+0x11198c	code	particle_site_one	engine hook/const kParticleSiteOne (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:145	inferred
 0x113198	code	cAirPredictor_reset	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:104	prior map SYM1	decomp-unverified
 0x113200	code	amortized_contact_prediction	amortized per-call prediction; lookahead front C+0x98 accumulates across calls	labels.tsv:RV13 [trace] (NM1)	RV13 notes	inferred
 0x1135b8	code	velocity_cap_writer	Writes caller f12 to velocity-cap field C+0xa8 at 0x1135e4 disputed: cAirPredictor_startLaunchIntoAir (ssxdecomp 0ca6b276a657cd7d). engine: constexpr kJcam2Launch (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1156)	labels.tsv:TS1 [codegen read] (NM1)	TS1 notes	inferred
@@ -55,11 +56,13 @@ address	kind	name	role	source	evidence	confidence
 0x113f88	code	slew_bound_computer	Computes mode-0 slew bound min(|R+0x21c-R+0x214|,1)x[0x49b4f0]	labels.tsv:TS1 [codegen read] (NM1)	TS1 notes	inferred
 0x114130	code	sq_boost_gate (fill>0 + R+0x2fc==0; publishes R+0x2fc =	sq_boost_gate (fill>0 + R+0x2fc==0; publishes R+0x2fc =	PIP2 §7. Labels	PIP2 notes	verified
 0x114298	code	launch_transition_velocity	FH3 DIAG_WATCH: writes R+0x1e0 at 0x1144b8 (launch vector), 0x114a2c (wall projection), 0x114a80 (×0.8), 0x114ad0 (speed clamp to R+0x2e4), 0x114b74 (final scale); callers 0x12eafc/0x130890/0x13bfe8/0x13f19c engine: constexpr kLaunchHelper (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:963)	FH1 §Labels	FH1 notes	verified
+0x114db8	code	lim1_gate	Limiter-1 rival-rider gate (a0 = R; v0 0 = admit); wrapped by lim1GateWrapper (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/input_marker.cpp:1017	inferred
 0x115d48	code	rider_look_at_rival_anim (2 stream-1 draws per update when +0x35c ≥ 1)	rider_look_at_rival_anim (2 stream-1 draws per update when +0x35c ≥ 1) (S + L)	FA1 §Labels	FA1 notes	verified
 0x116950	code	gGenTrickName	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:82	prior map SYM1	decomp-unverified
 0x116e08	code	gGenMonsterTrickReqName	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:83	prior map SYM1	decomp-unverified
 0x116fb8	code	HUD timed-slot step (+8 += [0x49b5d8], expire at +4 → state 0x34)	ee-at; W1	FH23 §Labels	FH23 notes	verified
 0x1172e0	code	cRiderMetrix_linkToRider	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:90	prior map SYM1	decomp-unverified
+0x117638	code	combo_accrue	engine hook/const kComboAccrue (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:113	inferred
 0x1176f8	code	bonus_apply	trick bonus applier (engine kBonusNext hook target)	FH8	docs/facts.md:143	verified
 0x117838	code	bank_clear	engine hook/const kBankClear	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_gems.h:52	inferred
 0x117948	code	trick_inair_points	round10(+0x14*+0x1c4*K+5) alt: trick_inair_points (round10(+0x14·+0x1c4·K+5)) (FH8)	labels.tsv:FH8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
@@ -101,6 +104,7 @@ address	kind	name	role	source	evidence	confidence
 0x1286a0	code	cAI_cAI	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:98	prior map SYM1	decomp-unverified
 0x128af0	code	all_riders_pass	rider pass: runs all riders under the app update	labels.tsv:CM1 [trace] (NM1)	CM1 notes	inferred
 0x128ddc	code	boundary_src	engine hook/const kBoundarySrc	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_gems.h:50	inferred
+0x128f20	code	particle_site_all	engine hook/const kParticleSiteAll (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:144	inferred
 0x128f80	code	shadow_pub_bar_site	engine hook/const kShadowPubBarSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_pub.h:117	inferred
 0x12912c	code	race_tick_call_site	engine hook/const kRaceTickCallSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:867	inferred
 0x129160	code	rider_pass_host_129160	call site `0x1295a0` (jal `0x2e7a10`) runs in every in-event window (incl. pause) and in no menu window; FM1's event signal	labels.tsv:FM1 §Labels (behavioural, orch gate 09-29)	prior labels	verified
@@ -137,6 +141,7 @@ address	kind	name	role	source	evidence	confidence
 0x138960	code	aux_rewrite_gain_200	Per-call aux rewrite: reads [obj+0x370], gain 200.0, writes [0x370]/[0x3d0]	labels.tsv:TM4 [codegen read] (NM1)	prior labels	inferred
 0x138b48	code	cHandplantMotion_gainFocus	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:96	prior map SYM1	decomp-unverified
 0x139a20	code	countdown_update_integrator	Countdown update: integrates sub-object; copies sub+0x70/0x80 to pos/vel	labels.tsv:TM4 [codegen read] (NM1)	prior labels	inferred
+0x139a5c	code	jcam2_site	engine hook/const kJcam2Site (fork 34bf77d9)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:910	inferred
 0x139c88	code	countdown_action_selector	countdown-case selector: VU dot-product spatial test fires launch action	labels.tsv:TS1 [trace] (NM1)	TS1 notes	inferred
 0x13a7b0	code	air_contact_cast	+-200*R+0x180, hit fraction	labels.tsv:FH15 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x13af28	code	rail_handler	rail handler stepping R+0x300 x [0x49bf84]	FH10	docs/facts.md:151	verified
@@ -165,6 +170,7 @@ address	kind	name	role	source	evidence	confidence
 0x144d38	code	location_code_by_index	location_code_by_index	labels.tsv:TK1 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x144d50	code	location_kind_by_index	location_kind_by_index	labels.tsv:TK1 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x144d98	code	cBENewRaceInterface_setNumberAI	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:161	prior map SYM1	decomp-unverified
+0x145108	code	mode_setter	Mode setter 0x145108(config,2); Single Event select via 0x145108(config,1); direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §Static direct-entry map (candidate; failed runtime probe below)	local/research/astra-qp-direct-1/REPORT.md:65	verified
 0x145930	code	cBENewPlayerInterface_cBENewPlayerInterface	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:167	prior map SYM1	decomp-unverified
 0x145970	code	cBENewPlayerInterface_getThis	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:148	prior map SYM1	decomp-unverified
 0x145bd8	code	cBENewPlayerInterface_defaultCtrl	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:168	prior map SYM1	decomp-unverified
@@ -229,6 +235,7 @@ address	kind	name	role	source	evidence	confidence
 0x15ee00	code	gamecamera_chase_terrain_lift	gamecamera_chase_terrain_lift — static: collision 0x32E100/0x336850, cam+0x460 ×0.97 alt: terrain-lift per-update step bounds 50/x, 300/x (FH8)	labels.tsv:CM2 §Labels (orch gate 09-29)	prior labels	verified
 0x15f0ec	code	lift_probe_site	engine hook/const kLiftProbeSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1581	inferred
 0x15f568	code	rider_camera_target_accessors	rider_camera_target_accessors (vt 0x45b7a8 …0x15F908) — static: read R fields alt: rider_camera_target_accessors (vt 0x45b7a8 …0x15F908) (CM2)	labels.tsv:CM2 §Labels (orch gate 09-29)	prior labels	verified
+0x15f720	code	jcam2_query	engine hook/const kJcam2Query (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:125	inferred
 0x15f938	code	camera-mode constructors: near 10, far 30000 (gp 0x49c4a8	[read]	LOD1 §Map: what decides visibility	LOD1 notes	verified
 0x1619a8	code	chasecam_controller_ctor	chasecam_controller_ctor — alloc string "Chase Cam Controller" 0x45b760; vt 0x45b908	labels.tsv:CM2 §Labels (orch gate 09-29)	prior labels	verified
 0x161ab0	code	chasecam_mode_select	chasecam_mode_select — static: speed×0.036 vs 35, ride state 0x11FE98	labels.tsv:CM2 §Labels (orch gate 09-29)	prior labels	verified
@@ -306,6 +313,8 @@ address	kind	name	role	source	evidence	confidence
 0x1910c0	code	cFEStateRiderBio_fillQnAInfo	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:454	prior map SYM1	decomp-unverified
 0x191228	code	cFEStateRiderBio_fillBioInfo	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:455	prior map SYM1	decomp-unverified
 0x1913b8	code	cFEStateRuleSelect_setupMenu	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:456	prior map SYM1	decomp-unverified
+0x194a60	code	mainmenu_ctor	MainMenu ctor; init destroys [gp+0x304], [gp+0x238], auth, game link, net manager	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:164	verified
+0x194aa8	code	mainmenu_init	MainMenu init: destroys [gp+0x304], [gp+0x238], auth, game link, net manager	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:164	verified
 0x194d18	code	mainmenu_next_state (widget hash → state 9/0xB/0x16/5/…)	mainmenu_next_state (widget hash → state 9/0xB/0x16/5/…) ([read]) engine: constexpr kMainMenuItemState (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_menu.h:66)	TK8 §Labels (for the orchestrator's merge)	TK8 notes	verified
 0x194ea8	code	main_menu_event	engine hook/const kMainMenuEvent: (this, item, event)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_menu.h:67	inferred
 0x195498	code	sell_list_table_reader	reads movie sell-table slots (nfsxsell/nflxsell/st3xsell)	labels.tsv:P7 [codegen read] (NM1)	P7 notes	inferred
@@ -320,7 +329,12 @@ address	kind	name	role	source	evidence	confidence
 0x19e680	code	cFERider_initBoneMap	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:384	prior map SYM1	decomp-unverified
 0x19e960	code	cFERider_init	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:385	prior map SYM1	decomp-unverified
 0x1a0648	code	cFEFlowState_setNumStates	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:387	prior map SYM1	decomp-unverified
+0x1a0830	code	main_menu_accept_flow_factory	Main-menu accept asks flow factory (flow, oldState, requestedState) for next UI state	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:78	verified
+0x1a16c0	code	continuation_factory	Continuation factory branches on old state id +0xc; id 33 continuation 1 reaches loading queue block	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:81	verified
+0x1a1a9c	code	stock_loading_transition_block	Stock loading transition block start (range 0x1a1a9c..0x1a1ac8): alloc 8 via 0x317d70, construct 0x232720, queue 0x316ef8; block inside 0x1a16c0, not a standalone entry	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:82	verified
+0x1a1ac8	code	stock_loading_transition_block_end	Stock loading transition block end (range 0x1a1a9c..0x1a1ac8)	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:82	verified
 0x1a1ce8	code	boot_sequencer	Boot sequencer over movie-table slots (0x1A1CE8..0x1A2B00)	labels.tsv:P7 [codegen read] (NM1)	P7 notes	inferred
+0x1a27a0	code	fe_update_entry	FE update entry: candidate request-consume boundary; pending app +4 suppresses 0x398038 UI tick and sets FE +8 exit/fade flag	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:86	verified
 0x1a2b00	code	cRealFE_loadCharAnimations	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:391	prior map SYM1	decomp-unverified
 0x1a36e8	code	cFEAsyncManager_Load3PeakPic	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:444	prior map SYM1	decomp-unverified
 0x1a3768	code	cFEAsyncManager_Load1PeakPic	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:445	prior map SYM1	decomp-unverified
@@ -329,6 +343,17 @@ address	kind	name	role	source	evidence	confidence
 0x1a39d8	code	cFEAsyncManager_SetFileStatus	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:450	prior map SYM1	decomp-unverified
 0x1a39f0	code	frame_deadline_poll	frame_deadline_poll (poll)	labels.tsv:FH13 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x1a3cd8	code	cFEAsyncManager_LoadDataFile	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:451	prior map SYM1	decomp-unverified
+0x1a86e8	code	online_flag_setter	Online flag setter 0x1a86e8(1) on Main accept; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §Static direct-entry map (candidate; failed runtime probe below)	local/research/astra-qp-direct-1/REPORT.md:65	verified
+0x1a8a40	code	festate_go_to	FEState::GoTo(next): climbs +0x20 to top screen, vslot 0xD4 filter, 0x39f4c0 replace; replaced by switchHook (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:152	verified
+0x1a97b8	code	festate_on_child_closed	FEState::OnChildClosed: child id +0x18 0x832..0x83e; 0x833+code 0xF goes to Matchup	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:154	verified
+0x1b0f60	code	matchup_screen_ctor	Matchup screen ctor (state 0x41); built by filter popup update 0x1c17f8 after the link is up	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:153	verified
+0x1bfbb8	code	online_root_ctor	Online root ctor (state 0x3b), alloc 0x6d0; filter popup parent during the direct session; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:22	verified
+0x1bfe70	code	onlinemain_on_event	OnlineMain::OnEvent: item table 0x465550; Back goes to dialog 0x846 (DisconnectServer)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:163	verified
+0x1c0138	code	onlinemain_logoff_confirmed	OnlineMain::LogoffConfirmed: pop child, new cFEStateMainMenu, 0x1a8a40, log off + net stop; direct-chain presence-check (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:161	verified
+0x1c0240	code	onlinemain_disconnect_confirmed	OnlineMain::DisconnectConfirmed: disconnect, push cFEStateNetAccountMem (0x1b6ed0, id 0x832; memory-card prompt)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:162	verified
+0x1c02f8	code	onlinemain_on_child_closed	OnlineMain::OnChildClosed: child 0x82d goes to 0x1c0138, 0x846 to 0x1c0240, else 0x1a97b8	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:160	verified
+0x1c0f40	code	quick_match_popup_ctor	Quick Match popup ctor (state 0x48), alloc 0x734, init 0x1c0fc0 loads 233QuickPlayPopup; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:22	verified
+0x1c1560	code	quickplay_popup_on_event	QuickPlayPopup::OnEvent: event 6 idle goes to parent vslot 0x88 (code 0x14); searching aborts (0x25eed8); 5 = select; replaced by filterHook (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:159	verified
 0x1c58e8	code	cScreenPopup_cScreenPopup	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:399	prior map SYM1	decomp-unverified
 0x1c6230	code	cScreenPopup_FillObjectPointers	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:403	prior map SYM1	decomp-unverified
 0x1c8258	code	cScreenPopup_setTextString	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:401	prior map SYM1	decomp-unverified
@@ -380,6 +405,8 @@ address	kind	name	role	source	evidence	confidence
 0x200de8	code	cUITemplate_MAP_setupMenus	ssxdecomp name engine: constexpr kMapFill (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_menu.h:68)	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:439	prior map SYM1	decomp-unverified
 0x201720	code	cUITemplate_MAP_setupEventUnlock	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:433	prior map SYM1	decomp-unverified
 0x201750	code	cUITemplate_MAP_setupPeakUnlock	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:432	prior map SYM1	decomp-unverified
+0x201e10	code	select_event_accept	Select Event accept start (range 0x201e10..0x201e50): writes event id 0x535c08, flag [gp-0x1f38]=1, sets type/rules with 0x144df0/0x1451e8, commits config	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:80	verified
+0x201e50	code	select_event_accept_end	Select Event accept end (range 0x201e10..0x201e50)	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:80	verified
 0x202828	code	cUITemplate_MAP_onUpdate	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:442	prior map SYM1	decomp-unverified
 0x202ad8	code	cUITemplate_MAP_setupLayout	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:434	prior map SYM1	decomp-unverified
 0x2030a0	code	fe_map_show_event_menus	9 Peak%d...Locations menus alt: fe_map_show_event_menus (9 Peak%d…Locations menus) (TK8) disputed: cUITemplate_MAP_setupMenuFocus (ssxdecomp 0ca6b276a657cd7d).	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
@@ -453,6 +480,8 @@ address	kind	name	role	source	evidence	confidence
 0x2312d8	code	async_load_ready_check	flag-word + virtual-call check polled for async load completion	labels.tsv:CP4 [codegen read] (NM1)	CP4 notes	inferred
 0x231d18	code	shared ±1/60 stepper (5 jal callers + 2 vtable slots)	shared ±1/60 stepper (5 jal callers + 2 vtable slots) (ee-xref)	FH19 §Labels	FH19 notes	verified
 0x231d60	code	Post-draw check	jal at 0x22b0ec; nonzero v0 → skip 0x22c02c	RA4 §5. Labels	RA4 notes	verified
+0x232720	code	loading_transition_ctor	Loading transition constructor; returns supplied object, sets vtable and zeroes +4; invoked by engine call() (fork 34bf77d9)	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:83	verified
+0x232930	code	loading_transition_update	Loading-transition update; progresses fade, then allocates/queues next actual loading module when app +4 is clear	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:88	verified
 0x232ae0	code	gl_loading_screen_setup	gl_loading_screen_setup	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x233048	code	gl_load_course_picture	0x442950[event<17] alt: gl_load_course_picture (0x442950[event<17]) (TK8)	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x233180	code	courspic_copy_trigger	copies its COURSPIC path at every event load (to func_3168B0(buf, 0x47BDB0, 0x100))	TK8/TK9	docs/facts.md:183	verified
@@ -498,7 +527,9 @@ address	kind	name	role	source	evidence	confidence
 0x2558c0	code	cCommSystem_cCommSystem	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:605	prior map SYM1	decomp-unverified
 0x2559b0	code	cCommSystem__cCommSystem	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:606	prior map SYM1	decomp-unverified
 0x255a10	code	cCommSystem_getSignature	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:607	prior map SYM1	decomp-unverified
+0x255a20	code	netmgr_update	NetMgr::Update: per-frame (task 0x227e98); services link slot 0 only in state 5	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:147	verified
 0x255bf8	code	cCommSystem_openDSockChannel	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:477	prior map SYM1	decomp-unverified
+0x255f50	code	netmgr_start	NetMgr::Start(idx): state 2, timer 0x2328, config index +0x1c; direct-chain presence-check (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:146	verified
 0x256088	code	selfexec_chain_head	game self-exec chain head (0x256088->0x31B008->0x42C6A0)	labels.tsv:A1 [codegen read] (NM1)	A1 notes	inferred
 0x256bb0	code	RpcAlloc	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:604	prior map SYM1	decomp-unverified
 0x256bf8	code	cGameComm_construct	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:478	prior map SYM1	decomp-unverified
@@ -507,8 +538,16 @@ address	kind	name	role	source	evidence	confidence
 0x258790	code	net_pause_target	NetGame pause/resume entry PC skipped while racing (addTgt hook target; fork 872cb4ed) engine: constexpr kNetPause (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1172)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1172	inferred
 0x258f20	code	checksum_verdict	sub_00258F20 (single caller 0x12bdf4): stores local hash at ng+0x410[(f/60)%60], sends code 4, compares peer table ng+0x500, sets [ng+0xc]=1 desync at 0x25907c	online-stock-2	online-stock-2 notes	verified
 0x25907c	code	desync_flag_set	sets [ng+0xc]=1 (desync) inside sub_00258F20 when the peer compare mismatches	online-stock-2	online-stock-2 notes	verified
+0x259098	code	race_link_connect	session +ses goes to link connect, middle step (chain 0x25a1d0 to 0x259098 to 0x2639e0): creates the race link	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:151	verified
+0x25a1d0	code	session_ses_link_connect	session +ses goes to link connect, entry step (chain 0x25a1d0 to 0x259098 to 0x2639e0): creates the race link	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:151	verified
+0x25b650	code	auth_session_connect	Authentication/session connection manager ctor; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:20	verified
+0x25b6d8	code	auth_dns_connect_start	0x25b6d8(auth,0) starts DNS/connect; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:20	verified
+0x25c610	code	guest_auth_send	0x25c610(auth) sends real guest AUTH; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:20	verified
+0x25cd28	code	persona_choose	0x25cd28(auth,0) chooses returned persona; direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:21	verified
+0x260f80	code	online_manager_ctor_a	Online manager constructor (Main-accept chain); direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §Static direct-entry map (candidate; failed runtime probe below)	local/research/astra-qp-direct-1/REPORT.md:65	verified
 0x2636a8	code	select_60_180	Selects between 60.0 and 180.0 literals (60/180 select)	labels.tsv:TM4 [codegen read] (NM1)	prior labels	inferred
 0x2639e0	code	store_60_const_struct	Stores 60.0 literal into a struct (single-reader 60.0 site)	labels.tsv:TM4 [codegen read] (NM1)	prior labels	inferred
+0x266ca0	code	online_manager_ctor_b	Online manager constructor (Main-accept chain); direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §Static direct-entry map (candidate; failed runtime probe below)	local/research/astra-qp-direct-1/REPORT.md:65	verified
 0x267e18	code	_$_9type_info	library-like function without a runtime handler (ssx3.toml untracked_stubs; informational)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:254	inferred
 0x267e98	code	_$_9type_info	library-like function without a runtime handler (ssx3.toml untracked_stubs; informational)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:255	inferred
 0x267f28	code	_$_9type_info	library-like function without a runtime handler (ssx3.toml untracked_stubs; informational)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:256	inferred
@@ -525,11 +564,13 @@ address	kind	name	role	source	evidence	confidence
 0x26c458	code	cPlaybackMan_cPlaybackMan	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:569	prior map SYM1	decomp-unverified
 0x26c5f8	code	cPlaybackMan_update	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:573	prior map SYM1	decomp-unverified
 0x26c6e8	code	cPlaybackMan_initLocation	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:270	prior map SYM1	decomp-unverified
+0x26d130	code	input_free	engine hook/const kInputFree (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:54	inferred
 0x26d168	code	input_reset	engine hook/const kInputReset	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_replay_rate.h:49	inferred
 0x26d1fc	code	record_site	engine hook/const kRecordSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_replay_rate.h:47	inferred
 0x26d20c	code	play_site	engine hook/const kPlaySite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_replay_rate.h:48	inferred
 0x26d258	code	finish_counter	saturating per-rider counter; sets +0x610=1 (freezes race time without stopping state age)	FIN1	FIN1 notes	verified
 0x26d2b0	code	replay_rle_record	count <= 0xfff per sample alt: replay_rle_record (count ≤ 0xfff per sample) (FH13) alt: replay_rle_record (function start), caller 0x26d1fc in sub_0x26d178 (FH19)	labels.tsv:FH13 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
+0x26d420	code	replay_play	engine hook/const kPlay (replay play-input targetPc compare; fork 34bf77d9)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:946	inferred
 0x26d73c	code	trick_award_store	DIAG_WATCH, both modes	FH1 §Labels	FH1 notes	verified
 0x26ddc0	code	cReplay_restoreBucket	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:662	prior map SYM1	decomp-unverified
 0x26e340	code	cReplay_restoreDeadBucket	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:663	prior map SYM1	decomp-unverified
@@ -656,6 +697,7 @@ address	kind	name	role	source	evidence	confidence
 0x2e2260	code	rider-FX timer updater (kFxTimerUpdate), caller 0x2dfe4c in sub_0x2df920	ee-func; FH19 engine: constexpr kFxTimerUpdate (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:3263)	FH21 §Labels	FH21 notes	verified
 0x2e2388	code	P+0xb44 timer store (+0x4 −= f21, floor 0), interior sub_0x2e2260	ee-at; caller 0x2dfe4c in sub_0x2df920 (ee-xref); WO a0 = 0x144ad00 (SRC) alt: P+0xb44 timer store (+0x4 −= f21, floor 0), interior sub_0x2e2260, trail push at 0x2e2348 (FH21)	FH19 §Labels	FH19 notes	verified
 0x2e3118	code	flare_probe_site	engine hook/const kFlareProbeSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:3302	inferred
+0x2e3130	code	flare_probe_loop	engine hook/const kFlareProbeLoop (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:151	inferred
 0x2e39d8	code	rider_color_pulse	angle 2pi/60 per update	labels.tsv:FH10 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x2e4f50	code	rider-FX-family timer (+0x90 −= 1/[A+0x10], per-time), caller 0x2e5fc8 (jal) in sub_0x2e5920	ee-at; ee-xref; WATCH (0x2e5044/ra 0x2e5fd0)	FH19 §Labels	FH19 notes	verified
 0x2e6c08	code	fp_compare_vector_kernel	FP compare/vector kernel (c.lt.s+bc1f, VU-macro; insn mix)	labels.tsv:GT2 [codegen read] (NM1)	GT2 notes	inferred
@@ -672,6 +714,7 @@ address	kind	name	role	source	evidence	confidence
 0x2ec7e8	code	mmio_site_2ec7e8	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:883	inferred
 0x2ec810	code	mmio_site_2ec810	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:920	inferred
 0x2ec860	code	mmio_site_2ec860	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:893	inferred
+0x2ed490	code	shadow_pub_shape	engine hook/const kShadowPubShape (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:93	inferred
 0x2ee400	code	metro_readiness_helper	Metro helper: polled frame-skip gate (arg 6; f0 return vs 0.9)	labels.tsv:TM1 [trace] (NM1)	TM1 notes	inferred
 0x2ee7c8	code	cRenderStateMan_SnowFlakeColourR	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:724	prior map SYM1	decomp-unverified
 0x2ee810	code	cRenderStateMan_SnowFlakeColourG	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:725	prior map SYM1	decomp-unverified
@@ -679,7 +722,9 @@ address	kind	name	role	source	evidence	confidence
 0x2eea50	code	view-table getter (vcall +0x4c) → [gp+0x1240]	view-table getter (vcall +0x4c) → [gp+0x1240] (ee-at)	FH22 §Labels	FH22 notes	verified
 0x2ef2d8	code	cRenderStateMan_readFromReplayFrame	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:130	prior map SYM1	decomp-unverified
 0x2ef6d0	code	wake_scroll	board-wake scroll	FH13	docs/facts.md:161	verified
+0x2f00a0	code	view_word_writer	sub_002F00A0 view-word writer: float getters to view+0x8C/+0xAC/+0xCC/+0xEC (takeover starts here)	tk-flyover-1 §5. Hook map (all verified by DIAG_WATCH / temp probe; takeover starts here)	local/research/tk-flyover-1/REPORT.md:72	verified
 0x2f0548	code	cPSPVisualEffectsMan_cPSPVisualEffectsMan	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:727	prior map SYM1	decomp-unverified
+0x2f0c5c	code	camera_enable_gate	In 0x2f0548: blezl [camobj+0x10] to skip; per-camera enable gate around the writer call	tk-flyover-1 §5. Hook map (all verified by DIAG_WATCH / temp probe; takeover starts here)	local/research/tk-flyover-1/REPORT.md:74	verified
 0x2f39e0	code	lens_drop_manager (speed =	Δpos | ·60·0.036; split roll) | S + L	FA1 §Labels	FA1 notes	verified
 0x2f3be0	code	lens_roll_site	engine hook/const kLensRollSite	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1490	inferred
 0x2f5298	code	cWorldLightMan_initLightCache	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:728	prior map SYM1	decomp-unverified
@@ -726,6 +771,7 @@ address	kind	name	role	source	evidence	confidence
 0x317184	code	counted step loop increment in cAppMan_mainLoop (published 60 FPS patch site)	counted step loop increment in cAppMan_mainLoop (published 60 FPS patch site)	labels.tsv:X2 + handoff	prior labels	verified
 0x3171b4	code	step call 3	jalr via vtable[0x30/0x34] of object at s0+0 | sub_00316F00_0x316f00.cpp:1887 engine: constexpr kAppUpdateSite (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1017)	X3 §What runs per iteration (raw edges, loop body 0x317184 → 0x3171d8)	X3 notes	verified
 0x317208	code	render_gate_mode1	engine hook/const kRenderGateMode1	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:2316	inferred
+0x31723c	code	render_gate_mode0	engine hook/const kRenderGateMode0 (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:188	inferred
 0x317328	code	game_view_update_all	Updates all game views; calls func_3174A8 with param 1 disputed: cAppMan_checkHalt (ssxdecomp 0ca6b276a657cd7d).	nm1:X2	prior candidates	inferred
 0x317348	code	timer_wrapper	timer wrapper starting the worker wake chain engine: constexpr kProducer (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:822)	RV6/TM1	docs/research/ssx3-engine-timing.md:79	verified
 0x317400	code	cAppMan_loadexecpurge	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:184	prior map SYM1	decomp-unverified
@@ -1078,6 +1124,7 @@ address	kind	name	role	source	evidence	confidence
 0x38f7f8	code	resume_entry_38f7f8	boot-proven indirect-call resume entry (ssx3.toml extra_function_starts) in sub_38f7b0	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:238	inferred
 0x390458	code	phase1_lighting_param	(?) phase-1 lighting-ish param writer (21-175 stores/tick)	labels.tsv:RA2 [trace] (NM1)	RA2 notes	inferred
 0x390c60	code	light_flash_scheduler (roll u < k²; countdown in updates)	light_flash_scheduler (roll u < k²; countdown in updates) (S + L)	FA1 §Labels	FA1 notes	verified
+0x390c98	code	flash_roll_site	engine hook/const kFlashRollSite (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:108	inferred
 0x3912b8	code	mmio_site_3912b8	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:807	inferred
 0x3912d0	code	mmio_site_3912d0	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:756	inferred
 0x391300	code	mmio_site_391300	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:800	inferred
@@ -1115,8 +1162,10 @@ address	kind	name	role	source	evidence	confidence
 0x397c40	code	lui_load	lui_load(obj, data/ui/xx) alt: lui_load(obj, "data/ui/xx") ("%s.lui" 0x4A4770) (TK8) disputed: cUIEngine_loadFile (ssxdecomp 0ca6b276a657cd7d). engine: constexpr kLuiLoad (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_menu.h:71)	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x397cc0	code	lui_search	screen-table searcher for the LUI frontend format (searched +0xC {nameHash, offset}) disputed: cUIEngine_addScreenByHashName (ssxdecomp 0ca6b276a657cd7d). engine: constexpr kScreenLookupPc (deps/PS2Recomp/ps2xRuntime/include/ps2_turbo_boot.h:23)	TK8	docs/facts.md:192	verified
 0x397df8	code	render_tail	render-tail function in the per-render sequence	labels.tsv:RA2 [trace] (NM1)	RA2 notes	inferred
+0x398038	code	ui_update	UI update: phase machine, phase-7 case 0x39eee4	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:155	verified
 0x398138	code	cUITextureBank_setData	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:696	prior map SYM1	decomp-unverified
 0x398568	code	cUIFontInterface_loadFonts	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:560	prior map SYM1	decomp-unverified
+0x398638	code	widget_group_disable	Disable widget group (screen+0x40, 0); reports selection-change event 2 to owner; 0x39ce48 tail-calls it	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:116	verified
 0x39a3f8	code	cUIListBox_addEntryByAsciiString	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:499	prior map SYM1	decomp-unverified
 0x39a568	code	cUIListBox_addEntryByStringID	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:497	prior map SYM1	decomp-unverified
 0x39a7f0	code	cUIListBox_setEntryByAsciiString	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:700	prior map SYM1	decomp-unverified
@@ -1128,15 +1177,24 @@ address	kind	name	role	source	evidence	confidence
 0x39c7c0	code	cUIScreen_getPrimaryThread	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:702	prior map SYM1	decomp-unverified
 0x39c820	code	cUIScreen_jumpToFrame	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:495	prior map SYM1	decomp-unverified
 0x39c870	code	cUIScreen_playFrame	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:483	prior map SYM1	decomp-unverified
+0x39cd30	code	timeline_play_anim	Timeline play anim on widget	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:157	verified
+0x39ce48	code	ui_close_start	UI close-start: widget disable + owner phase 6; tail-calls 0x398638; replaced by closeHook (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:156	verified
+0x39ce98	code	ui_close_end_callbacks	Close-end callbacks: clear bit 24 of anim record +0x10, owner phase 7; replaced by closeHook (fork 34bf77d9)	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:156	verified
 0x39ced0	code	cUIScreen_createAllObjects	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:698	prior map SYM1	decomp-unverified
 0x39d078	code	cUIScreen_createObjectByStruct	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:703	prior map SYM1	decomp-unverified
 0x39d860	code	screen_find_widget	(mgr, hash) alt: screen_find_widget(mgr, hash) (TK8) disputed: cUIScreen_getObjectByHashName (ssxdecomp 0ca6b276a657cd7d).	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x39e6b8	code	object_list_walk	Object-list walk with virtual call (lw 0x48/0x8C then jalr $v1)	labels.tsv:PF1 [codegen read] (NM1)	PF1 notes	inferred
 0x39e8b8	code	cUIState_hideObjSafe	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:490	prior map SYM1	decomp-unverified
 0x39e948	code	cUIState_showObjSafe	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:491	prior map SYM1	decomp-unverified
+0x39ecb0	code	ui_scheduler	UI scheduler: phase machine; phase-7 case 0x39eee4	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:155	verified
+0x39f100	code	ui_list_pass	UI list pass: phase machine; phase-7 case 0x39eee4	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:155	verified
+0x39f190	code	uistack_close_top	UIStack::CloseTop(n): top n states go to phase 6 + delete bit	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:165	verified
 0x39f238	code	cUIStateStack_pushExplicit	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:470	prior map SYM1	decomp-unverified
+0x39f290	code	ui_modal_attach	Modal attach at UI engine +0x18 (filter popup); direct-chain presence-check via begin() (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:22	verified
 0x39f320	code	cUIStateStack_pushSpecial	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:484	prior map SYM1	decomp-unverified
+0x39f400	code	ui_stack_queue_replace	Queue/replace UI stack state at UI engine +0x18; root queue + modal attach use; direct-chain presence-check (fork 34bf77d9)	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:79	verified
 0x39fa88	code	cUIStateStack_getCurrentState	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:492	prior map SYM1	decomp-unverified
+0x39fd38	code	release_widget_anim	Release widget anim	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:157	verified
 0x39ff78	code	cUIThing_getKeyframerEvent	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:695	prior map SYM1	decomp-unverified
 0x3a0b38	code	cUIText_deleteText	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:704	prior map SYM1	decomp-unverified
 0x3a0b90	code	cUIText_getNumTextLines	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:707	prior map SYM1	decomp-unverified
@@ -1186,6 +1244,7 @@ address	kind	name	role	source	evidence	confidence
 0x3b3578	code	SHAPE_unpack	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:475	prior map SYM1	decomp-unverified
 0x3b39b8	code	SHAPE_locate	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:564	prior map SYM1	decomp-unverified
 0x3b4540	code	SHAPE_cloneat	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:756	prior map SYM1	decomp-unverified
+0x3b49d0	code	refpack_decompress	RefPack decompress(dst,src); Matchup asset 10FB... 0x91C8 B	qp-direct-opus-1 §Function map rows (for `ssx3-symbols.tsv`, ssx3-120; not edited by this lane)	local/research/qp-direct-opus-1/REPORT.md:158	verified
 0x3b54e0	code	snd_lib_vblank_gate	callbacks once per new VBlank count alt: snd_lib_vblank_gate (runs callbacks once per new VBlank count, at the sound tick) (FH13)	labels.tsv:FH13 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x3b5540	code	snd_tick_chain	sound update step leading to tick-counter increment (->0x3B55F0)	labels.tsv:AU1 [codegen read] (NM1)	AU1 notes	inferred
 0x3b55f0	code	inc_snd_tick_counter	Increments SND tick counter 0x50A8E8+0x180	labels.tsv:AU1 [codegen read] (NM1)	AU1 notes	inferred
@@ -1298,6 +1357,7 @@ address	kind	name	role	source	evidence	confidence
 0x3e3d78	code	audio_archive_cd_reader	sceCdRead caller for audio-archive disc reads (SNDDRV has no cdvdman)	labels.tsv:AU1 [trace] (NM1)	AU1 notes	inferred
 0x3e4040	code	cdfs_build_toc	walks the disc ISO9660 tree at boot; one sector each into 0x519C80; maxFiles 500, 163 files	TK2/TK3	docs/facts.md:174	verified
 0x3e4508	code	file_lookup	TOC lookup returning index+1; preserve-fix-1 overlay-only wrapper entry (stock function delegated)	TK2/TK3	docs/facts.md:176; preserve-fix-1 notes	verified
+0x3e4538	code	cd_lookup_normalizer	Lookup normalizer emits leading slash (inside sub_003E4508)	preserve-fix-1 §Function-map handback, takeover additions	local/research/preserve-fix-1/REPORT.md:239	verified
 0x3e4648	code	cdfs_read(handle, …)	[read] + [measured] FH1 count args	TK3 §Labels	TK3 notes	verified
 0x3e4c24	code	mmio_site_3e4c24	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:709	inferred
 0x3e4c78	code	mmio_site_3e4c78	detected MMIO access site (ssx3.toml [mmio] override)	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:790	inferred
@@ -1320,6 +1380,7 @@ address	kind	name	role	source	evidence	confidence
 0x3e6448	code	per_vsync_clearer	clears watched word (store64 0) once per vsync	labels.tsv:E44 [trace] (NM1)	E44 notes	inferred
 0x3e6574	code	byte_copy_loop	Byte-copy loop at 0x3e6630 (6i lbu/sb)	labels.tsv:WL1 [codegen read] (NM1)	WL1 notes	inferred
 0x3e8b10	code	timed_quik_send	timed quik send (quick-match search window; STOCK120 extends the give-up timer 20 s -> 120 s) engine: constexpr kTimedSend (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1203)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1203; deps/PS2Recomp/games/ssx3/module/src/fh1_dispatch.cpp:39	verified
+0x3f3c50	code	net_start_config_path	Network start from config path, issues netw/star (HLE link); direct-chain presence-check (fork 34bf77d9)	astra-qp-direct-1 §State map	local/research/astra-qp-direct-1/REPORT.md:19	verified
 0x3f4330	code	cop0_count_delta	Loads prior COP0 Count at 0x3f4410; subtracts at 0x3f441c (timer delta)	labels.tsv:E54F1 [codegen read] (NM1)	E54F1 notes	inferred
 0x3f4448	code	alarm	same-tick, wakes T7 only (never T1)	ONL3 §Decoded mechanism (SLUS_207.72)	ONL3 notes	verified
 0x3f44f8	code	sync-wait	pump -> flag -> sleep (site-B, unconditional)	ONL3 §Decoded mechanism (SLUS_207.72)	ONL3 notes	verified
@@ -2027,14 +2088,18 @@ address	kind	name	role	source	evidence	confidence
 0x4471e0	data	animation_metadata_4c	Metadata record for animation ID0x4c: word0 class0x12; first-mark R1 warmup lasts367.034ms at both60 and120	astra-input-1 Part2	lock-spans; ELF446990+4c*1c, SHA1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc	verified
 0x44742c	data	animation_metadata_61	Metadata record for animation ID0x61: word0 class0x13; grab/uber continuation also blocks fresh spin admission	astra-input-1 Part2	lock-spans; ELF446990+61*1c, SHA1b49d05ca2793922180851b9e1ce9ae2291d61a7863565ac4e71f12e967af7bc	verified
 0x449960	data	records	engine hook/const kRecords: {anim, weight, flags} x 472	engine	deps/PS2Recomp/games/ssx3/module/include/ps2_ssx3_anim_pick_guard.h:38	inferred
+0x450c5c	data	file_table_name_bytes	Sorted-table name capacity, stride = value + 12; engine const kNameBytes (fork 34bf77d9)	preserve-fix-1 §Function-map handback, takeover additions	local/research/preserve-fix-1/REPORT.md:237	verified
 0x4561c0	data	payload_src	engine hook/const kPayloadSrc	engine	deps/PS2Recomp/games/ssx3/module/src/copied_payload.cpp:22	inferred
 0x4585f0	data	ai_source_desc	engine hook/const kAiSourceDesc	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_np_rider.h:18	inferred
 0x46ba7c	data	mainmenu_next_state (widget hash → state 9/0xB/0x16/5/…)	mainmenu_next_state (widget hash → state 9/0xB/0x16/5/…) ([read])	TK8 §Labels (for the orchestrator's merge)	TK8 notes	verified
+0x46d7c0	data	fe_vtable	FE vtable base; +0x34 is the update-entry slot	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:86	verified
+0x46d810	data	flow_vtable	FE flow vtable; +0x24 is the Main-accept factory slot, +0x2c the continuation-factory slot	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:78	verified
 0x46eae8	data	banner_brand_addr	12-byte guest RAM field holding the banner brand string ("EA RADIO BIG"); scoped by ps2_ssx3_banner_scope (fork 872cb4ed) engine: constexpr kBrandAddr (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_banner_scope.h:44)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_banner_scope.h:44	inferred
 0x4781d0	data	nav_node_event0_race_p1s0	nav node, event 0 race peak1 slot 0 alt: nav nodes for event 0: race peak 1 slot 0, free-ride peak 1 slot 3 (ara1path) (TK4)	labels.tsv:TK4 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x478e7c	data	nav_node_event0_freeride_p1s3	nav node, event 0 free-ride peak1 slot 3 alt: nav nodes for event 0: race peak 1 slot 0, free-ride peak 1 slot 3 (ara1path) (TK4)	labels.tsv:TK4 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
 0x47bdb0	data	courspic_path_buf	COURSPIC path destination buffer	TK8/TK9	docs/facts.md:184	verified
 0x47d110	data	manager_active_table	manager active table	RV6/TM1	docs/research/ssx3-engine-timing.md:69	verified
+0x47d8a8	data	loading_transition_vtable	Loading-transition vtable (installed by 0x232720)	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:83	verified
 0x47d9c8	data	manager_vtable	manager vtable at A+0x5c	RV6/TM1	docs/research/ssx3-engine-timing.md:68	verified
 0x483674	data	sound-tree update chain (f12 passed through)	ee-at; T2/T3, S1b/E1b fh1-src	FH24 §Labels	FH24 notes	verified
 0x48378c	data	sound-tree update chain (f12 passed through)	ee-at; T2/T3, S1b/E1b fh1-src	FH24 §Labels	FH24 notes	verified
@@ -2063,6 +2128,9 @@ address	kind	name	role	source	evidence	confidence
 0x49d9e0	data	sibling +0x68 step (0.0879, untouched, static −1.0 here)	ee-at 0x1ebef8; codegen rg (1 site)	FH20 §Labels	FH20 notes	verified
 0x49d9e4	data	hudfill pool step ([gp−0x570C], 1/48 → 1/96)	RAM const; header row hudfill_1ebf70	FH20 §Labels	FH20 notes	verified
 0x4a14b0	data	screen_name_Map	screen name string Map alt: screen name Map (Select Peak/Goal/Event; also OV Transport) (TK8)	labels.tsv:TK8 §Labels (LB2 09-30: ee-func/ee-at checked, not orch-read)	prior labels	verified
+0x4a259c	data	picker_map_substate	Picker Map substate observation; can go stale after leaving FE, so not a launch safety gate alone	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:90	verified
+0x4a25a0	data	picker_map_type	Picker Map type observation; can go stale after leaving FE, so not a launch safety gate alone	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:90	verified
+0x4a25a4	data	picker_map_peak	Picker peak observation; can go stale after leaving FE, so not a launch safety gate alone	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:90	verified
 0x4a28a8	data	rider_path_base	game global (gp-0x848): P1 rider R=[[[0x4a28a8]+0x84]+0xC]+0x28, course-independent engine: constexpr kChainRoot (deps/PS2Recomp/ps2xRuntime/include/ps2_netsync.h:44)	TK43d	docs/facts.md:298	verified
 0x4a30f0	data	flash_countdown	engine hook/const kFlashCountdown: gp-0x1034	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:1491	inferred
 0x4a3afc	data	inline_float_lcg_state (gp+0xA0C)	S: x·0x18fcd + 0xe9507c, mantissa into [1,2); 88 stores in 18 functions; L: step counter	FA1 §Labels	FA1 notes	verified
@@ -2076,9 +2144,12 @@ address	kind	name	role	source	evidence	confidence
 0x512e40	data	tag1_record	planar tag-1 record: 384 s16 right channel then 384 left; first block feeds SPU2 right input	AU2/AU4	docs/facts.md:15	verified
 0x519c40	data	cdfs state: +4 count (164), +0x18 seed, +0x38 hash table (0x5E3980)	[measured]	TK3 §Labels	TK3 notes	verified
 0x519c44	data	file_table_live_count	sorted guest CD table live file count (163 stock + 20 overlay) engine: constexpr kCount (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:10)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:10	inferred
+0x519c58	data	file_table_seed	Reverse-djb2 lookup seed (live 0x1505); engine const kSeed (fork 34bf77d9)	preserve-fix-1 §Function-map handback, takeover additions	local/research/preserve-fix-1/REPORT.md:236	verified
 0x519c78	data	file_table_base_ptr	sorted guest CD table base pointer (live 0x5e3980) engine: constexpr kBase (deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:11)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_file_table.h:11	inferred
 0x519c80	data	toc_sector_buf	one-sector TOC read buffer	TK2/TK3	docs/facts.md:175	verified
 0x52be04	data	ssx3_sregs1_addr	engine hook/const kSsx3Sregs1Addr	engine	deps/PS2Recomp/games/ssx3/module/src/sif_handshake.cpp:105	inferred
+0x5305b0	data	loader_selection_index	Loader-selection index; existing repair replaces stale -1 with 0	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:91	verified
+0x534fe0	data	loader_selection_row	Loader-selection row (+idx*28+12); existing repair replaces stale -1 with 0	astra-tk-fe-1 §FE state map	local/research/astra-tk-fe-1/REPORT.md:91	verified
 0x535538	data	stat_bank_base	live stat bank: 0x535538 + player*70 + char*7, seven attribute bytes per rider (raw 5..55, level=raw/5); physics getters read it live every mode	netsync-spike-1	netsync-spike-1 notes	verified
 0x535610	data	options_block	options block; bits 20-21 widescreen (0 off / 1 16:9 / 2 anamorphic)	W1	docs/facts.md:19	verified
 0x535898	data	tricky_records_settings	engine hook/const kSettings: 0x288-byte user settings block preserved across Tricky races	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_records.h:23	inferred
@@ -2093,7 +2164,10 @@ address	kind	name	role	source	evidence	confidence
 0x5400e4	data	aloha_rider_ptr	per-course AP rider pointer (ALOHA)	TK43d	docs/facts.md:298	verified
 0x5409c0	data	rider_snapshot_pos	rider position snapshot triple; == R+0x110 exactly in-race; disputed: reads 0,0,1 on the Single Event race route (TK2), so route-dependent	netsync-spike-1	netsync-spike-1 notes	verified
 0x548840	data	movie_codec_pool_node	single startup-movie codec pool node	E48/E49	docs/facts.md:18	verified
+0x58d400	data	camera_manager_object	Camera manager object (this for 0x2f0548); 17 static pointers + zeros	tk-flyover-1 §5. Hook map (all verified by DIAG_WATCH / temp probe; takeover starts here)	local/research/tk-flyover-1/REPORT.md:75	verified
 0x5b2900	data	race object on All-Peak (FR1-R1 0x5bc708); +0x8 race tick (from the drop update), +0xc race time (from the next)	d1 src a0 at 0x113dcc, d2 peeks	FH14 §Labels	FH14 notes	verified
+0x5bc500	data	race_object_snow_jam_single	Race object, Snow Jam Single Event (+0x8 race tick, +0xc race time, +0x28 players array)	race-speed-1 §Labels	local/research/race-speed-1/REPORT.md:241	verified
+0x5bc700	data	race_object_happiness_single	Race object, Happiness Single Event (same layout; tick/time at +0x8/+0xc)	race-speed-1 §Labels	local/research/race-speed-1/REPORT.md:243	verified
 0x5c2400	data	score/trick object (slots +0x1b0, count +0x1b4, rider +0x1ac)	score/trick object (slots +0x1b0, count +0x1b4, rider +0x1ac) (dumps)	FH23 §Labels	FH23 notes	verified
 0x5c5c10	data	the node armed at the wipeout	ee-at; watches	FH24 §Labels	FH24 notes	verified
 0x6214d4	data	render_frame_count	render device frame count (sway reads +0x5a74 of it)	FH13	docs/facts.md:160	verified
