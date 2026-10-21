@@ -203,6 +203,7 @@ namespace
         tkl::ListState list;
         list.sel = static_cast<uint8_t>(sel);
         list.mode = opt && std::strcmp(opt, "1") == 0 ? 1 : 0;
+        list.step = 1; // the mode list, as a picker tap: listGoal() reads mode only there
         tkl::requestDirect(list);
     }
 
