@@ -25,6 +25,9 @@ def load(name, path):
 def main():
     import os
     os.environ['SSX3_ENGINE_DIR'] = str(ENGINE)
+    # split-p1-prep-1: the module is product-owned; the engine contract
+    # reads its rows from this repo's moved copy.
+    os.environ['SSX3_MODULE_DIR'] = str(ROOT / 'games/ssx3/module')
     lock = json.loads((ROOT / 'deps.lock.json').read_text())
     have = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'], text=True).strip()
     assert have == lock['engine']['pin'], 'engine %s != lock %s' % (have, lock['engine']['pin'])

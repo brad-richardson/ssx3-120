@@ -215,3 +215,5 @@ PS2X_NETSYNC_EVERY	guest-affecting-when-on	online-v0-1
 PS2X_NETSYNC_IDELAY	guest-affecting-when-on	online-v0-1
 PS2X_NETSYNC_TIMEOUT_MS	guest-affecting-when-on	online-v0-1
 PS2X_DEV_TOASTS	diag	toast-audit-1
+PS2X_SSX3_TRICKY_FIXED_INTRO	active-lane	astra-flyover-1
+PS2X_NET_QUICKPLAY_NAV	guest-affecting-when-on	astra-qp-direct-1 (direct value; online retains reference navigator)

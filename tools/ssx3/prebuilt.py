@@ -455,6 +455,9 @@ def _ls_entries(paths):
     by_repo = {}
     for p in paths:
         by_repo.setdefault(_repo_for(p), []).append(p)
+    for repo in by_repo:
+        if not repo.is_dir():
+            raise ValueError('contract repo missing: %s' % repo)
     entries = []
     for repo, rels in by_repo.items():
         out = subprocess.check_output(
@@ -477,9 +480,17 @@ def _tracked_entries():
     if not (ENGINE / '.git').exists() and not (ROOT / '.git').exists():
         return None
     try:
-        return _ls_entries(_contract_paths())
+        entries = _ls_entries(_contract_paths())
     except (OSError, subprocess.CalledProcessError):
         return None
+    # Fail closed: every explicit contract input must resolve. A silent drop
+    # (e.g. the moved module unexpectedly untracked) would mint a wrong
+    # support stamp instead of erroring.
+    got = {p for p, _ in entries}
+    missing = [p for p in CONTRACT_EXPLICIT if p not in got]
+    if missing:
+        raise ValueError('contract inputs untracked: %s' % ', '.join(missing))
+    return entries
 
 
 def contract_paths():

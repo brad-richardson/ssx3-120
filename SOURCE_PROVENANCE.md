@@ -107,6 +107,28 @@ during the transition); the musl rebuild from this tree reproduces the
 reference binary (SHA-256 `ca0f26ef…`). Admission/egress caps and the unit
 FD limit are scaled to match. MComm is never published.
 
+## Repo split P1: SSX 3 game module move (split-p1-prep-1, 2026-10-21)
+
+`games/ssx3/module/**` (66 files: 1 recipe + README, 25 headers, 23
+sources, 16 tests) moved from the engine (`brad-richardson/PS2Recomp`, branch
+`ssx3` @ `18d291a7`, train-84) into this repo, byte-identical to the fork
+blobs at that commit. Manifest rows carry `origin=fork@18d291a7`,
+`status=moved`: `check_manifest.py` verifies them against the frozen
+source commit (the post-move engine no longer carries these bytes), and
+the byte manifest lives in the lane REPORT
+(`local/research/split-p1-prep-1/REPORT.md` in the private lab repo).
+
+Wiring (not verbatim; reviewed in the P1 commits): the module recipe
+anchors engine headers at `PS2X_ENGINE_SOURCE_DIR` (set by the engine
+when it adds the directory); `build.py` mac/iOS and the Android support
+export pass `-DPS2X_GAME_MODULE_DIR=<product>/games/ssx3/module`; the
+support-bundle contract keeps the same relpath keys with module rows
+resolved in this repo (`_repo_for`); `check_manifest.py` and
+`test_prebuilt.py` track per repo. The engine side keeps the old default
+working until the removal commit; after it, the engine needs
+`SSX3_MODULE_DIR` pointed at this repo for contract/export flows
+(fork CI follow-up in the REPORT's merge recipe).
+
 ## Never in this repo or its releases
 
 Generated EE/VU sources, ISO/ELF, converted worlds/audio/HUD, texture
