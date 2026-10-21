@@ -4,6 +4,7 @@
 #include "Ssx3QuickPlayDirect.h"
 #include "ps2_net_dirtysock.h"
 #include "ps2_runtime.h"
+#include "ps2_ui_toast.h"
 #include "runtime/ps2_memory.h"
 #include <chrono>
 #include <cstdio>
@@ -106,8 +107,16 @@ void continuation(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
         wr(ram,rd(ram,getRegU32(c,28)-0x238)+0x20,3);
         [[fallthrough]];
     case 10:
-        if (!object(auth,0x300) || !ps2_net::qpCopyIdentity(ram,f+0x240)) {
-            fail(ram,c,r,"identity-or-auth-unavailable"); break;
+        // qp-failclosed-1: without a usable per-install login there is no
+        // identity to enter with. Never proceed on the Mc-served bootstrap
+        // bytes; refuse the entry here (Main is still up, so this lands
+        // back on the Main Menu exactly like Part 2's flat Back: no
+        // disconnect dialog, no memory-card prompt) with one player-facing
+        // toast. The send choke point drops any stray auth as well.
+        if (!object(auth,0x300)) { fail(ram,c,r,"invalid-auth-struct"); break; }
+        if (!ps2_net::qpCopyIdentity(ram,f+0x240)) {
+            ps2x::ui::toast(ps2x::ui::kQpLoginMissingToast, 8.0f);
+            fail(ram,c,r,"login-unavailable"); break;
         }
         call(ram,c,0x3184e8,11,auth+0x48,f+0x240); break;
     case 11: call(ram,c,0x3184e8,12,auth+0x4c,f+0x280); break;

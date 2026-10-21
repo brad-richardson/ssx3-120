@@ -201,7 +201,7 @@ games/ssx3/module/src/input2.cpp	fork@18d291a7	games/ssx3/module/src/input2.cpp	
 games/ssx3/module/src/input_marker.cpp	fork@18d291a7	games/ssx3/module/src/input_marker.cpp	8d3235ef8f0514b92d4b9082b12619b5b603ad91e860e09cffa8c6fb8a41d9a6	51721	moved
 games/ssx3/module/src/lod_scale.cpp	fork@18d291a7	games/ssx3/module/src/lod_scale.cpp	6a2a869e66709db2bb1ba2a82d5d51f4ec2033b2fbfcf327d47bffa8b7d36008	4121	moved
 games/ssx3/module/src/movie.cpp	fork@18d291a7	games/ssx3/module/src/movie.cpp	c4c531a3e87d4ff03eb0e721427b676fc0156f8b42285fd5de411e08eb75fd51	6250	moved
-games/ssx3/module/src/quick_play_direct.cpp	fork@18d291a7	games/ssx3/module/src/quick_play_direct.cpp	a48d49ed89188a4306d5d6483061eee321b04194a1401fedd71cba7a6df67bca	16933	moved
+games/ssx3/module/src/quick_play_direct.cpp	fork@18d291a7	games/ssx3/module/src/quick_play_direct.cpp	dc1c412c2e39e7eb7fb304d3a14844b6868a3412e80f24708de6c23d952591e5	17511	composition:split-p1-prep-1 qp-failclosed-1 port 118c0f11 (source fork@18d291a7)
 games/ssx3/module/src/sif_handshake.cpp	fork@18d291a7	games/ssx3/module/src/sif_handshake.cpp	fe49664753a1f8e4658b0dac6169c898fb405bf52c15ad5614f262f8afe8e9f2	4514	moved
 games/ssx3/module/src/ssx3_module.cpp	fork@18d291a7	games/ssx3/module/src/ssx3_module.cpp	4e6fc14cf2986d83096d2a4aef394efdcb51ff88a1b3e27bed004e0f66fa1d4e	7193	moved
 games/ssx3/module/src/ssx3_module_internal.h	fork@18d291a7	games/ssx3/module/src/ssx3_module_internal.h	6881c3c77eff07dc6a937bf6cdf88694e1a42fb08e1fdcf0516859e6b0389fa5	792	moved
