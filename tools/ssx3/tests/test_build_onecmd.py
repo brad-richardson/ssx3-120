@@ -1197,5 +1197,59 @@ class ManagedLicenceInInstallTest(unittest.TestCase):
                     build.ensure_install_toolchain(args)
 
 
+class DoctorFriendlyEndingTest(unittest.TestCase):
+    """builder-polish-1 item 1: `doctor` on a fresh dir ends cleanly."""
+
+    def test_hint_text(self):
+        hint = build.doctor_onecmd_hint('android')
+        self.assertIn('one-command build fetches these automatically', hint)
+        self.assertIn('./build android', hint)
+        self.assertEqual(build.doctor_onecmd_hint('prepare'), '')
+
+    def test_doctor_failure_exits_1_with_hint_not_traceback(self):
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+        with tempfile.TemporaryDirectory() as tmp:
+            work = str(Path(tmp) / 'fresh-work')
+            argv = ['doctor', '--target', 'android', '--work', work]
+            missing = ValueError(
+                'doctor: missing prerequisites: ANDROID_HOME, NDK revision')
+            with patch.object(build, 'doctor', side_effect=missing):
+                out, err = io.StringIO(), io.StringIO()
+                with redirect_stdout(out), redirect_stderr(err):
+                    with self.assertRaises(SystemExit) as ctx:
+                        build.main(argv)
+                self.assertEqual(ctx.exception.code, 1)
+                self.assertIn('one-command build fetches these automatically',
+                              out.getvalue())
+                self.assertIn('./build android', out.getvalue())
+                self.assertIn('doctor: missing prerequisites', out.getvalue())
+                self.assertNotIn('Traceback', out.getvalue() + err.getvalue())
+
+    def test_fresh_dir_doctor_lists_miss_then_hint(self):
+        import io
+        import toolchain
+        from contextlib import redirect_stdout, redirect_stderr
+        with tempfile.TemporaryDirectory() as tmp:
+            work = str(Path(tmp) / 'fresh-work')
+            argv = ['doctor', '--target', 'android', '--work', work]
+            env = {'PATH': '/usr/bin:/bin', 'ANDROID_HOME': '',
+                   'ANDROID_SDK_ROOT': '', 'JAVA_HOME': ''}
+            with patch.dict(os.environ, env, clear=True), \
+                 patch.object(toolchain, '_common_jdk_dirs', return_value=[]), \
+                 patch.object(toolchain, '_common_sdk_dirs', return_value=[]), \
+                 patch.object(toolchain, 'find_adb', return_value=None):
+                out, err = io.StringIO(), io.StringIO()
+                with redirect_stdout(out), redirect_stderr(err):
+                    with self.assertRaises(SystemExit) as ctx:
+                        build.main(argv)
+                self.assertEqual(ctx.exception.code, 1)
+                text = out.getvalue()
+                self.assertIn('MISS', text)
+                self.assertIn('one-command build fetches these automatically',
+                              text)
+                self.assertNotIn('Traceback', text + err.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()

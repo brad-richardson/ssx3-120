@@ -4638,6 +4638,20 @@ def check_tricky_cli(a, fail):
         fail('--tricky-from needs --tricky-iso for the disc check')
 
 
+def doctor_onecmd_hint(target):
+    """Friendly ending for a standalone `doctor` failure (builder-polish-1).
+
+    The MISS list itself is printed by doctor(); this is the clean closing
+    line that replaces the raw ValueError traceback. Only the android
+    target is auto-fetched by the one-command build.
+    """
+    if target == 'android':
+        return ('the one-command build fetches these automatically; run '
+                './build android --ssx3-iso <ISO> --work <DIR> '
+                '--accept-android-licenses')
+    return ''
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('step', choices=['doctor', 'prepare', 'mac', 'mac-libs', 'run', 'android', 'android-libs', 'stage', 'install', 'ios', 'ios-libs', 'tricky', 'vu0'])
@@ -4714,7 +4728,14 @@ def main(argv=None):
     actual_engine = subprocess.check_output(['git', '-C', str(ENGINE), 'rev-parse', 'HEAD'], text=True).strip()
     print('engine: ' + str(ENGINE) + ' @ ' + actual_engine)
     if a.step == 'doctor':
-        doctor(a)
+        try:
+            doctor(a)
+        except ValueError as error:
+            print(error, flush=True)
+            hint = doctor_onecmd_hint(getattr(a, 'target', None))
+            if hint:
+                print(hint, flush=True)
+            raise SystemExit(1)
         return
     if not supported_host():
         p.error('supported hosts: macOS Apple silicon, Linux x86_64/arm64; Windows users run Ubuntu in WSL2')
