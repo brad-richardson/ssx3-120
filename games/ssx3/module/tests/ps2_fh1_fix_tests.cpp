@@ -479,10 +479,20 @@ void register_ps2_fh1_fix_tests()
             }
             t.IsTrue(fix12BitName(16u) == nullptr, "fh12 names stop at bit 15");
             // Reverse direction, from the parser bodies in the source (full120
-            // slice 1: games/ssx3/module/src/fh1_fix_content.cpp): every name
-            // fixItem/fh12Item accepts must render under some bit.
-            std::ifstream file("games/ssx3/module/src/fh1_fix_content.cpp");
-            t.IsTrue(file.is_open(), "run the suite from the fork worktree root");
+            // slice 1: fh1_fix_content.cpp): every name fixItem/fh12Item
+            // accepts must render under some bit. The source is resolved
+            // relative to this test's own location (split-p1-prep-1: the
+            // module is product-owned, so the engine worktree root no longer
+            // carries it), with the old worktree-root spelling as fallback.
+            const std::string here = __FILE__;
+            const size_t slash = here.find_last_of("/\\");
+            const std::string sibling = (slash == std::string::npos)
+                ? "../src/fh1_fix_content.cpp"
+                : here.substr(0, slash + 1) + "../src/fh1_fix_content.cpp";
+            std::ifstream file(sibling);
+            if (!file.is_open())
+                file.open("games/ssx3/module/src/fh1_fix_content.cpp");
+            t.IsTrue(file.is_open(), "module source reachable from the test TU or the worktree root");
             if (!file.is_open())
                 return;
             std::ostringstream buffer;
