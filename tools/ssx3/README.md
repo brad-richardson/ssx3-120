@@ -71,6 +71,13 @@ python3 tools/ssx3/build.py run --work /path/to/private-build
 
 ## Linux and Windows (WSL2) hosts
 
+The one-command build fetches the toolchain for you (pinned JDK 17 plus
+the Android SDK/NDK into `WORK/toolchain`, SHA-256-verified) — start with
+the One command above. The host packages and manual SDK steps below are an
+optional/offline fallback for debugging and `--no-auto-download` runs
+only; do not apt-install a JDK or run `sdkmanager` by hand for a normal
+build.
+
 Use Ubuntu 24.04 with native Python, Git, CMake, Ninja, Clang, a C++ standard
 library and JDK 17. Windows users first install WSL2 Ubuntu, then run every
 command inside Ubuntu; keep the checkout and work directory on its Linux
@@ -99,7 +106,9 @@ prints failed checks and fixes and exits nonzero until prerequisites pass.
 `CC`/`CXX` override compiler selection; versioned Clang names such as
 `clang-18`/`clang++-18` are supported. Mac keeps its Homebrew LLVM preference.
 
-Install Google's Android command-line tools into an SDK directory, set
+**Optional/offline fallback** (debugging or `--no-auto-download` only) —
+skip this for a normal one-command build, which fetches the toolchain for
+you. Install Google's Android command-line tools into an SDK directory, set
 `ANDROID_HOME` and `JAVA_HOME` (JDK 17), and put the JDK's `bin` on `PATH`.
 Download the current Linux zip from the "Command line tools only" table on the
 [Android SDK downloads](https://developer.android.com/studio#command-tools)
@@ -205,7 +214,10 @@ the source census, not a promise that every diagnostic knob is supported.
 
 ## Android APK
 
-Use JDK 17, Android SDK 34, NDK 28.2.13676358 and CMake 3.22.1. Set
+The one-command build fetches the toolchain for you; the manual
+`ANDROID_HOME`/`JAVA_HOME` setup below is an optional/offline fallback for
+debugging and `--no-auto-download` runs. Use JDK 17, Android SDK 34, NDK
+28.2.13676358 and CMake 3.22.1. Set
 `ANDROID_HOME` and `JAVA_HOME` to your installs. EE output from `prepare` is
 shared with Android; no remote build host or PGO profile is needed. The default
 Android path builds the JNI support libraries from source, then the APK:

@@ -8,12 +8,18 @@ noted instead of repeated.
 
 ## Host setup
 
+The one-command build fetches the toolchain for you (pinned JDK 17 plus
+the Android SDK/NDK into `--work/toolchain`); manual JDK/SDK setup below
+is an optional/offline fallback for debugging and `--no-auto-download`
+runs only.
+
 Install the host toolchain **before** cloning (a clean machine has no git yet):
 
 - macOS: Xcode command-line tools (provides git),
   then `brew install cmake ninja llvm python pkg-config autoconf automake libtool bison`.
 - Linux (Ubuntu 24.04):
-  `sudo apt-get update && sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk`.
+  `sudo apt-get update && sudo apt-get install -y python3 git cmake ninja-build clang lld g++ pkg-config curl ca-certificates unzip zip make autoconf automake libtool bison flex openjdk-17-jdk`
+  (`openjdk-17-jdk` is fallback-only; the one-command build fetches JDK 17 itself).
   Windows users run all of this inside WSL2 Ubuntu, on its Linux
   filesystem (never `/mnt/c`).
 

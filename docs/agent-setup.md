@@ -21,7 +21,11 @@ says. Do not improvise toolchains, flags, or signing.
    Ubuntu 24.04 needs `sudo apt-get update && sudo apt-get install -y
    python3 git cmake ninja-build clang lld g++ pkg-config curl
    ca-certificates unzip zip make autoconf automake libtool bison flex
-   openjdk-17-jdk` (full lines in `tools/ssx3/README.md`). Then install
+   openjdk-17-jdk` (full lines in `tools/ssx3/README.md`; the one-command
+   build fetches the JDK/SDK toolchain for you, so the JDK package and any
+   manual `sdkmanager` steps are an optional/offline fallback for
+   `--no-auto-download`/debugging only — do not take the long way for a
+   normal build). Then install
    [`uv`](https://docs.astral.sh/uv/).
 4. **Checkout.** This repo needs its engine submodule: clone with
    `git clone --recurse-submodules https://github.com/brad-richardson/ssx3-120.git`, or recover with
