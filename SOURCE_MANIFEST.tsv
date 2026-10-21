@@ -215,7 +215,7 @@ games/ssx3/module/src/tricky_song.cpp	fork@18d291a7	games/ssx3/module/src/tricky
 games/ssx3/module/src/vis_native.cpp	fork@18d291a7	games/ssx3/module/src/vis_native.cpp	46a9791051dbb67f7cff800219c3755963e9b63fc98e2067b642dd29711c6330	29713	moved
 games/ssx3/module/src/widescreen_default.cpp	fork@18d291a7	games/ssx3/module/src/widescreen_default.cpp	5db8fa7705533b0f9b232d7c17c94157c451d72b220d7aa39297e3f8bdd971a7	2605	moved
 games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	47a298954740d4866987ddf82b298cc198eca0a0299ea940ff03c87c1fa6e3eb	25781	moved
-games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	f02a00476eadf37445b59110225182603341e76b316496a6f742a65089a218fc	44199	moved
+games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	307a9c734079d4a06ee7fd75be8c5db579db44fb7f1b93adc4e2e6e233f0c44e	45591	composition:split-p1-prep-1 REV1 test source-resolution fixups (source fork@18d291a7)
 games/ssx3/module/tests/ps2_fh1_flip_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_flip_tests.cpp	e3332dd400403b7ebde670731d22f9757d09b5c263bd2163c43326f8bb9154ce	8047	moved
 games/ssx3/module/tests/ps2_fh1_hooktable_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_hooktable_tests.cpp	36da88711c57fce35f7b85c3cd4a3a77b2a41bc4f4199e6aa0f8b78c1215abe2	15163	moved
 games/ssx3/module/tests/ps2_fh1_life2_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_life2_tests.cpp	541a257fe52bc7bbf29b32d26c3c7a272404e5a0cc096d4d6e6efea4def02d0f	4258	moved
