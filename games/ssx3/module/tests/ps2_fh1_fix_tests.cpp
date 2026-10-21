@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <regex>
@@ -481,18 +482,31 @@ void register_ps2_fh1_fix_tests()
             // Reverse direction, from the parser bodies in the source (full120
             // slice 1: fh1_fix_content.cpp): every name fixItem/fh12Item
             // accepts must render under some bit. The source is resolved
+            // from PS2X_TEST_MODULE_SRC_DIR when the gate exports it (the
+            // composed gate verifies the product worktree clean at the
+            // archived SHA, so its files are exactly what was built; the
+            // pool product archive path is volatile across entries and the
+            // -ffile-prefix-map collides with its .src-product spelling, so
+            // neither the archive nor __FILE__ is stable there), else
             // relative to this test's own location (split-p1-prep-1: the
             // module is product-owned, so the engine worktree root no longer
             // carries it), with the old worktree-root spelling as fallback.
-            const std::string here = __FILE__;
-            const size_t slash = here.find_last_of("/\\");
-            const std::string sibling = (slash == std::string::npos)
-                ? "../src/fh1_fix_content.cpp"
-                : here.substr(0, slash + 1) + "../src/fh1_fix_content.cpp";
-            std::ifstream file(sibling);
+            std::ifstream file;
+            if (const char *envDir = std::getenv("PS2X_TEST_MODULE_SRC_DIR"))
+                if (*envDir)
+                    file.open(std::string(envDir) + "/src/fh1_fix_content.cpp");
+            if (!file.is_open())
+            {
+                const std::string here = __FILE__;
+                const size_t slash = here.find_last_of("/\\");
+                const std::string sibling = (slash == std::string::npos)
+                    ? "../src/fh1_fix_content.cpp"
+                    : here.substr(0, slash + 1) + "../src/fh1_fix_content.cpp";
+                file.open(sibling);
+            }
             if (!file.is_open())
                 file.open("games/ssx3/module/src/fh1_fix_content.cpp");
-            t.IsTrue(file.is_open(), "module source reachable from the test TU or the worktree root");
+            t.IsTrue(file.is_open(), "module source reachable from the suite env, the test TU or the worktree root");
             if (!file.is_open())
                 return;
             std::ostringstream buffer;
