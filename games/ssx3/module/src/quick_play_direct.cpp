@@ -165,6 +165,16 @@ void mainHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
             state.stage!=Stage::Failed) {
             c->pc=getRegU32(c,31); return;
         }
+        // qp-freeze-1: the stock entry parks forever when the lobby never
+        // answers (silent SYN drop: no reply, no error, guest waits on
+        // @dir). Probe reachability first, bounded, on this game thread;
+        // refuse flat on Main with the player copy instead of starting a
+        // session that can never complete. A re-tap retries the probe.
+        if (const char *unreachable = ps2_net::qpProbeLobby(8000u)) {
+            log(r,"lobby-unavailable");
+            ps2x::ui::toast(unreachable, 8.0f);
+            c->pc=getRegU32(c,31); return;
+        }
         state={}; state.menu=menu; state.ui=rd(ram,menu+0x10);
         state.tap=tick(r); state.injections=ps2_net::qpSyntheticPresses();
         state.started=std::chrono::steady_clock::now();

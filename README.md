@@ -63,7 +63,7 @@ See [docs/known-issues.md](docs/known-issues.md) for what is still rough.
 
 ## Online Quick Play (Alpha)
 
-The main menu has a "Quick Play (Alpha)" row that goes straight to Quick Matchup: match + UDP relay, no direct peer IPs. The default server is `ssx.bradr.dev` (single definition: `presets/online.env`).
+The main menu has an "Online (Alpha)" row that goes straight to Quick Matchup: match + UDP relay, no direct peer IPs. The default server is `ssx.bradr.dev` (single definition: `presets/online.env`).
 Quick Play needs another player searching at the same time — there is no bot fallback. To play offline, just don't pick Quick Play in the menu.
 
 ## Known issues
