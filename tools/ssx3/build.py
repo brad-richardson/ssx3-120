@@ -1230,6 +1230,7 @@ def android(a):
         '-Dorg.gradle.jvmargs=-Xmx%dg' % heap,
         '-Pps2xEngineCMakeLists=' + str(ENGINE / 'CMakeLists.txt'),
         '-Pps2xGameCodegenDir=' + str(a.work / 'codegen'),
+        '-Pps2xGameModuleDir=' + str(ROOT / 'games/ssx3/module'),
         '-Pps2xJniLibsDir=' + str(jnilibs), '-Pps2xPublicNoticesDir=' + str(notices_dir),
         '-Pps2xVu0RecompDir=' + resolve_vu0_stage(a),
         '-Pps2xGamePch=ON',

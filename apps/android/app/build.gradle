@@ -4,6 +4,9 @@ plugins {
 
 // Override with: gradlew assembleRelease -Pps2xBootElf=/absolute/path/on/device.elf
 def ps2xGameCodegenDir = project.findProperty('ps2xGameCodegenDir') ?: ''
+// split-p1-prep-1: product-owned game module (default: this checkout's copy;
+// build.py always passes the absolute -Pps2xGameModuleDir explicitly).
+def ps2xGameModuleDir = project.findProperty('ps2xGameModuleDir') ?: file('../../../games/ssx3/module').absolutePath
 def ps2xJobs = (project.findProperty('ps2xJobs') ?: '4').toString().toInteger()
 if (ps2xJobs < 1 || ps2xJobs > 16) {
     throw new GradleException('ps2xJobs must be 1..16')
@@ -142,6 +145,7 @@ android {
                         "-DPS2X_THINLTO_CACHE_DIR=${ps2xThinLtoCacheDir}",
                         "-DPS2X_DEFAULT_BOOT_ELF=${ps2xBootElf}",
                         "-DPS2X_GAME_CODEGEN_DIR=${ps2xGameCodegenDir}",
+                        "-DPS2X_GAME_MODULE_DIR=${ps2xGameModuleDir}",
                         "-DPS2X_PREBUILT_DIR=${ps2xPrebuiltDir}",
                         "-DPS2X_VU0_RECOMP_DIR=${ps2xVu0RecompDir}",
                         "-DPS2X_VU1_FMAC_SIMD=${ps2xVu1FmacSimd}",
