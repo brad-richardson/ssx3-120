@@ -1292,5 +1292,102 @@ class TrickyAudioSummaryNamesMissingTest(unittest.TestCase):
         self.assertIn('found', why)
 
 
+class BuilderPolishMessagesTest(unittest.TestCase):
+    """builder-polish-1 item 4: Metal line, iOS warning, /mnt/c warning."""
+
+    def setUp(self):
+        build._WSL_MNT_WARNED = False
+
+    def tearDown(self):
+        build._WSL_MNT_WARNED = False
+
+    def test_metal_fix_names_exact_component(self):
+        fix = build.metal_toolchain_fix('metallib')
+        self.assertIn('xcodebuild -downloadComponent MetalToolchain', fix)
+        self.assertIn('xcodebuild -downloadComponent MetalToolchain',
+                      build.metal_toolchain_fix('metal'))
+
+    def test_doctor_ios_metal_fix_is_exact(self):
+        seen = []
+        args = types.SimpleNamespace(team=None, device=None, install=False)
+
+        def fake_probe(cmd):
+            if cmd[:2] == ['xcrun', '--find'] and cmd[2] in ('metal', 'metallib'):
+                return False, 'missing'
+            return True, 'ok'
+
+        with patch.object(build, 'probe', side_effect=fake_probe):
+            build.doctor_ios(args, lambda *row: seen.append(row))
+        fixes = {label: fix for label, _ok, _detail, fix in seen
+                 if label.startswith('Xcode')}
+        self.assertIn('xcodebuild -downloadComponent MetalToolchain',
+                      fixes['Xcode metallib'])
+        self.assertIn('xcodebuild -downloadComponent MetalToolchain',
+                      fixes['Xcode metal'])
+
+    def test_ios_dry_run_prints_no_uninstall_warning(self):
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            args = types.SimpleNamespace(
+                work=Path(tmp) / 'work', team='ABCDE12345', bundle_id=None,
+                device=None, install=False, dry_run=True, tricky_iso=None,
+                no_pgo=True, pgo_profile=None, om1_stage=None, app_label=None,
+                app_id=build.PUBLIC_APP_ID, dev=False)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                build.ios(args)
+            self.assertIn('never uninstall the app', out.getvalue())
+            self.assertIn('deletes your saves', out.getvalue())
+            self.assertIn('rebuilding upgrades in place', out.getvalue())
+
+    def test_ios_install_prints_no_uninstall_warning(self):
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / 'work'
+            app = work / 'ios-stage' / 'test.app'
+            app.mkdir(parents=True)
+            args = types.SimpleNamespace(work=work, device=None)
+            out = io.StringIO()
+            with patch.object(build, 'resolve_device', return_value='UDID'), \
+                 patch.object(build, 'run', return_value=None):
+                with redirect_stdout(out):
+                    build.ios_install(args)
+            self.assertIn('never uninstall the app', out.getvalue())
+            self.assertIn('rebuilding upgrades in place', out.getvalue())
+
+    def test_wsl_mnt_work_dir_warns(self):
+        import io
+        from contextlib import redirect_stdout
+        out = io.StringIO()
+        with redirect_stdout(out):
+            message = build.warn_wsl_mnt_path(Path('/mnt/c/ssx3-work'))
+        self.assertIn('/mnt/c', message)
+        self.assertIn('docs/android.md', message)
+        self.assertIn('/mnt/c', out.getvalue())
+
+    def test_wsl_mnt_repo_warns(self):
+        import io
+        from contextlib import redirect_stdout
+        with patch.object(build, 'ROOT', Path('/mnt/c/ssx3-120')):
+            with redirect_stdout(io.StringIO()):
+                message = build.warn_wsl_mnt_path(Path('/tmp/normal-work'))
+        self.assertIn('/mnt/c', message)
+        self.assertIn('docs/android.md', message)
+
+    def test_normal_paths_do_not_warn(self):
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                message = build.warn_wsl_mnt_path(Path(tmp) / 'work')
+            if Path(build.ROOT).as_posix().startswith('/mnt/c'):
+                self.skipTest('repo itself is under /mnt/c')
+            self.assertEqual(message, '')
+            self.assertEqual(out.getvalue(), '')
+
+
 if __name__ == '__main__':
     unittest.main()

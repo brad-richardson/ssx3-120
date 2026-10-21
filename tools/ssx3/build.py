@@ -190,9 +190,47 @@ def ndk_root(explicit=None):
     return sdk / 'ndk' / NDK_VERSION if sdk else None
 
 
+def metal_toolchain_fix(tool):
+    """Fix line for a missing Xcode Metal tool (builder-polish-1).
+
+    metal/metallib name the exact download component; clang keeps the
+    generic Xcode install line.
+    """
+    if tool in ('metal', 'metallib'):
+        return ('run `xcodebuild -downloadComponent MetalToolchain` once '
+                '(installs the missing Metal toolchain; install Xcode first '
+                'if xcrun itself is missing)')
+    return 'install Xcode and its Metal toolchain'
+
+
+_WSL_MNT_WARNED = False
+
+
+def warn_wsl_mnt_path(work):
+    """Warn when the work dir or repo sits under /mnt/c on WSL (builder-polish-1).
+
+    Slow + permission issues; the checkout and work dir belong on the
+    Linux filesystem (see docs/android.md). Prints once per process;
+    returns the warning text when warned, else ''.
+    """
+    global _WSL_MNT_WARNED
+    if _WSL_MNT_WARNED:
+        return ''
+    candidates = [str(work) if work is not None else '', str(ROOT)]
+    if any(p == '/mnt/c' or p.startswith('/mnt/c/') for p in candidates):
+        _WSL_MNT_WARNED = True
+        message = ('warning: work dir or repo is under /mnt/c on WSL '
+                   '(slow + permission issues); keep the checkout and work '
+                   'dir on the Linux filesystem - see docs/android.md')
+        print(message, flush=True)
+        return message
+    return ''
+
+
 def doctor(a):
     """Check actual executability, including translated SDK tools on Linux arm64."""
     import toolchain
+    warn_wsl_mnt_path(getattr(a, 'work', None))
     failures = []
 
     def check(label, ok, detail, fix):
@@ -227,7 +265,7 @@ def doctor(a):
               'mac/mac-libs/run require macOS Apple silicon; select --target android on Linux')
         for tool in ('clang', 'metal', 'metallib'):
             ok, detail = probe(['xcrun', '--find', tool])
-            check('Xcode ' + tool, ok, detail, 'install Xcode and its Metal toolchain')
+            check('Xcode ' + tool, ok, detail, metal_toolchain_fix(tool))
         ok, detail = probe(['brew', '--prefix'])
         check('Homebrew', ok, detail, 'install Homebrew and the dependencies in tools/ssx3/README.md')
     elif a.target == 'ios':
@@ -1697,7 +1735,7 @@ def doctor_ios(a, check):
     """iOS doctor checks. check(label, ok, detail, fix) mirrors doctor()."""
     for tool in ('clang', 'metal', 'metallib'):
         ok, detail = probe(['xcrun', '--find', tool])
-        check('Xcode ' + tool, ok, detail, 'install Xcode and its Metal toolchain')
+        check('Xcode ' + tool, ok, detail, metal_toolchain_fix(tool))
     ok, detail = probe(['cmake', '--version'])
     check('cmake', ok, detail.splitlines()[0] if detail else 'missing',
           'install CMake (brew install cmake)')
@@ -2761,9 +2799,14 @@ def ios_release_flags(pgo_data):
     return flags
 
 
+IOS_NO_UNINSTALL_WARNING = ('never uninstall the app: it deletes your saves; '
+                                'rebuilding upgrades in place')
+
+
 def ios(a):
     team = check_team(a)
     bundle_id = check_bundle_id(getattr(a, 'bundle_id', None) or default_bundle_id(team))
+    print(IOS_NO_UNINSTALL_WARNING, flush=True)
     if a.dry_run:
         print('Would build the iOS app (no Xcode, no device touched):')
         print('  team ' + team + ', bundle id ' + bundle_id + ', app label ' + resolve_app_label(a))
@@ -2922,6 +2965,7 @@ def ios_install(a):
     if len(apps) != 1:
         raise ValueError('ios install needs exactly one staged app in '
                          + str(a.work / 'ios-stage') + '; run ios first')
+    print(IOS_NO_UNINSTALL_WARNING, flush=True)
     udid = resolve_device(getattr(a, 'device', None), for_install=True)
     # Plain install only: devicectl install never uninstalls, so the app's
     # Documents (cards, saves, settings) survive every upgrade.
@@ -2945,6 +2989,7 @@ def ios_onecmd(a):
     a.work = a.work.resolve()
     if a.work == ROOT or ROOT in a.work.parents:
         raise ValueError('--work must be outside the source checkout')
+    warn_wsl_mnt_path(a.work)
     check_team(a)
     a.target = 'ios'
     if not a.ssx3_iso:
@@ -4549,6 +4594,7 @@ def android_onecmd(a):
     a.work = a.work.resolve()
     if a.work == ROOT or ROOT in a.work.parents:
         raise ValueError('--work must be outside the source checkout')
+    warn_wsl_mnt_path(a.work)
     # F03: create WORK before any step writes into it.
     a.work.mkdir(parents=True, exist_ok=True)
     if not a.ssx3_iso:
@@ -4761,6 +4807,7 @@ def main(argv=None):
     a.work = a.work.resolve()
     if a.work == ROOT or ROOT in a.work.parents:
         p.error('--work must be outside the source checkout')
+    warn_wsl_mnt_path(a.work)
     # link-mem-1: resolve --jobs before any step uses it (None = default:
     # 2 on small hosts so the compile fits, else 8; explicit always wins).
     _ram = host_memory_bytes()
