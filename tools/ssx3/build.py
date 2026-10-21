@@ -4463,9 +4463,20 @@ def _tricky_audio_summary(a):
     if req == 'off':
         return mode, 'requested --tricky-audio=off; SSX 3 audio fallback'
     if mode == 'on':
-        return mode, 'local ffmpeg + vgmstream found'
-    return mode, ('auto resolved off (local ffmpeg/vgmstream missing); '
-                  'SSX 3 audio fallback')
+        return mode, 'local ffmpeg + vgmstream-cli found'
+    toolchain = tricky_current_toolchain(a)
+    missing = []
+    found = []
+    if (toolchain or {}).get('ffmpeg') is None:
+        missing.append('ffmpeg missing')
+    else:
+        found.append('ffmpeg found')
+    if (toolchain or {}).get('vgmstream') is None:
+        missing.append('vgmstream-cli missing')
+    else:
+        found.append('vgmstream-cli found')
+    detail = '; '.join(missing + found) if missing else 'ffmpeg + vgmstream-cli missing'
+    return mode, ('auto resolved off (%s; SSX 3 audio fallback)' % detail)
 
 
 def _dry_step_status(work, probe):

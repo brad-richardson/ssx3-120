@@ -1251,5 +1251,46 @@ class DoctorFriendlyEndingTest(unittest.TestCase):
                 self.assertNotIn('Traceback', text + err.getvalue())
 
 
+class TrickyAudioSummaryNamesMissingTest(unittest.TestCase):
+    """builder-polish-1 item 2: name the actually-missing audio tool(s)."""
+
+    def summary(self, toolchain, mode='off', req='auto'):
+        args = onecmd_args(None, tricky_audio=req)
+        with patch.object(build, 'tricky_resolve_audio', return_value=mode), \
+             patch.object(build, 'tricky_current_toolchain',
+                          return_value=toolchain):
+            return build._tricky_audio_summary(args)
+
+    def test_vgmstream_missing_names_it(self):
+        mode, why = self.summary(
+            {'ffmpeg': {'version': 'v', 'sha256': 's'}, 'vgmstream': None})
+        self.assertEqual(mode, 'off')
+        self.assertIn('vgmstream-cli missing', why)
+        self.assertIn('ffmpeg found', why)
+        self.assertNotIn('local ffmpeg/vgmstream missing', why)
+
+    def test_ffmpeg_missing_names_it(self):
+        mode, why = self.summary(
+            {'ffmpeg': None, 'vgmstream': {'version': 'v', 'sha256': 's'}})
+        self.assertIn('ffmpeg missing', why)
+        self.assertIn('vgmstream-cli found', why)
+
+    def test_both_missing_names_both(self):
+        mode, why = self.summary({'ffmpeg': None, 'vgmstream': None})
+        self.assertIn('ffmpeg missing', why)
+        self.assertIn('vgmstream-cli missing', why)
+
+    def test_both_found_reports_on(self):
+        args = onecmd_args(None, tricky_audio='auto')
+        toolchain = {'ffmpeg': {'version': 'v', 'sha256': 's'},
+                     'vgmstream': {'version': 'w', 'sha256': 't'}}
+        with patch.object(build, 'tricky_resolve_audio', return_value='on'), \
+             patch.object(build, 'tricky_current_toolchain',
+                          return_value=toolchain):
+            mode, why = build._tricky_audio_summary(args)
+        self.assertEqual(mode, 'on')
+        self.assertIn('found', why)
+
+
 if __name__ == '__main__':
     unittest.main()
