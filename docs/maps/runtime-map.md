@@ -1,0 +1,102 @@
+# Map — engine/runtime layout and how this repo composes it
+
+The game module lives here, in `games/ssx3/`; the engine is a pinned
+submodule (`deps/PS2Recomp`, see `deps.lock.json`). The frozen-ABI rule:
+nothing under the engine's `ps2xRuntime/src/runner/` may differ from the
+upstream base recorded in `deps.lock.json` (`runner_invariant_base`);
+generated guest code lives outside the repo via `PS2X_GAME_CODEGEN_DIR`.
+
+## 1. Engine repo layout
+
+`deps/PS2Recomp` tree:
+
+| Dir | Role |
+| --- | --- |
+| `ps2xRuntime/` | the runner runtime (this map) |
+| `ps2xRecomp/` | EE recompiler/generator |
+| `ps2xAnalyzer/`, `ps2xStudio/` | analyzer + GUI tooling |
+| `ps2xIOP/` | IOP HLE |
+| `games/ssx3/` | SSX 3 config (`ssx3.toml`) + game module (mirrored here) |
+| `ps2xTest/` | host test binary + fixtures |
+| `android/`, `vita/` | platform shells |
+| `tools/` | offline VU1 stage (`offline-core`) |
+
+Inside `ps2xRuntime`: `src/` = `main.cpp` + `lib/` (all `.cpp`) +
+`runner/register_functions.cpp`; `include/` = public headers + `include/runtime/`.
+
+## 2. ps2xRuntime subsystems
+
+| Subsystem | Files |
+| --- | --- |
+| Entry / startup | `src/main.cpp` — reads `PS2X_BOOT_ELF`, `PS2X_CD_IMAGE`, `PS2X_MC_ROOT` |
+| Core runtime | `src/lib/ps2_runtime.cpp` (`include/ps2_runtime.h`); HLE pools |
+| Scheduler | `src/lib/Kernel/EeScheduler.cpp` + `include/runtime/ee_scheduler.h` et al |
+| HLE / IOP | `src/lib/ps2_iop_host.cpp` (`include/ps2_stubs.h`, `ps2_syscalls.h`) |
+| GS / GE1 | `src/lib/gs/` (frontend, external GE1 backend, CPU backend, replay core, worker, GIF arbiter) |
+| VU / OM1 | `src/lib/vu/` (VU core, VU1, VU0, microVU, native world); offline VU1 images in `tools/ssx3/offline-core/` |
+| Net | `src/lib/ps2_net_*.cpp` (DirtySock, link/nolink, netsync, stock120) |
+| Settings overlay | `include/ps2_settings_overlay.h` (in-game panel: hold Select + Start) |
+| Savestate | `src/lib/ps2_savestate.cpp` + section registry |
+| Env layering | `include/ps2_env_file.h` (`ps2x.env` parser/layering) |
+| Knobs | `include/ps2_knobs.h` (curated dump list, per-platform compiled defaults) |
+
+## 3. games/ssx3/module
+
+A static library attached to the runner/test binary behind the plug-in point
+`include/runtime/game_module.h` (the runtime never includes module headers);
+`-DPS2X_GAME_MODULE=none` builds generic. Source under
+`games/ssx3/module/src/`:
+
+| Family | File | Knob |
+| --- | --- | --- |
+| HLE IOP | `hle_iop.cpp` | none (SSX 3 always) |
+| copied payload + syscall hooks | `copied_payload.cpp` | none |
+| input2 | `input2.cpp` | FIX-gated at apply |
+| **input marker** + pad hook | `input_marker.cpp` | `PS2X_INPUT_MARKER` |
+| widescreen default + presentation hooks | `widescreen_default.cpp` | `PS2X_WIDESCREEN` |
+| VU0 visibility + dispatch | `vis_native.cpp` | `PS2X_SSX3_VIS_NATIVE` |
+| SIF handshake | `sif_handshake.cpp` | none |
+| SND progress hooks / savestate | `src/*` | none |
+| **Tricky song** mix provider | `tricky_song.cpp` | output-only, default silent |
+| Tricky savestate + patch-grow | `tricky_savestate.cpp` | `trickygems` section |
+| Tricky menu frontend | `tricky_menu.cpp` | `PS2X_SSX3_TRICKY_MENU` |
+| stock-meter suppression | `stock_meter.cpp` | `PS2X_SSX3_TRICKY_HUD` |
+| draw-distance (LOD) scaling | `lod_scale.cpp` | `PS2X_SSX3_LOD_SCALE` (+ `_TRICKY_`) |
+| Tricky-layer VBlank hook | `tricky_layer_tick.cpp` | none (byte-identical forwarder) |
+| **FH1/full120** FIX content | `fh1_fix_content.cpp` | none (env parse stays generic) |
+| FH1 clock policy | `fh1_clock.cpp` | none |
+| FH1 dispatch (cold+hot) | `fh1_dispatch.cpp` | `HOOKS=chain` keeps exact path |
+| FH1 tap-target lists | `fh1_taps.cpp` | taps stay env-driven |
+
+The runtime side holds the full-120 contract (`ps2_fh1_full120.h`: rate
+A+0x10 60→120, dt A+0x14 1/60→1/120) and the Tricky list/gems/banner policy
+headers. Register every new runtime knob with class + owner; remove
+diagnostic knobs with their work item (`tests/det/knob_registry.tsv` +
+validator `tests/det/knob_registry.py`).
+
+## 4. Where the knobs are read
+
+- `ps2_knobs.h` owns the curated dump list, the Android/iOS/Mac compiled
+  defaults, and the literal-default appliers. `PS2X_PROFILE=reference`
+  disables every compiled default (exact knob-off path).
+- One `[knobs] platform=… K=V …` line per boot.
+- **Knob registry:** `tests/det/knob_registry.tsv` with the validator
+  `tests/det/knob_registry.py`; classes are play-default, active-work,
+  gate, diag, dead.
+
+## 5. How this repo composes the engine
+
+- **Submodule:** `deps/PS2Recomp` (see `.gitmodules`); `deps.lock.json`
+  records `engine.pin`, `runner_invariant_base` and `upstream_base`.
+- **Presets** (`presets/`): `ps2x.env` = Android base, `full120.env` = the
+  120 layer (`PS2X_SSX3_FULL120=events` + FIX list), `online.env` = Quick
+  Play lobby (`PS2X_NET=1`, `PS2X_NET_SERVER`), `ios.env` = iOS base (plus
+  `full120-ios.env`). `tricky.env` is generated by the builder.
+- **Builder** (`tools/ssx3/build.py`): steps `doctor, prepare, mac,
+  mac-libs, run, android, android-libs, stage, install, ios, ios-libs,
+  tricky, vu0`. One-command Android: `build.py android --ssx3-iso …` runs
+  doctor → prepare → tricky → android-libs → android → install. `prepare`
+  pins the historical EE generator; `vu0` rebuilds offline VU0 images from
+  the disc; generated sources land in `--work`, never the repo.
+- **Guard headers:** `ps2_codegen_abi.h`, `ps2_prebuilt_abi_guard.cpp`,
+  `ps2_build_id.cpp` (ABI/build-identity checks).

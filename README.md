@@ -75,6 +75,20 @@ check [docs/known-issues.md](docs/known-issues.md) for current Alpha rough edges
 
 Contributing / using a coding agent: see [AGENTS.md](AGENTS.md).
 
+## Research
+
+How the 120 Hz mode and the Tricky conversion work, for contributors and
+the curious: [Verified facts](docs/facts.md) (mechanisms and gotchas),
+[Full-120 conversion](docs/research/full120-conversion.md) (the fixed-1/60
+mechanism and the FIX groups), [Full-120 census](docs/research/full120-census.md)
++ [`full120-census.tsv`](docs/research/full120-census.tsv) (every reader site
+and its status), [Tricky host review](docs/research/tricky-host-review.md)
+(how Tricky courses ride on SSX 3 carriers). Engine/runtime layout:
+[runtime map](docs/maps/runtime-map.md), [Tricky pipeline](docs/maps/tricky-pipeline.md),
+[disc layout](docs/maps/disc-layout.md). Timing background:
+[SSX 3 engine timing](docs/research/ssx3-engine-timing.md),
+[GameCube learnings](docs/research/gamecube-learnings.md).
+
 ## Legal
 
 You supply the discs: USA SSX 3 (`SLUS_207.72`), plus USA SSX Tricky for
