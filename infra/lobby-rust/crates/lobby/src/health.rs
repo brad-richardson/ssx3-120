@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! Minimal HTTP health endpoint for external monitors (UptimeRobot
 //! free tier does HEAD only, so the status code is the whole signal).
 //!

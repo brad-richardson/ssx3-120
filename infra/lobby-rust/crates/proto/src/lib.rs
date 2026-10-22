@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! SSX 3 lobby wire protocol: framing plus phase-1 message types.
 //!
 //! Clean-room implementation from `docs/research/ssx3-online-protocol.md`

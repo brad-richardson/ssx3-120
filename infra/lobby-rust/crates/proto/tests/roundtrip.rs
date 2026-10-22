@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! Round-trip property tests + decoder fuzz (no panics on any input).
 
 use proptest::prelude::*;

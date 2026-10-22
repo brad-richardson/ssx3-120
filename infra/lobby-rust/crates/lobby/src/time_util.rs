@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! `WHEN`/`SINCE`/`LAST` timestamps: `2026.10.13 02:13:09`
 //! (server wall clock, spec §1.2). Hand-rolled civil date (no chrono).
 

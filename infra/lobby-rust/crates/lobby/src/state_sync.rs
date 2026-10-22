@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! Quick Play state-sync endpoint for 120Hz netplay (online-v0-1; the
 //! STATE relay and finish ordering come from netsync-spike-1 Part 3).
 //!

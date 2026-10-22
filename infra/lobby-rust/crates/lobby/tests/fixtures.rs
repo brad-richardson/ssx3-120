@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! Fixture replays: every PRO1 capture message (our own wire captures,
 //! IPs remapped, PASS scrubbed) must survive our codec round-trip, and
 //! the key shapes the server implements must be present.

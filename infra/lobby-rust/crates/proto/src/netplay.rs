@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! SSXNP v2 netplay codec: ordered-relay wire contract for server-hosted lockstep.
 //!
 //! Implements `docs/research/np-referee-design-2026-10-15.md` §3 (wire contract)

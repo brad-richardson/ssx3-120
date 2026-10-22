@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! ssx3-lobby: quick-play matchmaker plus optional UDP relay.
 //!
 //! Clean-room phase-1 server from `docs/research/ssx3-online-protocol.md`

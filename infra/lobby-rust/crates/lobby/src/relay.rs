@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 //! Token-bound, per-role UDP relay. The challenge proves that a sender can
 //! receive at its claimed endpoint before any game datagram is forwarded.
 

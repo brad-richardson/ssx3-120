@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Deploy the static lobby binary + systemd unit to a host (e.g. Oracle).
 # Does NOT pick a host by itself: pass user@host explicitly. The Oracle
 # step runs with the orchestrator; do not point this at anything else.

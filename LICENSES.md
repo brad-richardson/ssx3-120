@@ -5,9 +5,8 @@ below are additionally available under the MIT licence (`LICENSE-MIT`):
 they are Brad-authored data/config files that carry no SPDX header.
 Source files carrying `SPDX-License-Identifier: GPL-3.0-or-later OR MIT`
 are dual-licensed the same way. Everything else stays GPL-3.0-only.
-(`infra/lobby-rust/` in the product repo is excluded from the dual
-licence for now; `local/research/license-audit-1/REPORT.md` in the
-lab repo records the authorship audit.)
+(`local/research/license-audit-1/REPORT.md` in the lab repo records the
+authorship audit; `infra/lobby-rust/` was added after it, Brad-authored.)
 
 | File |
 | --- |
@@ -163,3 +162,20 @@ lab repo records the authorship audit.)
 | `tools/ssx3/tricky/resetvol-plans.json` |
 | `tools/ssx3/turnip.json` |
 | `tools/ssx3/vu0-image-manifest.json` |
+| `infra/lobby-rust/.gitignore` |
+| `infra/lobby-rust/Cargo.toml` |
+| `infra/lobby-rust/Dockerfile` |
+| `infra/lobby-rust/README.md` |
+| `infra/lobby-rust/crates/lobby/Cargo.toml` |
+| `infra/lobby-rust/crates/lobby/tests/data/buddy.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/failures-quit.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/failures.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/login.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/probe-bogus-auth.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/quik-ses.json` |
+| `infra/lobby-rust/crates/lobby/tests/data/rank.json` |
+| `infra/lobby-rust/crates/proto/Cargo.toml` |
+| `infra/lobby-rust/lobby-compose.yaml` |
+| `infra/lobby-rust/lobby.example.toml` |
+| `infra/lobby-rust/lobby.toml` |
+| `infra/lobby-rust/ssx3-lobby.service` |
