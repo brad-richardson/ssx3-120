@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "ps2_hle_pools.h"
 #include "ps2_runtime.h"
 #include "runtime/ee_scheduler.h"
 #include "runtime/ps2_memory.h"
@@ -54,8 +55,11 @@ inline constexpr uint64_t kMaxLines = 60000ull;
 inline constexpr uint64_t kTickCycles = 3145728ull; // 294,912,000 * 384 / 36,000
 inline constexpr uint32_t kPcmFramesPerTick = 384u;
 inline constexpr uint32_t kPcmBytesPerTick = kPcmFramesPerTick * 2u * sizeof(int16_t);
-inline constexpr uint32_t kPacketAddr = 0x01F31000u;   // after the runtime's HLE pools
-inline constexpr uint32_t kDonePacketBase = 0x01F31100u; // ring of 16 x 0x20
+// The SND packet (0x100) + done ring (16 x 0x20) sit outside the game heap:
+// 0x01F31000 with PS2X_HLE_POOLS_LOW off, the low band (0xB3000) with it on
+// (tk-alaska-opus-1: nothing runtime-owned above the raised heap ceiling).
+inline uint32_t packetAddr() { return ps2_hle_pools::sndPacketBase(); }
+inline uint32_t donePacketBase() { return ps2_hle_pools::sndPacketBase() + 0x100u; }
 inline constexpr uint32_t kTagbufIopAddr = 0x0000B3C4u; // SNDDRV's own value (state+0xE0)
 inline constexpr uint32_t kStatusBytes = 0x240u;
 inline constexpr uint32_t kSndCodeLo = 0x003B0000u;     // EE SND library range (AU1)
@@ -306,9 +310,9 @@ inline bool onSoundTick(uint8_t *rdram, uint64_t guestCycle, GuestInvocation *ou
         for (uint32_t o = 0x1C0u; o < 0x23Cu; o += 8u)
             wr32(rdram, s.statusAddr + o, 0xFFFFFFFFu);
     }
-    writePacket(rdram, kPacketAddr, 0u, kTagbufIopAddr);
+    writePacket(rdram, packetAddr(), 0u, kTagbufIopAddr);
     if (out != nullptr)
-        *out = makeHandlerCall(s, kPacketAddr);
+        *out = makeHandlerCall(s, packetAddr());
     ++s.ticks;
     if (s.ticks <= 8u || (s.ticks % 94u) == 0u)
         logLocked(s, "tick cycle=%llu ticks=%llu counter=0x%x cid0=%llu dmq=%llu done=%llu setdma=%llu tagbufs=%llu underruns=%llu overflows=%llu",
@@ -423,7 +427,7 @@ inline bool onSendCmd(uint8_t *rdram, uint64_t vsync, uint32_t ra, uint32_t cid,
     }
     if (id != 0u && s.handler != 0u)
     {
-        const uint32_t at = kDonePacketBase + 0x20u * (s.doneRing++ & 15u);
+        const uint32_t at = donePacketBase() + 0x20u * (s.doneRing++ & 15u);
         writePacket(rdram, at, 2u, id);
         if (out != nullptr)
             *out = makeHandlerCall(s, at);
