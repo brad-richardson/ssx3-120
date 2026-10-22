@@ -221,7 +221,7 @@
     }
   },
   "archive_identity": {
-    "contract": "ae6c4f311fc6d1893e690f9863f308ec0227590a9f4b0516ca4ef29d5ca0b623",
+    "contract": "78d7c1693f6819254df04c64ee81e53f3af5d0febdd1119906b7f93a513b43ac",
     "note": "engine-pinned support-bundle stamp; product composition recorded here, not in the stamp"
   },
   "inputs": {
