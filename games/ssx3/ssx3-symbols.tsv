@@ -861,6 +861,7 @@ address	kind	name	role	source	evidence	confidence
 0x32e100	code	fp_vector_store_kernel	straight-line FP/vector store kernel (16 branches/1366 insns)	labels.tsv:GT1 [codegen read] (NM1)	GT1 notes	inferred
 0x32f8b0	code	resume_entry_32f8b0	boot-proven indirect-call resume entry (ssx3.toml extra_function_starts) in sub_32f840	engine	deps/PS2Recomp/games/ssx3/ssx3.toml:236	inferred
 0x3303f0	code	cWorldSphTree_cWorldSphTree	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:516	prior map SYM1	decomp-unverified
+0x334888	code	query_hits_append	appends each sub-object's local hits (<= 0x40) at s7 of the caller's 0x80-B result buffer without checking the caller's capacity a3; overflow nulled 0x104e70's caller frame (JALR 0 at 0x104f1c); engine QCAP1 clamps s3 at the 0x334f5c call	engine	local/research/tk-alaska-opus-1/REPORT.md Task 8	verified
 0x335128	code	fp_vector_store_kernel_vu	FP/vector store kernel with VU-macro (insn mix)	labels.tsv:GT2 [codegen read] (NM1)	GT2 notes	inferred
 0x336850	code	contact_segment_helper	(?) contact helper: casts segment of per-frame-displacement length	nm1:TS1	prior candidates	inferred
 0x3378c0	code	contact_segment_helper	(?) contact helper: casts segment of per-frame-displacement length	nm1:TS1	prior candidates	inferred
