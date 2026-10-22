@@ -73,21 +73,23 @@ namespace
     // gate. (v1-v3 poked 0xb215fc, a guest-written shadow: the write
     // landed but HUD/expiry were unchanged.) The bonus path adds to this
     // same word, so any bump composes with a future gate revival.
-    // v5 sizing (+315 s -> 390 s initial): three rider lines (idle fall
-    // line, 6 s S-turn tuck, sparse-steer tuck) all crawl ~300-400
-    // ticks/% with NO bonus granted on this world (28%/38%/39% crossings
-    // all monotonic; the per-rider slot-word gate at 0x239854 never arms
-    // -- ridden-vs-converted path divergence per T3 M1.2 is the standing
-    // hypothesis, converter-lane follow-up). The measured full run needs
-    // ~256 s of racing; 390 s covers it + ~40% margin for late-race
-    // slowdown, with the bottom/results proof deciding. Armed only for
+    // v6 sizing (+925 s -> 1000 s initial): v5 (390 s) carried the
+    // weave-minus-slams line to 94% at ~71k ticks (35 MPH, clean ice)
+    // where the clock expired (DNF panel ~72k) -- the late course runs
+    // ~4k ticks/% (B3: 94% @62k -> 95% @66k), so the finish needs up to
+    // ~95k ticks. The countdown burns per presented frame, not per sim
+    // tick (observed 97-667 ticks per clock-s across legs: frozen while
+    // present-stalled, fastest on a free host), so 1000 s covers a 95k
+    // finish at the fastest observed burn (97) + ~10%; slower hosts only
+    // extend coverage. Trim once the v6 leg measures the finish tick.
+    // Armed only for
     // the Alaska Showoff DIRECT launch (donor ev6, type 1, rules 1);
     // fired once at/after tick 6900, past the guest's final total init
     // at race start (~6820; an early poke is clobbered). 4400-4600 guard
     // keeps a relocated word safe; stock and other cells never arm it,
     // and every accept re-inits the word, so no restore is needed.
     constexpr uint32_t kAlaskaAppHolder = 0x4a28a8u; // [gp-0x848]
-    constexpr int32_t kAlaskaBumpTicks = 18900;      // +315 s x 60 Hz
+    constexpr int32_t kAlaskaBumpTicks = 55500;      // +925 s x 60 Hz
     static bool sAlaskaClockBumpArmed = false;
     constexpr uint32_t kDirectFrame = 0x240u;
 
