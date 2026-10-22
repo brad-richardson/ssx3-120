@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "Ssx3Movie.h"
-
 #include "ps2_runtime.h"
-
+// Standard library: fixed-width ints, memcpy, log-line strings, buffers.
 #include <cstdint>
 #include <cstring>
 #include <string>

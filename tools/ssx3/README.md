@@ -383,7 +383,7 @@ helper only flushes every 30 seconds. PGO is optional.
 [iOS base preset](../../presets/ios.env) and [full120 layer](../../presets/full120-ios.env)
 export settings without a personal host/card path or automatic pad route.
 They require your own game inputs and offline VU1 stage. The handwritten
-[offline host machinery](offline-core/README.md) is included as source,
+[offline host machinery](../../third_party/offline-core/README.md) is included as source,
 separate from the external recorded assembly/tables. iOS has no JIT VU1;
 its OM1 assembly/tables are local game-derived outputs. The portable
 recording/generation flow for that stage is documented in

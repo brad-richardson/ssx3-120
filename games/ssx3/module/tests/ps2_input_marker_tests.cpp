@@ -1,7 +1,8 @@
-// split-input-1 #5: SSX 3 input marker (LIM1/LIM2) behavior. Moved verbatim
-// from ps2xTest/src/pad_input_tests.cpp (the three lim1 Runs) with private
-// copies of the pad-read helpers; the marker test hooks now come from
-// Ssx3InputMarker.h. Product suite only (the generic build has no module).
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
+// split-input-1 #5: SSX 3 input marker (LIM1/LIM2) behavior: the three lim1
+// Runs that used to live in ps2xTest/src/pad_input_tests.cpp, driven through
+// a file-local pad bench (Lim1PadBench below); the marker test hooks come
+// from Ssx3InputMarker.h. Product suite only (the generic build has no module).
 #include "MiniTest.h"
 #include "Ssx3InputMarker.h"
 #include "ps2_runtime.h"
@@ -9,6 +10,7 @@
 #include "runtime/ps2_memory.h"
 #include "Stubs/Pad.h"
 
+// Standard library: fixed-width ints, memcpy, file and string handling.
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -16,61 +18,95 @@
 #include <string>
 #include <vector>
 
-namespace
+namespace ps2_ssx3_lim1_bench
 {
-    constexpr uint32_t kPadDataAddr = 0x1000;
+// DualShock 2 digital button word, one bit per button. The pad reports a
+// button as held by CLEARING its bit, so "nothing held" reads 0xFFFF.
+struct Ds2
+{
+    static constexpr uint16_t select = 0x0001;
+    static constexpr uint16_t l3 = 0x0002;
+    static constexpr uint16_t r3 = 0x0004;
+    static constexpr uint16_t start = 0x0008;
+    static constexpr uint16_t dpadUp = 0x0010;
+    static constexpr uint16_t dpadRight = 0x0020;
+    static constexpr uint16_t dpadDown = 0x0040;
+    static constexpr uint16_t dpadLeft = 0x0080;
+    static constexpr uint16_t l2 = 0x0100;
+    static constexpr uint16_t r2 = 0x0200;
+    static constexpr uint16_t l1 = 0x0400;
+    static constexpr uint16_t r1 = 0x0800;
+    static constexpr uint16_t triangle = 0x1000;
+    static constexpr uint16_t circle = 0x2000;
+    static constexpr uint16_t cross = 0x4000;
+    static constexpr uint16_t square = 0x8000;
+};
 
-    constexpr uint16_t kPadBtnSelect = 1u << 0;
-    constexpr uint16_t kPadBtnL3 = 1u << 1;
-    constexpr uint16_t kPadBtnR3 = 1u << 2;
-    constexpr uint16_t kPadBtnStart = 1u << 3;
-    constexpr uint16_t kPadBtnUp = 1u << 4;
-    constexpr uint16_t kPadBtnRight = 1u << 5;
-    constexpr uint16_t kPadBtnDown = 1u << 6;
-    constexpr uint16_t kPadBtnLeft = 1u << 7;
-    constexpr uint16_t kPadBtnL2 = 1u << 8;
-    constexpr uint16_t kPadBtnR2 = 1u << 9;
-    constexpr uint16_t kPadBtnL1 = 1u << 10;
-    constexpr uint16_t kPadBtnR1 = 1u << 11;
-    constexpr uint16_t kPadBtnTriangle = 1u << 12;
-    constexpr uint16_t kPadBtnCircle = 1u << 13;
-    constexpr uint16_t kPadBtnCross = 1u << 14;
-    constexpr uint16_t kPadBtnSquare = 1u << 15;
+// One pad on port 0 / slot 0 with its own guest RAM and EE context. Calls
+// go straight into the pad stubs with the MIPS argument registers loaded by
+// hand (a0 = port, a1 = slot, a2 = guest buffer).
+struct Lim1PadBench
+{
+    static constexpr uint32_t kReadDst = 0x1000u;          // scePadRead output
+    static constexpr uint32_t kPortDma = kReadDst + 0x200u; // scePadPortOpen buffer
+    static constexpr uint8_t kStickRest = 0x80u;            // centred analog axis
 
-    void setRegU32(R5900Context &ctx, int reg, uint32_t value)
+    std::vector<uint8_t> ram = std::vector<uint8_t>(PS2_RAM_SIZE, 0u);
+    R5900Context cpu;
+
+    // GPR low 64 bits <- zero-extended word, high 64 bits cleared.
+    void loadArg(int gpr, uint32_t word)
     {
-        ctx.r[reg] = _mm_set_epi64x(0, static_cast<int64_t>(value));
+        cpu.r[gpr] = _mm_cvtsi64_si128(static_cast<int64_t>(word));
     }
 
-    void openPadPort(R5900Context &ctx, std::vector<uint8_t> &rdram, uint32_t port = 0, uint32_t slot = 0)
+    // scePadInit, then open port 0 / slot 0.
+    void powerOn()
     {
-        setRegU32(ctx, 4, port);
-        setRegU32(ctx, 5, slot);
-        setRegU32(ctx, 6, kPadDataAddr + 0x200u);
-        ps2_stubs::scePadPortOpen(rdram.data(), &ctx, nullptr);
+        ps2_stubs::scePadInit(ram.data(), &cpu, nullptr);
+        loadArg(4, 0u);
+        loadArg(5, 0u);
+        loadArg(6, kPortDma);
+        ps2_stubs::scePadPortOpen(ram.data(), &cpu, nullptr);
     }
 
-    void closePadPort(R5900Context &ctx, std::vector<uint8_t> &rdram, uint32_t port = 0, uint32_t slot = 0)
+    // Close port 0 / slot 0 (a2 is not an argument here and is left alone).
+    void powerOff()
     {
-        setRegU32(ctx, 4, port);
-        setRegU32(ctx, 5, slot);
-        ps2_stubs::scePadPortClose(rdram.data(), &ctx, nullptr);
+        loadArg(4, 0u);
+        loadArg(5, 0u);
+        ps2_stubs::scePadPortClose(ram.data(), &cpu, nullptr);
     }
 
-    void runPadRead(R5900Context &ctx, std::vector<uint8_t> &rdram)
+    // Script the next reads: this button word, both sticks at rest.
+    static void press(uint16_t word)
     {
-        setRegU32(ctx, 4, 0u);
-        setRegU32(ctx, 5, 0u);
-        setRegU32(ctx, 6, kPadDataAddr); // a2
-        ps2_stubs::scePadRead(rdram.data(), &ctx, nullptr);
+        ps2_stubs::setPadOverrideState(word, kStickRest, kStickRest, kStickRest, kStickRest);
     }
 
-    uint16_t readButtons(const std::vector<uint8_t> &rdram)
+    static void unscript() { ps2_stubs::clearPadOverrideState(); }
+
+    // One scePadRead of port 0 / slot 0 into kReadDst.
+    void poll()
     {
-        const uint8_t *data = rdram.data() + kPadDataAddr;
-        return static_cast<uint16_t>(data[2] | (data[3] << 8));
+        loadArg(4, 0u);
+        loadArg(5, 0u);
+        loadArg(6, kReadDst);
+        ps2_stubs::scePadRead(ram.data(), &cpu, nullptr);
     }
-}
+
+    // The button word the guest sees: bytes 2 (low) and 3 (high) of the read.
+    uint16_t guestButtons() const
+    {
+        const uint32_t lo = ram[kReadDst + 2u];
+        const uint32_t hi = ram[kReadDst + 3u];
+        return static_cast<uint16_t>(lo | (hi << 8u));
+    }
+};
+} // namespace ps2_ssx3_lim1_bench
+
+using ps2_ssx3_lim1_bench::Ds2;
+using ps2_ssx3_lim1_bench::Lim1PadBench;
 
 void register_ps2_input_marker_tests()
 {
@@ -83,13 +119,12 @@ void register_ps2_input_marker_tests()
             fs::remove_all(dir);
             const std::string recPath = (fs::temp_directory_path() / "lim1_padrec_test.txt").string();
             std::remove(recPath.c_str());
-            std::vector<uint8_t> rdram(PS2_RAM_SIZE, 0);
-            R5900Context ctx;
+            Lim1PadBench pad;
+            std::vector<uint8_t> &rdram = pad.ram; // the chord test seeds guest RAM directly
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            ps2_stubs::scePadInit(rdram.data(), &ctx, nullptr);
-            openPadPort(ctx, rdram);
+            pad.powerOn();
             t.IsTrue(ps2_stubs::setPadMarkerDirForTest(dir.string().c_str()), "marker should arm");
             t.IsTrue(ps2_stubs::setPadRecordForTest(recPath.c_str()), "recorder should arm");
             ps2_stubs::setPadMarkerInput2ForTest(0x00200000u, 2u);
@@ -137,14 +172,14 @@ void register_ps2_input_marker_tests()
 
             const uint16_t relaxed = 0xFFFFu;
             const uint16_t chord =
-                static_cast<uint16_t>(0xFFFFu & ~kPadBtnL3 & ~kPadBtnR3);
+                static_cast<uint16_t>(0xFFFFu & ~Ds2::l3 & ~Ds2::r3);
             const uint64_t trigTick = 1000u;
             const uint64_t trigMs = (trigTick * 100000ull) / 5994ull;
             // One read per tick across the whole 10 s window plus the flush read.
             for (uint64_t tick = 400u; tick <= 1130u; ++tick)
             {
                 const uint16_t buttons = (tick == trigTick) ? chord : relaxed;
-                ps2_stubs::setPadOverrideState(buttons, 0x80, 0x80, 0x80, 0x80);
+                pad.press(buttons);
                 ps2_stubs::setPadRecordTickForTest(tick);
                 ps2_stubs::setPadMarkerTickForTest(tick);
                 if (tick == 600u)
@@ -153,13 +188,13 @@ void register_ps2_input_marker_tests()
                     ps2_stubs::setPadMarkerAwardForTest(2u, 777u, 0x1234u);
                     ps2_stubs::setPadMarkerBoostForTest(1u, 778u, 0x3f800000u);
                 }
-                runPadRead(ctx, rdram);
+                pad.poll();
                 if (tick == trigTick)
                 {
-                    t.Equals(readButtons(rdram), chord, "the chord passes through to the guest");
+                    t.Equals(pad.guestButtons(), chord, "the chord passes through to the guest");
                 }
             }
-            ps2_stubs::clearPadOverrideState();
+            pad.unscript();
             ps2_stubs::closePadRecordForTest();
             ps2_stubs::closePadMarkerForTest();
 
@@ -291,7 +326,7 @@ void register_ps2_input_marker_tests()
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            closePadPort(ctx, rdram);
+            pad.powerOff();
             fs::remove_all(dir);
             std::remove(recPath.c_str());
         });
@@ -301,31 +336,28 @@ void register_ps2_input_marker_tests()
             namespace fs = std::filesystem;
             const fs::path dir = fs::temp_directory_path() / "lim1_marker_chord_neg_test";
             fs::remove_all(dir);
-            std::vector<uint8_t> rdram(PS2_RAM_SIZE, 0);
-            R5900Context ctx;
+            Lim1PadBench pad;
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            ps2_stubs::scePadInit(rdram.data(), &ctx, nullptr);
-            openPadPort(ctx, rdram);
+            pad.powerOn();
             // Unarmed (default): chord reads are no-ops and pass through.
-            ps2_stubs::setPadOverrideState(
-                static_cast<uint16_t>(0xFFFFu & ~kPadBtnL3 & ~kPadBtnR3), 0x80, 0x80, 0x80, 0x80);
-            runPadRead(ctx, rdram);
-            t.Equals(readButtons(rdram),
-                     static_cast<uint16_t>(0xFFFFu & ~kPadBtnL3 & ~kPadBtnR3),
+            pad.press(static_cast<uint16_t>(0xFFFFu & ~Ds2::l3 & ~Ds2::r3));
+            pad.poll();
+            t.Equals(pad.guestButtons(),
+                     static_cast<uint16_t>(0xFFFFu & ~Ds2::l3 & ~Ds2::r3),
                      "unarmed reads pass through");
             t.IsTrue(!fs::exists(dir), "unarmed reads create no dir");
             t.IsTrue(ps2_stubs::setPadMarkerDirForTest(dir.string().c_str()), "marker should arm");
 
             const uint16_t relaxed = 0xFFFFu;
-            const uint16_t l3 = static_cast<uint16_t>(0xFFFFu & ~kPadBtnL3);
-            const uint16_t r3 = static_cast<uint16_t>(0xFFFFu & ~kPadBtnR3);
+            const uint16_t l3 = static_cast<uint16_t>(0xFFFFu & ~Ds2::l3);
+            const uint16_t r3 = static_cast<uint16_t>(0xFFFFu & ~Ds2::r3);
             const uint16_t chord = static_cast<uint16_t>(l3 & r3);
             const auto read = [&](uint64_t tick, uint16_t buttons) {
-                ps2_stubs::setPadOverrideState(buttons, 0x80, 0x80, 0x80, 0x80);
+                pad.press(buttons);
                 ps2_stubs::setPadMarkerTickForTest(tick);
-                runPadRead(ctx, rdram);
+                pad.poll();
             };
             const auto fileCount = [&]() {
                 uint32_t n = 0u;
@@ -366,11 +398,11 @@ void register_ps2_input_marker_tests()
             read(5300u, relaxed);
             t.Equals(fileCount(), 2u, "a held chord fires exactly once");
 
-            ps2_stubs::clearPadOverrideState();
+            pad.unscript();
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            closePadPort(ctx, rdram);
+            pad.powerOff();
             fs::remove_all(dir);
         });
 
@@ -379,31 +411,29 @@ void register_ps2_input_marker_tests()
             namespace fs = std::filesystem;
             const fs::path dir = fs::temp_directory_path() / "lim1_marker_cap_test";
             fs::remove_all(dir);
-            std::vector<uint8_t> rdram(PS2_RAM_SIZE, 0);
-            R5900Context ctx;
+            Lim1PadBench pad;
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            ps2_stubs::scePadInit(rdram.data(), &ctx, nullptr);
-            openPadPort(ctx, rdram);
+            pad.powerOn();
             t.IsTrue(ps2_stubs::setPadMarkerDirForTest(dir.string().c_str()), "marker should arm");
             const uint16_t relaxed = 0xFFFFu;
             const uint16_t chord =
-                static_cast<uint16_t>(0xFFFFu & ~kPadBtnL3 & ~kPadBtnR3);
+                static_cast<uint16_t>(0xFFFFu & ~Ds2::l3 & ~Ds2::r3);
             for (uint32_t k = 0u; k < 55u; ++k)
             {
                 const uint64_t tick = 1000u + 20u * k;
-                ps2_stubs::setPadOverrideState(chord, 0x80, 0x80, 0x80, 0x80);
+                pad.press(chord);
                 ps2_stubs::setPadMarkerTickForTest(tick);
-                runPadRead(ctx, rdram);
-                ps2_stubs::setPadOverrideState(relaxed, 0x80, 0x80, 0x80, 0x80);
+                pad.poll();
+                pad.press(relaxed);
                 ps2_stubs::setPadMarkerTickForTest(tick + 1u);
-                runPadRead(ctx, rdram);
+                pad.poll();
             }
-            ps2_stubs::setPadOverrideState(relaxed, 0x80, 0x80, 0x80, 0x80);
+            pad.press(relaxed);
             ps2_stubs::setPadMarkerTickForTest(1000u + 20u * 55u + 300u);
-            runPadRead(ctx, rdram);
-            ps2_stubs::clearPadOverrideState();
+            pad.poll();
+            pad.unscript();
             ps2_stubs::closePadMarkerForTest();
             uint32_t n = 0u;
             for (const auto &de : fs::directory_iterator(dir))
@@ -418,7 +448,7 @@ void register_ps2_input_marker_tests()
             ps2_stubs::clearPadScriptForTest();
             ps2_stubs::clearPadRecordForTest();
             ps2_stubs::clearPadMarkerForTest();
-            closePadPort(ctx, rdram);
+            pad.powerOff();
             fs::remove_all(dir);
         });
     });

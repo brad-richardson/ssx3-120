@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 Part 5: TK11 Tricky-mode frontend entry, moved verbatim from
 // ps2xRuntime/src/lib/ps2_runtime.cpp (the `ssx3-tricky-menu` override).
 // Every wrapper acts at its function's entry, so an EE checkpoint unwind
@@ -15,6 +16,7 @@
 #include "runtime/ps2_memory.h"
 #include "runtime/ps2_savestate.h"
 
+// Standard library.
 #include <cstdio>
 #include <cstring>
 #include <filesystem>

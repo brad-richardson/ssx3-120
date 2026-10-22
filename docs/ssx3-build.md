@@ -21,7 +21,7 @@ and SSX 3 guest-code generation are separate steps.
 | iOS arm64 / arm64 simulator | Xcode SDK/toolchain, CMake, Ninja | EE/VU0 generation, manifest-driven OM1 offline-VU1 stage from your disc (`work/om1-stage`), signing setup |
 
 Evidence: [engine CMake minimum](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/CMakeLists.txt#L1),
-[Android properties/toolchain](../apps/android/app/build.gradle#L5),
+[Android properties/toolchain](../apps/android/app/build.gradle#L7),
 [Mac assembly](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L55),
 [iOS assembly](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/third_party/armsx2/build.sh#L122),
 [iOS runtime linking](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/CMakeLists.txt#L895).
@@ -63,7 +63,7 @@ PGO is optional with bundled profiles: `tools/ssx3/pgo/android/` and `tools/ssx3
 `codegen/register_functions.cpp` SHA matches the trained register SHA;
 otherwise they print one line and build without PGO. `--no-pgo` always skips;
 `--pgo-profile` uses your own file. `ps2xPgoGenerate` defaults OFF
-([properties](../apps/android/app/build.gradle#L17)). Do not reuse a profile
+([properties](../apps/android/app/build.gradle#L20)). Do not reuse a profile
 trained against different generated code.
 
 ## Licences and source records

@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 family #9: moved from ps2xRuntime/src/lib/Kernel/Stubs/.
 // Prefer public runtime headers over that dir's private Common.h (K1 did
 // the same for the SIF handshake).
 #include "Ssx3Movie.h"
 
+// Engine API: runtime context plus the guest memory map constants.
 #include "ps2_runtime.h"
 #include "runtime/ps2_memory.h"
 
@@ -21,6 +23,16 @@ namespace ps2_stubs
 
         constexpr size_t kSsx3MoviePathMax = 64;
 
+        // True for the 16 KB scratchpad window at its canonical base. The
+        // unsigned difference wraps for addresses below the base, so one
+        // compare covers both ends (base + size does not overflow 32 bits).
+        constexpr bool inScratchpadWindow(uint32_t addr)
+        {
+            return addr - PS2_SCRATCHPAD_BASE < PS2_SCRATCHPAD_SIZE;
+        }
+        static_assert(PS2_SCRATCHPAD_SIZE <= UINT32_MAX - PS2_SCRATCHPAD_BASE,
+                      "scratchpad window must not wrap the 32-bit address space");
+
         // Bounded guest read for diagnostics. Mirrors the KUSEG/KSEG0 strip
         // in ps2_memory.h but hard-fails outside RDRAM instead of wrapping:
         // a wrapped read would log a garbage path. Scratchpad is rejected
@@ -31,16 +43,16 @@ namespace ps2_stubs
             {
                 return false;
             }
-            if (addr >= PS2_SCRATCHPAD_BASE && addr < (PS2_SCRATCHPAD_BASE + PS2_SCRATCHPAD_SIZE))
+            if (inScratchpadWindow(addr))
             {
                 return false;
             }
-            uint32_t phys = addr;
-            if ((addr >= 0x20000000u && addr < 0x40000000u) ||
-                (addr >= 0x80000000u && addr < 0xC0000000u))
-            {
-                phys = addr & 0x1FFFFFFFu;
-            }
+            // The top three address bits pick the segment: 1 is the uncached
+            // alias of user space, 4 and 5 are KSEG0/KSEG1. Those strip to the
+            // 29-bit physical offset; every other segment is used as given.
+            const uint32_t segment = addr >> 29;
+            const bool strips = segment == 1u || segment == 4u || segment == 5u;
+            const uint32_t phys = strips ? (addr & ((1u << 29) - 1u)) : addr;
             if (phys >= PS2_RAM_SIZE || count > PS2_RAM_SIZE - phys)
             {
                 return false;

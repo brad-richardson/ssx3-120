@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // User-specific records quarantine. See
 // Ssx3TrickyRecordsPatch.h and ps2_ssx3_tricky_records.h.
 #include "Ssx3TrickyRecordsPatch.h"
 
 #include "ps2_ssx3_tricky_records.h"
+// Engine API: runtime context and the guest memory map.
 #include "ps2_runtime.h"
 #include "runtime/ps2_memory.h"
 
+// Standard library.
 #include <cstdio>
 #include <cstring>
 

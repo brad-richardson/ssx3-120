@@ -32,6 +32,12 @@ All of them must pass with no disc and no device. The `|| exit 1` keeps
 the loop fail-fast: without it a passing last test hides an earlier
 failure. Name new tests `tools/ssx3/tests/test_*.py` (builder) or extend the matching suite so CI picks them up. New shell scripts must pass the syntax loop; new Python entry points belong in the `py_compile` list.
 
+## Licensing new files
+
+<!-- REUSE-IgnoreStart -->
+Your contribution is licensed MIT OR GPL-3.0-or-later, like the rest of the repo (README → License). Start new source files with an SPDX header (`// SPDX-License-Identifier: GPL-3.0-or-later OR MIT`, or `#` in scripts); data and config types are covered by `REUSE.toml`. Code from another project goes under `third_party/` with its own licence and notice. `pipx run reuse lint` must report no issues.
+<!-- REUSE-IgnoreEnd -->
+
 ## PR flow
 
 Small focused PRs are easiest to review. Fill in `.github/pull_request_template.md` (what/why, how tested, device). CI must pass; a maintainer merges.

@@ -6,12 +6,12 @@ new_path	origin	old_path	sha256	bytes	status
 CMakeLists.txt	authored:composition	-	4bb4c680717ec9641e41333a58e9b5b2bd95f44f66f369d0bbfc7ca82065dbc0	780	new
 LICENSE	fork@f7a96f23	LICENSE	831e92808eb553250066261a1387a9323cbf300d4559a41f2c71fd3712bdb44a	34903	verbatim
 Makefile	authored:builder-ux-1	-	1b67dee2592a0341ace8da647e69eb3962136886c2c4fcdecf5df13f293d432c	1276	new
-README.md	authored:readme	-	ef0d0a7f644b1f26628dfb83631688a4f81e8c1ffcc97c075798e15f933adf34	7874	new
+README.md	authored:readme	-	0f18294047748c5bc01ebfb591e48e4464a5c32924326756678772c24998d78a	6608	new
 SOURCE_PROVENANCE.md	authored:provenance	-	0a8b8ca89a206a84e9ee3f87285d1579a13c0d38e98b249f9553261ea0311759	8746	new
-THIRD_PARTY_NOTICES.md	authored:notices	-	bbe79b32bfc10b74cf600e0c9fbbc8c47bedca1eb19ad48673429ae6c35641ac	4480	new
-apps/android/README.md	fork@f7a96f23	android/README.md	b9306de582f19343587c3209ea97c1ad3032807ba93d5a158814c45c953b81bc	6974	composition:product-paths-and-host-support
-apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	e0184e0fab8b10a6b9fd494724ceb453616abbc1df41720aae12e3eb58eb94b5	10316	composition:explicit-engine-cmake-path+public-parity-2-g7-app-label
-apps/android/app/src/main/AndroidManifest.xml	fork@f7a96f23	android/app/src/main/AndroidManifest.xml	7642f77caffd92b5eb4ffba2d3d07269d99949b560f235e2f8493af8a0a81330	3851	composition:android-internet-permission+public-parity-2-g7-app-label
+THIRD_PARTY_NOTICES.md	authored:notices	-	6ca7dfb2d857d3d4b4e385c1909cfb620ad51b617e4952fd400d99d3235f4355	10282	new
+apps/android/README.md	fork@f7a96f23	android/README.md	04f1206ad572ebf5554763caf121b2725bf69863cbe892687ea9183a8cd8b707	8347	composition:product-paths-and-host-support+license-cleanup-1
+apps/android/app/build.gradle	fork@f7a96f23	android/app/build.gradle	0fbe00278e5352827a41860377def8c1879fd869c4b3b5bf96da85ab03724762	13102	composition:explicit-engine-cmake-path+public-parity-2-g7-app-label+license-cleanup-1
+apps/android/app/src/main/AndroidManifest.xml	fork@f7a96f23	android/app/src/main/AndroidManifest.xml	3d43a0d6213685481423b3bcec9c3a4ea2faa835f471fe8300aaf2d6f65ee2c4	4341	composition:android-internet-permission+public-parity-2-g7-app-label+license-cleanup-1
 apps/android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/LaunchActivity.java	22bbb3f965a80d221fad6b075921bb16e08c9e968eb888f14a2c8fda078bb343	4594	composition:v0-builder-fix-1-single-launcher-launch-hz-mode
 apps/android/app/src/main/java/com/ps2x/runner/RunnerApplication.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/RunnerApplication.java	d1f28aed576a66dd4236c590e69de85f29ddb4684f63c1967bc65a0c000d873a	7621	composition:appsec-fix-1-internal-secret-dir
 apps/android/app/src/main/java/com/ps2x/runner/Set2Relaunch.java	fork@f7a96f23	android/app/src/main/java/com/ps2x/runner/Set2Relaunch.java	d5120045d2c58e5952b7f0558870247de04e615f7f78d10987b39c24ec37058a	1977	composition:v0-builder-fix-1-single-launcher-launch-hz-mode
@@ -27,15 +27,15 @@ apps/android/app/src/main/res/mipmap-anydpi-v26/ic_ssx_60.xml	fork@f7a96f23	andr
 apps/android/app/src/main/res/mipmap-anydpi-v26/ic_ssx_tricky.xml	fork@f7a96f23	android/app/src/main/res/mipmap-anydpi-v26/ic_ssx_tricky.xml	cb3ff72329e8b1359eedcc48640f40eef6523a62be623b002bd608dcd0997e22	261	verbatim
 apps/android/app/src/main/res/xml/game_mode_config.xml	fork@f7a96f23	android/app/src/main/res/xml/game_mode_config.xml	40799f3a667afe3be8a7ac076a75194ce229549b3a06ba1b9d2ed56c3912a3a8	362	verbatim
 apps/android/app/src/pgogen/resources/lib/arm64-v8a/wrap.sh	fork@f7a96f23	android/app/src/pgogen/resources/lib/arm64-v8a/wrap.sh	57e458aaff7602c29aa39100aa69925f4b67c37286d65ea08da04775ba406a9c	520	composition:dual-license-spdx-header
-apps/android/build.gradle	fork@f7a96f23	android/build.gradle	36d655a9067d39892bba80896925f12e70f6b0d7481fe914ec6a61bbbde967cb	73	verbatim
-apps/android/gradle.properties	fork@f7a96f23	android/gradle.properties	99278f39efdbce77b1a95801543a2288477e4d71c089475e2ce717b1d4ef82b8	133	verbatim
+apps/android/build.gradle	fork@f7a96f23	android/build.gradle	6870e089c179f1634d3860646d53f17c31dce1f6f3061eba1fe8c1944053df4e	253	composition:license-cleanup-1-reauthor
+apps/android/gradle.properties	fork@f7a96f23	android/gradle.properties	f96a4a7a395ad084826fcade5dc3610c7fbe0888c1aca866fe5863515dab8319	351	composition:license-cleanup-1-reauthor
 apps/android/gradle/wrapper/gradle-wrapper.jar	fork@f7a96f23	android/gradle/wrapper/gradle-wrapper.jar	498495120a03b9a6ab5d155f5de3c8f0d986a449153702fb80fc80e134484f17	43504	verbatim
-apps/android/gradle/wrapper/gradle-wrapper.properties	fork@f7a96f23	android/gradle/wrapper/gradle-wrapper.properties	3d91f0932da99885c41e9dc4e85c9f9a2d3bfef4f0ad87473014dc0827a94884	250	verbatim
+apps/android/gradle/wrapper/gradle-wrapper.properties	fork@f7a96f23	android/gradle/wrapper/gradle-wrapper.properties	25d9ac9ec0cf20cd9ad552a7b0b7d11f46b0282063fdb0555cf12d31167800cc	409	composition:license-cleanup-1-reauthor
 apps/android/gradlew	fork@f7a96f23	android/gradlew	a3648413b47ef77af21d5ebc36c687c7d103aaef3e17f33de7d4f080a6f300a3	8762	verbatim
 apps/android/gradlew.bat	fork@f7a96f23	android/gradlew.bat	57931b17dd228e5c24dac90e815d0bf82477e831a4618dfab4136f5446b42a9f	2966	verbatim
 apps/android/hwcompat/CMakeLists.txt	fork@f7a96f23	android/hwcompat/CMakeLists.txt	8c61d74c0267da0df0b15a745844e1745350469f9de65786866cfc21d6736c06	1128	composition:public-fix-1-scrubbed-lab-pointer
 apps/android/hwcompat/hwcompat.c	fork@f7a96f23	android/hwcompat/hwcompat.c	88ef7e0ddff8b9155790c67dbc4f4e1f647de1d7416ffedf5c8f8bdf05d1a190	1442	composition:dual-license-spdx-header
-apps/android/settings.gradle	fork@f7a96f23	android/settings.gradle	2f4f5b2d5b58af92d12119a82755f326d1d48b6b55ae3aa5a284d882853b183f	263	verbatim
+apps/android/settings.gradle	fork@f7a96f23	android/settings.gradle	2f47d4002c250116d73dcb243e57961e03c861fedc23e894e5d3345d9c9fb67f	571	composition:license-cleanup-1-reauthor
 build	authored:builder-ux-1	-	3e152ca7d4cdd6bcb9416d07989b7c51eb2a94f9dd6fd836c3c2d356f79392ee	741	new
 build.py	authored:product-entrypoint	-	f4fa82d6935f6ec3acf5d43c21590c57580897719675226ae2367686f10d1058	795	new
 cmake/EnginePin.cmake	authored:composition	-	dd6a37b0c7d5238c3cc5c561ecbcb5b9f9f823058152b9bfd94c1f4b29cbcc15	1364	new
@@ -44,9 +44,9 @@ docs/advantages.md	lab@ed718e09	docs/advantages.md	fb69467a2eeb8747aa1e4dc482787
 docs/facts.md	lab@ed718e09	docs/facts.md	4ea59fed4164d9fb4707408ca6659d805a7601e920d3286a9927ef3236c3f312	10189	composition:curated-public-reference
 docs/research/gamecube-learnings.md	lab@ed718e09	docs/research/gamecube-learnings.md	109e880d1684b14ced746b8aac305d5b3ff2111ffd1765a54ff6804b38dad582	37013	composition:public-safe-archive-pointers
 docs/research/ssx3-engine-timing.md	lab@ed718e09	docs/research/ssx3-engine-timing.md	72a68f9c3c16b0ea6fdbcbbe7d5909432e1228c6c1ea1eef619bd82474280532	22287	composition:public-safe-archive-pointers
-docs/ssx3-build.md	fork@f7a96f23	docs/ssx3-build.md	248cc80ea7ae3a62889fbc324b8b23d595bcc34a99ceaaccc42ac292af39081c	5496	composition:product-paths-and-landed-builder-state+pgo-public-1
+docs/ssx3-build.md	fork@f7a96f23	docs/ssx3-build.md	9df9b9cded9dc3c2af779eb38263300f0e91d98893866b446ba3ae01dc827eec	6255	composition:product-paths-and-landed-builder-state+pgo-public-1+license-cleanup-1
 docs/ssx3-inputs.md	fork@f7a96f23	docs/ssx3-inputs.md	264b473d2e279d5fc59b99aafe032e5be80160d6380b99202ca6e02feb08004c	2373	composition:product-paths-and-host-support
-docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	50f94c1df3440986f679dfbdf2f8b03082ecdbf3b6335836d5ee53c3dff5d26b	5288	composition:product-paths-and-120-only
+docs/ssx3-troubleshooting.md	fork@f7a96f23	docs/ssx3-troubleshooting.md	185f09001d6855f35e52ddf7f5393f8bf79c525fc8c48b78ffcd41409f431025	6180	composition:product-paths-and-120-only+license-cleanup-1
 docs/symbols.md	authored:symbols-map-1	-	f8333c6de5d364295b5140658c3148740493e430e367fbc946d232c294532e99	2409	new
 docs/tricky-inputs.md	authored:tk-build-1	-	4dea73263b984602b1ca605f051ea987fc4f23f18fb89c9707f76c7f01c810d7	2242	new
 games/ssx3/ssx3-functions.sweep.csv	fork@f7a96f23	games/ssx3/ssx3-functions.sweep.csv	7c827add09aeea837e25f6048007ab91e65eb4b5f7a98f8fb4f448b606cfb9ba	336944	verbatim
@@ -56,7 +56,7 @@ infra/README.md	infra-staged	public-infra/README.md	00e2310c9e9f97d2808a82e9d7b6
 infra/backup-lobby.sh	infra-staged	public-infra/backup-lobby.sh	68d68229bc43834c9c17df5dfbb61bb26f8d662eb58f7416b9577fc281ae0320	1390	composition:dual-license-spdx-header
 infra/backup-state.sh	infra-staged	public-infra/backup-state.sh	7b60ed4882197266a5111a2831ddcc66cd5cbee431b344001028008b3b619ec0	596	composition:dual-license-spdx-header
 infra/check-cloud-init.sh	infra-staged	public-infra/check-cloud-init.sh	04dd8f7646f3a9f92d73f724bb9caef0d11c495de72e95d22254bd4909aa5e4d	3127	composition:dual-license-spdx-header
-infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	02d6cffd9d7f16b7ae201244ecf0c3fc1bbbdc1c8b209235bcfc4a5321943243	8041	composition:when-idle-statusz-deploy-gate
+infra/deploy-lobby-rust.sh	infra-staged	public-infra/deploy-lobby-rust.sh	a1d698e025cd4fb824351113ffae20eda7c828da4f7a6336c6cbae24327a8423	8092	composition:when-idle-statusz-deploy-gate+license-cleanup-1
 infra/deploy-lobby.sh	infra-staged	public-infra/deploy-lobby.sh	5e4a57ba9f414dbd2d48f6869ee6b158dbffefd573899bb81d938e4b9d8a2b99	4002	composition:dual-license-spdx-header
 infra/harden-host.sh	infra-staged	public-infra/harden-host.sh	fb3ccfb7f377f16ff4bd8cbb7e582963933da6c5801ab35bfca67e6fc74442f0	1812	composition:dual-license-spdx-header
 infra/lobby-compose.yaml	infra-staged	public-infra/lobby-compose.yaml	896d59b5f0c86765fec3462602ccade52c91da9f55906e4d0bcaffbf5f29f622	811	verbatim
@@ -120,19 +120,19 @@ tools/bench/legs.example.json	authored:bench-template	-	0c9553b492a3032ac0c44a38
 tools/bench/winseries.py	lab@0ac8b01f	local/tooling/perf/winseries.py	69917d801fa0044492f04cfa4e29a9988cf90677b408ca081d8ba6386f3e1330	9309	composition:product-docstring
 tools/replay/padrec_complete.py	lab@ed718e09	local/tooling/padrec_complete.py	0e38ce21b876f55a4f4c9b568639e7914bf38f3869834485ffdcfbf79e37e45e	6893	composition:dual-license-spdx-header
 tools/replay/padrec_replay_env.py	lab@ed718e09	local/tooling/padrec_replay_env.py	19223dd9d4a79ddf06e78c6d9dc10a2d1ab01602e895ec9c002398edac7a3729	20691	composition:generic-android-push
-tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	d4647f70eef0e68bf2ed306afbcb4a2836b0bcfd3a11549763da2715b51c95c3	24791	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1
+tools/ssx3/README.md	fork@5235b114	tools/ssx3/README.md	5b337d56793b718ed729529fba105d56284b65374130d881f5b93f3d2c9eb46c	27718	composition:product-paths-and-host-support+pgo-public-1+build-parity-fix-1+license-cleanup-1
 tools/ssx3/android-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/android-libs/CMakeLists.txt	7d002690dde46304477907c2e56abdc51adff03f8362b14ddb61c441be956348	3042	verbatim
-tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	f14d8b98432dc2162da4ba5a5fd73ac6710755096260fff98960ef6fcd46eaef	168050	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1+public-parity-2-g7-app-label+g9-ios-preset-name+g6-android-receipt
+tools/ssx3/build.py	fork@5235b114	tools/ssx3/build.py	1687ef9cf137cf45bf2624f96e05429c54d610ba29aa40f8e1c6165d7c8c8533	231995	composition:explicit-product-engine-roots+pgo-public-1+d05-d04+validated-gate+build-parity-fix-1+public-parity-2-g7-app-label+g9-ios-preset-name+g6-android-receipt+license-cleanup-1
 tools/ssx3/build.py.lock	authored:tk-toolchain-1	-	da63d38c6e2aa2dcdad4473445f246b9df04ab6709ecb53799233e238e468bf1	11292	new
 tools/ssx3/build_tk_font.py	fork@5235b114	tools/ssx3/build_tk_font.py	01adf374060ecd92fdca1a1eabf63b9f11d7237c3171cd56f786fbba8ae61481	3766	composition:dual-license-spdx-header
 tools/ssx3/build_tk_list_art.py	fork@5235b114	tools/ssx3/build_tk_list_art.py	6580e91212155f0abab3772b249f601e842377fb4f67a5be020d78fea6951b4e	6849	composition:main-guard-import-safe-tricky-picker-2
 tools/ssx3/knobs.tsv	fork@116c6b13	tools/ssx3/knobs.tsv	df4f282b315529af3f7683ba12210057fb149d65ff52be7fcb2540cf82b2a06b	7940	verbatim
 tools/ssx3/mac-libs/CMakeLists.txt	fork@f7a96f23	tools/ssx3/mac-libs/CMakeLists.txt	4c424127104bab98cb841f66447a28dd241064fb523ffe5b22dc31577d5152a0	2927	verbatim
-tools/ssx3/offline-core/OM1StubHost.cpp	fork@f7a96f23	tools/ssx3/offline-core/OM1StubHost.cpp	15f36302ded2b8c984a61ab8b99185de95c7dda849d6a1b624aed67ac560d5be	672	verbatim
-tools/ssx3/offline-core/OfflineBridge.cpp	fork@5235b114	tools/ssx3/offline-core/OfflineBridge.cpp	7f9af23c0316c499e2aac1cfaee64b08d61675727c085a31607acc88b2144186	13616	verbatim
-tools/ssx3/offline-core/OfflineCore.cpp	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.cpp	d99f8c018acb377846874b3cbbbd14360b78eed7b2d632d7360aff23e2a4f0f6	52436	verbatim
-tools/ssx3/offline-core/OfflineCore.h	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.h	f89dcda56fc137b4c39587887c3050674fe3ca2ca99f1e6d301a84342042c62c	3567	verbatim
-tools/ssx3/offline-core/README.md	fork@f7a96f23	tools/ssx3/offline-core/README.md	4757b5a0a9bc64f40a05361709f8c0166a40ff13bbdf88eb10193113f16f9824	986	composition:om1-stage-generated-from-disc
+third_party/offline-core/OM1StubHost.cpp	fork@f7a96f23	tools/ssx3/offline-core/OM1StubHost.cpp	15f36302ded2b8c984a61ab8b99185de95c7dda849d6a1b624aed67ac560d5be	672	verbatim
+third_party/offline-core/OfflineBridge.cpp	fork@5235b114	tools/ssx3/offline-core/OfflineBridge.cpp	7f9af23c0316c499e2aac1cfaee64b08d61675727c085a31607acc88b2144186	13616	verbatim
+third_party/offline-core/OfflineCore.cpp	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.cpp	d99f8c018acb377846874b3cbbbd14360b78eed7b2d632d7360aff23e2a4f0f6	52436	verbatim
+third_party/offline-core/OfflineCore.h	fork@f7a96f23	tools/ssx3/offline-core/OfflineCore.h	f89dcda56fc137b4c39587887c3050674fe3ca2ca99f1e6d301a84342042c62c	3567	verbatim
+third_party/offline-core/README.md	fork@f7a96f23	tools/ssx3/offline-core/README.md	4757b5a0a9bc64f40a05361709f8c0166a40ff13bbdf88eb10193113f16f9824	986	composition:om1-stage-generated-from-disc
 tools/ssx3/pgo/pgo_flush.c	fork@f7a96f23	tools/ssx3/pgo/pgo_flush.c	70b6dc0f4ab240fa6d7ccb82f22b42a9ca9f4ae17d76119d648e752644ba3c78	1140	composition:folded-lab-pgo-flush-rationale
 tools/ssx3/prebuilt-consumer.cmake	fork@f7a96f23	tools/ssx3/prebuilt-consumer.cmake	64d7ded79f7f64fa484f7a5d157a3cf37eac764c9693afc9f14011e0bae0dfae	3687	removed:duplicate-of-engine-copy
 tools/ssx3/prebuilt.py	fork@b9bf530a	tools/ssx3/prebuilt.py	f111d5937aee42c45ae6bd0e6541ee5badb481790e990fb3589757210426898d	41560	composition:engine-pinned-contract
@@ -164,7 +164,7 @@ tools/ssx3/pgo/ios/MANIFEST.json	authored:pgo-public-1	-	6e65bbe0585eeafee00b494
 tools/ssx3/pgo/ios/profile.profdata.gz	lab-pgo:ipb30	-	c89faf19a4a69a8f3ab4d823e0efd3644cb4731ebea06a3705e5ef3e370b0bdc	1639399	new
 tools/ssx3/tests/test_pgo.py	authored:pgo-public-1	-	6437270518e75fedbecfb2995e0d866e07b709f21a18a5d00eac71f37dc61ac3	8675	new
 tools/ssx3/tests/test_ios_flags.py	authored:pgo-public-1	-	67e241a477acf3d77e759d069dc1eab603a73210e3269318e6c16bd5fad8e693	8915	new
-games/ssx3/module/CMakeLists.txt	fork@18d291a7	games/ssx3/module/CMakeLists.txt	6d60b57399ee4a8134451293d69be206c858211453298af453632676879a4e13	3477	composition:split-p1-prep-1 module recipe engine-path fixup (source fork@18d291a7)
+games/ssx3/module/CMakeLists.txt	fork@18d291a7	games/ssx3/module/CMakeLists.txt	fb445244f4164765f27176c24a1c946c5b5807a53969866ae62ea461575c87ae	3661	composition:split-p1-prep-1 module recipe engine-path fixup (source fork@18d291a7)+license-cleanup-1
 games/ssx3/module/README.md	fork@18d291a7	games/ssx3/module/README.md	50ac14ab9fc0dc96f6755d067e29003f8741b9a8ecd1de258d8dde2774c9ea6e	13992	moved
 games/ssx3/module/include/Ssx3CopiedPayload.h	fork@18d291a7	games/ssx3/module/include/Ssx3CopiedPayload.h	3e18b9cc5db2bedacd8a65392799a32731f83aac62e8763e877d4425e23cf0ba	1099	moved
 games/ssx3/module/include/Ssx3Fh1Clock.h	fork@18d291a7	games/ssx3/module/include/Ssx3Fh1Clock.h	35c5f43480330715136a1c35da87829816192309c766157a4c398195d552c11c	1039	moved
@@ -185,48 +185,48 @@ games/ssx3/module/include/Ssx3TrickySong.h	fork@18d291a7	games/ssx3/module/inclu
 games/ssx3/module/include/Ssx3TrickyState.h	fork@18d291a7	games/ssx3/module/include/Ssx3TrickyState.h	d6932b75d501dd78d3cca9df0d863742d2c8a6787cbc3f772ec9ae8f23837d06	723	moved
 games/ssx3/module/include/Ssx3VisNative.h	fork@18d291a7	games/ssx3/module/include/Ssx3VisNative.h	d0c92c582d7a74b52b0c0c03db1accde36943e12844fcf499cd2ea58681a5d83	3956	moved
 games/ssx3/module/include/Ssx3Widescreen.h	fork@18d291a7	games/ssx3/module/include/Ssx3Widescreen.h	069a47cc829b170c2486c9b876f397792fef28d84a7b131bcd121ed537927f27	807	moved
-games/ssx3/module/include/ps2_snd_spike.h	fork@18d291a7	games/ssx3/module/include/ps2_snd_spike.h	d9c3c0176b9f63cd45d653931f04fbfd040342ded1fc873fcf0eceae1d10fa8f	18534	moved
+games/ssx3/module/include/ps2_snd_spike.h	fork@18d291a7	games/ssx3/module/include/ps2_snd_spike.h	0af42c3546040af820a5691d62de63aa883b78db75514863a73ec198ef270843	18857	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/include/ps2_snd_spu.h	fork@18d291a7	games/ssx3/module/include/ps2_snd_spu.h	aea99a0b40ea96392ec8300b711fd94a8c4f4eb2cb2db5a5a770d7f5ed7cbf6f	21865	moved
 games/ssx3/module/include/ps2_snd_spu_gauss.h	fork@18d291a7	games/ssx3/module/include/ps2_snd_spu_gauss.h	437abcd8b9c8891cd7936a50339a4dc84f57b80f6d6b2390e098477add94573e	9490	moved
 games/ssx3/module/include/ps2_ssx3_anim_pick_guard.h	fork@18d291a7	games/ssx3/module/include/ps2_ssx3_anim_pick_guard.h	126af1a23030aea4f773833360fd1601b2cedad7a1d907fab26624f00c57b6d1	8035	moved
 games/ssx3/module/include/ps2_ssx3_module.h	fork@18d291a7	games/ssx3/module/include/ps2_ssx3_module.h	1fc662139755a6031906b4ce589098618324d7b364981c038388786d69cc76f4	314	moved
 games/ssx3/module/src/anim_pick_guard.cpp	fork@18d291a7	games/ssx3/module/src/anim_pick_guard.cpp	582e325bcd22053130df1b59d85ef2b038c1c9d4b0c107b88213fa5f39de6f36	3397	moved
-games/ssx3/module/src/copied_payload.cpp	fork@18d291a7	games/ssx3/module/src/copied_payload.cpp	b2d556bfdd0a1793c413946a3661901dfaf231761387c1c0a6a153efbbb6f6dd	9320	moved
+games/ssx3/module/src/copied_payload.cpp	fork@18d291a7	games/ssx3/module/src/copied_payload.cpp	cc9deb41d8f13c0d07d476bf6e31246f0d5fc9432847e1490b0bc1d4273af5cd	9725	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/src/fh1_clock.cpp	fork@18d291a7	games/ssx3/module/src/fh1_clock.cpp	5c1d05cefcee05a6e1b7d6decfa5ca1f36ba11bb5cfdbfed536739361f73f1ac	38281	moved
 games/ssx3/module/src/fh1_dispatch.cpp	fork@18d291a7	games/ssx3/module/src/fh1_dispatch.cpp	34777488245e6f0069dfc682855ff2cb1da94d9e18c6603ce3dad3822e4ac98f	18694	moved
 games/ssx3/module/src/fh1_fix_content.cpp	fork@18d291a7	games/ssx3/module/src/fh1_fix_content.cpp	b33a6797316fe46773d6cef210a69386831900a3d1c221c7b1a53851f93b8e55	8581	moved
 games/ssx3/module/src/fh1_taps.cpp	fork@18d291a7	games/ssx3/module/src/fh1_taps.cpp	064bf7e957b1c955d6b85d7fc0d5c9556a0e9d7fee92e73e7698e3bc8bb110f5	1129	moved
 games/ssx3/module/src/hle_iop.cpp	fork@18d291a7	games/ssx3/module/src/hle_iop.cpp	4c287c7b891cce70d57db2f5ad7017293485d3958bd36349c6a26885628b664c	553	moved
-games/ssx3/module/src/input2.cpp	fork@18d291a7	games/ssx3/module/src/input2.cpp	aee6e23d25002e76e0062c2559f0e368a9ac6f0d493e42c88e5583320947f3a2	4685	moved
-games/ssx3/module/src/input_marker.cpp	fork@18d291a7	games/ssx3/module/src/input_marker.cpp	8d3235ef8f0514b92d4b9082b12619b5b603ad91e860e09cffa8c6fb8a41d9a6	51721	moved
+games/ssx3/module/src/input2.cpp	fork@18d291a7	games/ssx3/module/src/input2.cpp	c508fb20635edec02d8c32431dc030f7f9057dfc9474553cb56142a55bf783c4	4758	composition:license-cleanup-1-reauthor (source fork@18d291a7)
+games/ssx3/module/src/input_marker.cpp	fork@18d291a7	games/ssx3/module/src/input_marker.cpp	686d39f3b3230b9648225b74d675c3c29758e96b8e0cc963123086dac42ac2f0	51966	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/src/lod_scale.cpp	fork@18d291a7	games/ssx3/module/src/lod_scale.cpp	6a2a869e66709db2bb1ba2a82d5d51f4ec2033b2fbfcf327d47bffa8b7d36008	4121	moved
-games/ssx3/module/src/movie.cpp	fork@18d291a7	games/ssx3/module/src/movie.cpp	c4c531a3e87d4ff03eb0e721427b676fc0156f8b42285fd5de411e08eb75fd51	6250	moved
-games/ssx3/module/src/quick_play_direct.cpp	fork@18d291a7	games/ssx3/module/src/quick_play_direct.cpp	dc1c412c2e39e7eb7fb304d3a14844b6868a3412e80f24708de6c23d952591e5	17511	composition:split-p1-prep-1 qp-failclosed-1 port 118c0f11 (source fork@18d291a7)
-games/ssx3/module/src/sif_handshake.cpp	fork@18d291a7	games/ssx3/module/src/sif_handshake.cpp	fe49664753a1f8e4658b0dac6169c898fb405bf52c15ad5614f262f8afe8e9f2	4514	moved
+games/ssx3/module/src/movie.cpp	fork@18d291a7	games/ssx3/module/src/movie.cpp	879cdf2dacfe8d9031062291b41a5cbe6718ff117022c5596ce70eea16f31c10	7062	composition:license-cleanup-1-reauthor (source fork@18d291a7)
+games/ssx3/module/src/quick_play_direct.cpp	fork@18d291a7	games/ssx3/module/src/quick_play_direct.cpp	e8ca17b924c397a0a8e927ac538d3bd88a51a85775a7b3f76aabb7096762feea	26430	composition:split-p1-prep-1 qp-failclosed-1 port 118c0f11 (source fork@18d291a7)+license-cleanup-1
+games/ssx3/module/src/sif_handshake.cpp	fork@18d291a7	games/ssx3/module/src/sif_handshake.cpp	08d69386439b6264a0caee1932ac2954991c6b072d7ebb275c70c6203e505331	4965	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/src/ssx3_module.cpp	fork@18d291a7	games/ssx3/module/src/ssx3_module.cpp	4e6fc14cf2986d83096d2a4aef394efdcb51ff88a1b3e27bed004e0f66fa1d4e	7193	moved
 games/ssx3/module/src/ssx3_module_internal.h	fork@18d291a7	games/ssx3/module/src/ssx3_module_internal.h	6881c3c77eff07dc6a937bf6cdf88694e1a42fb08e1fdcf0516859e6b0389fa5	792	moved
 games/ssx3/module/src/stock_meter.cpp	fork@18d291a7	games/ssx3/module/src/stock_meter.cpp	49b686d82351091dd2c74743b5ac1a679b2a54c21f03e2d97750606cc98d3769	4396	moved
 games/ssx3/module/src/tricky_intro.cpp	fork@18d291a7	games/ssx3/module/src/tricky_intro.cpp	fb07d77693c1e42d0f81262709aa5e3e8405ac9122789e73c5df2e2a7e3761b7	2926	moved
 games/ssx3/module/src/tricky_layer_tick.cpp	fork@18d291a7	games/ssx3/module/src/tricky_layer_tick.cpp	339eb1da5f8aa894ff843c3f5c6d812cbf18210da457b94fcc1ead6c1eec86df	964	moved
-games/ssx3/module/src/tricky_menu.cpp	fork@18d291a7	games/ssx3/module/src/tricky_menu.cpp	29f28b88dd4f6a5eab13f7abff48da7ee43c548eacaac8ced417a82c32925829	34270	moved
-games/ssx3/module/src/tricky_records_patch.cpp	fork@18d291a7	games/ssx3/module/src/tricky_records_patch.cpp	62952457219ad23c5c18f9c87c58f0818f48d290288adce5f681f86b4cebb2f3	2070	moved
+games/ssx3/module/src/tricky_menu.cpp	fork@18d291a7	games/ssx3/module/src/tricky_menu.cpp	a242f3c238fc55c2c0541dc0dd0a225e257221bb556c3f3fc45bd4e02f73965e	34842	composition:license-cleanup-1-reauthor (source fork@18d291a7)
+games/ssx3/module/src/tricky_records_patch.cpp	fork@18d291a7	games/ssx3/module/src/tricky_records_patch.cpp	67da7795d3f725c9906784469f43fd3b336155065219a461e7d6c39d388f2aa3	2200	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/src/tricky_savestate.cpp	fork@18d291a7	games/ssx3/module/src/tricky_savestate.cpp	0e50b618aa6d6fa59a11c80cab50183ae514281f5d0ac9147e8856c1c2f6c51d	14053	moved
 games/ssx3/module/src/tricky_song.cpp	fork@18d291a7	games/ssx3/module/src/tricky_song.cpp	ee154a353f5e1637956e892615c91fc5dfa493324e7e9b6094f3cf11a3c47cf0	1118	moved
 games/ssx3/module/src/vis_native.cpp	fork@18d291a7	games/ssx3/module/src/vis_native.cpp	46a9791051dbb67f7cff800219c3755963e9b63fc98e2067b642dd29711c6330	29713	moved
 games/ssx3/module/src/widescreen_default.cpp	fork@18d291a7	games/ssx3/module/src/widescreen_default.cpp	5db8fa7705533b0f9b232d7c17c94157c451d72b220d7aa39297e3f8bdd971a7	2605	moved
-games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	47a298954740d4866987ddf82b298cc198eca0a0299ea940ff03c87c1fa6e3eb	25781	moved
+games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fh28_tests.cpp	da9dabe8f49e06f75c02e90d7b98a9cf901d4e6549a46c855c01493f4168f829	25910	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_fix_tests.cpp	307a9c734079d4a06ee7fd75be8c5db579db44fb7f1b93adc4e2e6e233f0c44e	45591	composition:split-p1-prep-1 REV1 test source-resolution fixups (source fork@18d291a7)
 games/ssx3/module/tests/ps2_fh1_flip_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_flip_tests.cpp	e3332dd400403b7ebde670731d22f9757d09b5c263bd2163c43326f8bb9154ce	8047	moved
 games/ssx3/module/tests/ps2_fh1_hooktable_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_hooktable_tests.cpp	36da88711c57fce35f7b85c3cd4a3a77b2a41bc4f4199e6aa0f8b78c1215abe2	15163	moved
 games/ssx3/module/tests/ps2_fh1_life2_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_life2_tests.cpp	541a257fe52bc7bbf29b32d26c3c7a272404e5a0cc096d4d6e6efea4def02d0f	4258	moved
 games/ssx3/module/tests/ps2_fh1_savestate_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_fh1_savestate_tests.cpp	18dc103d1cc7ff3c9d085fefe1e6eda3cd46c208af17fdb14d5e3a039a391d9a	16709	moved
-games/ssx3/module/tests/ps2_input_marker_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_input_marker_tests.cpp	64828482c2fd0a3f93c972ed08fd4a15150ab3e0e873d6c6906349a99aa4c4c4	19949	moved
-games/ssx3/module/tests/ps2_snd_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_snd_tests.cpp	4a3e7397140ed6b4da1549e0492d6943a3f19567cbb506939a3b2ba0a482a626	15629	moved
+games/ssx3/module/tests/ps2_input_marker_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_input_marker_tests.cpp	9d38aca0cecf2fd565396faec13c238e840b5fb59eef8afc8a6be0aad61dbd40	20446	composition:license-cleanup-1-reauthor (source fork@18d291a7)
+games/ssx3/module/tests/ps2_snd_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_snd_tests.cpp	58d690296f8f98534ea704ec528c491299903cf82555f72b5296840e3d4542ea	15717	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/tests/ps2_ssx3_anim_pick_guard_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_anim_pick_guard_tests.cpp	468a4820f12eb4413923ad168d7b7456a44755e800b7ab2f6f75ca057152bcbf	8691	moved
-games/ssx3/module/tests/ps2_ssx3_copied_payload_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_copied_payload_tests.cpp	f62de73c0492aaad24c4f8d468030577b5bc754820bd14376a476476d99f7b77	11939	moved
+games/ssx3/module/tests/ps2_ssx3_copied_payload_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_copied_payload_tests.cpp	53caca8ae734e0395a50c8929a583bb33ec48cd660a7ea60e8e3bc2d9eddc946	10593	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/tests/ps2_ssx3_module_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_module_tests.cpp	75c623a996068a2e0397b1858af8610d2c2d6a2f98dc26034856fa07c9be048f	21658	moved
-games/ssx3/module/tests/ps2_ssx3_movie_stub_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_movie_stub_tests.cpp	eb14ca8c5059478413de54fadd3c19b75a23c2a882490c38fb569d68153f903f	3271	moved
-games/ssx3/module/tests/ps2_ssx3_sif_handshake_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_sif_handshake_tests.cpp	cd3fdc8c2feae012504b60b15c66ff51f3f2d733fb794d444f3eaec76142b268	7188	moved
+games/ssx3/module/tests/ps2_ssx3_movie_stub_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_movie_stub_tests.cpp	292598c2e52a9de24c8ae37fe0afd7192e15f936333bdd6ebb02102d45aa90d6	3395	composition:license-cleanup-1-reauthor (source fork@18d291a7)
+games/ssx3/module/tests/ps2_ssx3_sif_handshake_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_sif_handshake_tests.cpp	7524f2e4c9ea38c8524a1edb02b0fb1d0cdb669a253687eb8bd4b529697bd4fe	6733	composition:license-cleanup-1-reauthor (source fork@18d291a7)
 games/ssx3/module/tests/ps2_ssx3_tricky_song_provider_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_tricky_song_provider_tests.cpp	74916b2247bf374b2ed4256905ea30ac98012c8adfa73d1e799eddb1c01870d5	2996	moved
 games/ssx3/module/tests/ps2_ssx3_tricky_state_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_tricky_state_tests.cpp	6db0fcdf5e1f6506645214a605a55d87e0369c123a13a8acf4c05beff94b18bf	10751	moved
-games/ssx3/module/tests/ps2_ssx3_vis_native_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_vis_native_tests.cpp	9e87711e0b8959f1bc15cd677d9f15491699f0ccf02e66420ea5094ba3a55a2f	16896	moved
+games/ssx3/module/tests/ps2_ssx3_vis_native_tests.cpp	fork@18d291a7	games/ssx3/module/tests/ps2_ssx3_vis_native_tests.cpp	8725c08277c58e2656c065758f4d5825b4ee74dfa282cba3a86f50ba31f0e3ee	17097	composition:license-cleanup-1-reauthor (source fork@18d291a7)

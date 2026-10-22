@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // sif-handshake-1: moved from ps2xRuntime/src/lib/Kernel/Syscalls/RPC.cpp
 // (fork f7a96f23). The runtime keeps the SendCmd call site; the module owns
 // the SSX 3 ready-handshake policy behind the game-module SIF hook
@@ -26,49 +27,49 @@ namespace
 // model.
 std::atomic<bool> g_ssx3SifHandshakeEnabled{false};
 
-// Same bounds as the kernel's getEeGuestStruct<uint32_t>
-// (Syscalls/Common.h): aligned words in RDRAM, its KSEG0/KSEG1 mirrors,
-// or the scratchpad; anything else reads as absent.
+// Physical RDRAM sits behind the low 29 address bits. Of the eight 512 MB
+// EE segments (address >> 29), four reach it: 0 is the direct low window,
+// 1 the 0x2000'0000 uncached alias, 4 KSEG0 (cached) and 5 KSEG1
+// (uncached). 2, 3 and 6, 7 (TLB-mapped and KSEG2/3) never alias RDRAM.
+constexpr uint32_t kEePhysicalBits = 0x1FFF'FFFFu;
+
+constexpr bool eeSegmentAliasesRdram(uint32_t address)
+{
+    const uint32_t segment = address >> 29;
+    return segment == 0u || segment == 1u || segment == 4u || segment == 5u;
+}
+
+// Host view of an aligned guest word, with the bounds of the kernel's
+// getEeGuestStruct<uint32_t> (Syscalls/Common.h): the scratchpad (and
+// its high mirror) first, then any RDRAM alias above. Everything else,
+// including a word that would run off the end of either region, reads
+// as absent (nullptr).
 const uint32_t *sifHandshakeSregIndex(const uint8_t *rdram, uint32_t address)
 {
-    if (rdram == nullptr || (address & (alignof(uint32_t) - 1u)) != 0u)
+    constexpr uint32_t kWordBytes = sizeof(uint32_t);
+    const uint8_t *host = nullptr;
+    if (rdram != nullptr && address % kWordBytes == 0u)
     {
-        return nullptr;
-    }
-    uint32_t offset = 0u;
-    bool scratch = false;
-    if (ps2IsScratchpadAddress(address))
-    {
-        scratch = true;
-        offset = ps2ScratchpadOffset(address);
-        if (sizeof(uint32_t) > PS2_SCRATCHPAD_SIZE || offset > PS2_SCRATCHPAD_SIZE - sizeof(uint32_t))
+        if (ps2IsScratchpadAddress(address))
         {
-            return nullptr;
+            const uint32_t spadOffset = ps2ScratchpadOffset(address);
+            const uint8_t *spadBase =
+                (spadOffset + kWordBytes <= PS2_SCRATCHPAD_SIZE) ? ps2GetScratchpadHostPtr() : nullptr;
+            if (spadBase != nullptr)
+            {
+                host = spadBase + spadOffset;
+            }
+        }
+        else if (eeSegmentAliasesRdram(address))
+        {
+            const uint32_t physical = address & kEePhysicalBits;
+            if (physical + kWordBytes <= PS2_RAM_SIZE)
+            {
+                host = rdram + physical;
+            }
         }
     }
-    else if (address < PS2_RAM_SIZE)
-    {
-        offset = address;
-    }
-    else if ((address >= 0x20000000u && address < 0x40000000u) ||
-             (address >= 0x80000000u && address < 0xC0000000u))
-    {
-        offset = address & 0x1FFFFFFFu;
-    }
-    else
-    {
-        return nullptr;
-    }
-    if (!scratch && (sizeof(uint32_t) > PS2_RAM_SIZE || offset > PS2_RAM_SIZE - sizeof(uint32_t)))
-    {
-        return nullptr;
-    }
-    if (scratch)
-    {
-        const uint8_t *base = ps2GetScratchpadHostPtr();
-        return base ? reinterpret_cast<const uint32_t *>(base + offset) : nullptr;
-    }
-    return reinterpret_cast<const uint32_t *>(rdram + offset);
+    return reinterpret_cast<const uint32_t *>(host);
 }
 } // namespace
 

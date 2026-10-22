@@ -1,13 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later OR MIT -->
+<!-- SSX3-120 app manifest. Placeholder attribute values are filled from
+     manifestPlaceholders in app/build.gradle, and the installed package id
+     is its applicationId. -->
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Online needs sockets. Without this every socket()/connect() fails
          (EACCES), so no public Android build can reach a lobby. Normal
          permission: granted at install. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application
-        android:name=".RunnerApplication"
+    <application android:name=".RunnerApplication"
         android:label="${ps2xAppLabel}"
         android:hasCode="true"
         android:isGame="true"
@@ -20,8 +24,7 @@
         <!-- GPU2: opt in to Android Game Mode (performance + battery); no
              downscaling or fps override, so the OS can't change our render
              size or frame rate. -->
-        <meta-data
-            android:name="android.game_mode_config"
+        <meta-data android:name="android.game_mode_config"
             android:resource="@xml/game_mode_config" />
 
         <!-- F6 (appsec-fix-1): non-exported so only the LaunchActivity
@@ -30,17 +33,15 @@
              RAM/panel policy and 60/120 selection. Tooling bootstraps
              through the LaunchAdb alias. singleTask: one runtime per
              process; a relaunch brings the running game forward. -->
-        <activity
-            android:name="android.app.NativeActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation"
-            android:screenOrientation="landscape"
+        <!-- Landscape only; rotation, resize and keyboard/navigation changes
+             are handled in process instead of restarting the activity. -->
+        <activity android:name="android.app.NativeActivity" android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize"
             android:launchMode="singleTask"
             android:exported="false">
 
-            <!-- Runner shared library built by ps2xRuntime/CMakeLists.txt -->
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="ps2EntryRunner" />
+            <!-- NativeActivity loads lib<value>.so: the engine's ps2EntryRunner target. -->
+            <meta-data android:name="android.app.lib_name" android:value="ps2EntryRunner" />
         </activity>
 
         <!-- TG1: single launcher entry aliasing the trampoline (see
@@ -48,8 +49,7 @@
              files dir (launch-hz, default 120) and the 120 mode layers
              files/full120.env. Own empty affinity + excludeFromRecents so
              Recents shows only the game task. -->
-        <activity
-            android:name=".LaunchActivity"
+        <activity android:name=".LaunchActivity"
             android:theme="@android:style/Theme.NoDisplay"
             android:taskAffinity=""
             android:excludeFromRecents="true"
@@ -62,12 +62,10 @@
             android:enabled="${ps2xAliasEnabled}"
             android:icon="@mipmap/ic_ssx_120"
             android:roundIcon="@mipmap/ic_ssx_120"
-            android:targetActivity=".LaunchActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            android:exported="true"
+            android:targetActivity=".LaunchActivity">
+            <!-- MAIN + LAUNCHER: this alias is the app's home-screen icon. -->
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity-alias>
 
         <!-- v0-builder-fix-1 S2: always-enabled bootstrap alias with no

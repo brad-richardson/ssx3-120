@@ -1,15 +1,17 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "ps2_snd_spike.h"
 #include "ps2_syscalls.h"
 #include "runtime/ps2_pcm_ring.h"
 
+// Standard library (alphabetical).
 #include <algorithm>
 #include <array>
-#include <cstdlib>
-#include <cstdio>
-#include <memory>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <vector>
 #if !defined(_WIN32)
 #include <sys/stat.h>

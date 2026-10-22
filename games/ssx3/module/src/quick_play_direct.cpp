@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // astra-qp-direct-1: stock online session and FE constructors, without pad
 // navigation. Explicit experimental value of the existing Quick Play gate.
 // Guest calls use stack continuations so checkpoint unwinds remain resumable.
@@ -6,6 +7,8 @@
 #include "ps2_runtime.h"
 #include "ps2_ui_toast.h"
 #include "runtime/ps2_memory.h"
+
+// Standard library.
 #include <chrono>
 #include <cstdio>
 #include <cstring>

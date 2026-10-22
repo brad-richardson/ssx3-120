@@ -1,17 +1,13 @@
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
+// Gradle settings for the SSX3-120 Android build.
 
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+// Plugin lookup: AGP lives on Google's Maven; Central and the Gradle plugin
+// portal cover everything else.
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 
-rootProject.name = 'PS2Recomp'
-include ':app'
+// Library lookup for the modules: Google's Maven and Maven Central.
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+
+// The root project keeps its original name; the build has one module, :app.
+rootProject.name = "PS2Recomp"
+include(':app')

@@ -1,0 +1,99 @@
+# REUSE.toml: licensing by path (REUSE Specification 3.3, https://reuse.software).
+#
+# The rule: everything in this repository is Brad Richardson's and is
+# available under MIT OR GPL-3.0-or-later, at your option, except
+#   - deps/          the PS2Recomp engine submodule (GPL-3.0; its own notices),
+#   - third_party/   code by others, under the licence named in each file,
+#   - the third-party files declared at the end of this file, which stay where
+#     a build expects them (Gradle wrapper, the PCSX2-derived SPU2 headers).
+# Source files carry `SPDX-License-Identifier: GPL-3.0-or-later OR MIT`.
+# Data and config files that carry no header are declared below.
+# Licence texts: LICENSES/ (LICENSE and LICENSE-MIT stay as the familiar copies).
+# Check: `reuse lint` (pipx run reuse lint) must report no issues.
+version = 1
+
+# Copyright for every file that names a licence but no holder.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Brad Richardson"
+
+# Data and config files (Markdown docs, JSON/TSV/CSV/TXT data, YAML/TOML/env
+# settings, Android XML resources, CMake recipes, lock files, CI templates).
+[[annotations]]
+path = [
+    ".github/**",
+    ".gitignore",
+    "**/.gitignore",
+    ".gitmodules",
+    ".python-version",
+    "**/*.md",
+    "**/*.json",
+    "**/*.tsv",
+    "**/*.csv",
+    "**/*.txt",
+    "**/*.toml",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.env",
+    "**/*.xml",
+    "**/*.properties",
+    "**/*.lock",
+    "infra/lobby-rust/Dockerfile",
+    "infra/lobby-rust/*.service",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Brad Richardson"
+SPDX-License-Identifier = "GPL-3.0-or-later OR MIT"
+
+# Det-key fixtures: guest-state hash streams recorded by this project's gate.
+[[annotations]]
+path = "tests/det/keys/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Brad Richardson"
+SPDX-License-Identifier = "GPL-3.0-or-later OR MIT"
+
+# PGO profiles: instrumentation counters from training runs of the composed
+# build, keyed by function names that include the GPL-3.0 engine's (deps/).
+# They follow the engine's licence; no game bytes.
+[[annotations]]
+path = "tools/ssx3/pgo/*/profile.profdata.gz"
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Brad Richardson", "PS2Recomp contributors"]
+SPDX-License-Identifier = "GPL-3.0-only"
+
+# ---- Third-party files ----
+
+# Offline VU1 host core: derived from PCSX2/ARMSX2 microVU (see its README).
+[[annotations]]
+path = "third_party/offline-core/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2002-2026 PCSX2 Dev Team", "ARMSX2 contributors", "2026 Brad Richardson"]
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Gradle wrapper (script, batch file and bootstrap JAR), Gradle 8.9. Kept in
+# apps/android/ because the wrapper resolves the JAR relative to itself.
+[[annotations]]
+path = [
+    "apps/android/gradlew",
+    "apps/android/gradlew.bat",
+    "apps/android/gradle/wrapper/gradle-wrapper.jar",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "the original authors of Gradle"
+SPDX-License-Identifier = "Apache-2.0"
+
+# SPU2 headers with code from PCSX2's SPU2 (interpolate_table.h, Mixer.cpp,
+# ADSR.cpp). Kept in the module tree: the engine's support-bundle contract
+# (deps/PS2Recomp tools/ssx3/prebuilt.py CONTRACT_EXPLICIT) names these paths.
+[[annotations]]
+path = "games/ssx3/module/include/ps2_snd_spu_gauss.h"
+precedence = "override"
+SPDX-FileCopyrightText = "2002-2026 PCSX2 Dev Team"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "games/ssx3/module/include/ps2_snd_spu.h"
+precedence = "override"
+SPDX-FileCopyrightText = ["2002-2026 PCSX2 Dev Team", "2026 Brad Richardson"]
+SPDX-License-Identifier = "GPL-3.0-or-later"

@@ -1,8 +1,11 @@
-plugins {
-    id 'com.android.application'
-}
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
+// SSX3-120 Android app module: the engine's CMake project supplies the native
+// code (ps2EntryRunner, plus libhardware unless prebuilt); this script maps
+// Gradle project properties onto that build.
+plugins { id('com.android.application') }
 
-// Override with: gradlew assembleRelease -Pps2xBootElf=/absolute/path/on/device.elf
+// Build knobs: every ps2x* value below is a Gradle project property, given as
+// -P<name>=<value> (for example -Pps2xBootElf=<absolute ELF path on device>).
 def ps2xGameCodegenDir = project.findProperty('ps2xGameCodegenDir') ?: ''
 // split-p1-prep-1: product-owned game module (default: this checkout's copy;
 // build.py always passes the absolute -Pps2xGameModuleDir explicitly).
@@ -93,7 +96,7 @@ def ps2xAppLabel = project.findProperty('ps2xAppLabel') ?: (ps2xAppId in ['com.p
 def ps2xAliasEnabled = (ps2xAppId in ['com.ps2x.runner', 'com.ssx3.recomp'] ? 'true' : 'false')
 def ps2xBootElf = project.findProperty('ps2xBootElf') ?: "/storage/emulated/0/Android/data/${ps2xAppId}/files/game.elf"
 
-android {
+android { // AGP module settings: SDK/NDK pins, variants and the native build
     androidResources {
         noCompress 'png'
     }
@@ -102,16 +105,17 @@ android {
     }
     // Source namespace stays with the Java helpers (com.ps2x.runner);
     // the installed package is applicationId above (public com.ssx3.recomp).
-    namespace 'com.ps2x.runner'
-    compileSdk 34
-    ndkVersion '28.2.13676358'
+    namespace = 'com.ps2x.runner'
+    // Compile against API 34; the NDK pin matches NDK in tools/ssx3/prebuilt.py.
+    compileSdk = 34
+    ndkVersion = '28.2.13676358'
 
-    defaultConfig {
+    defaultConfig { // shared by the debug and release build types
         applicationId ps2xAppId
         minSdk 29
-        targetSdk 34
+        targetSdk = 34
         versionCode ps2xVersionCode
-        versionName '0.1.0'
+        versionName = '0.1.0'
         // F8: shell-profileable only for lab/dev builds; public drops it.
         // G7 app label rides along: one map — a second `manifestPlaceholders =`
         // assignment would replace the whole map and drop the other key.
@@ -122,18 +126,17 @@ android {
             versionNameSuffix '-pgogen'
         }
 
-        externalNativeBuild {
-            cmake {
+        externalNativeBuild { // configure-time CMake inputs for every variant
+            // Argument order is kept stable; only the runner and the HAL are
+            // built (host tools, tests and the studio are switched off).
+            cmake { // engine configure arguments and build targets
                 arguments "-DCMAKE_JOB_POOLS=ps2x_compile=${ps2xJobs};ps2x_link=1",
                         '-DCMAKE_JOB_POOL_COMPILE=ps2x_compile',
                         '-DCMAKE_JOB_POOL_LINK=ps2x_link',
                         '-DPS2X_BUILD_RECOMP=OFF',
-                        '-DPS2X_BUILD_ANALYZER=OFF',
-                        '-DPS2X_BUILD_TEST=OFF',
-                        '-DPS2X_BUILD_STUDIO=OFF',
-                        '-DPS2X_ENABLE_SCCACHE=OFF',
-                        '-DPS2X_RUNNER_UNITY_BUILD_BATCH_SIZE=32',
-                        '-DANDROID_CPP_FEATURES=rtti exceptions',
+                        '-DPS2X_BUILD_ANALYZER=OFF', '-DPS2X_BUILD_TEST=OFF',
+                        '-DPS2X_BUILD_STUDIO=OFF', '-DPS2X_ENABLE_SCCACHE=OFF',
+                        '-DPS2X_RUNNER_UNITY_BUILD_BATCH_SIZE=32', '-DANDROID_CPP_FEATURES=rtti exceptions',
                         '-DPS2X_ENABLE_DIAG_TAPS=OFF',
                         '-DPS2X_ENABLE_DIAG_WATCH=OFF',
                         '-DPS2X_ENABLE_TS2_DIAG=OFF',
@@ -166,7 +169,7 @@ android {
             }
         }
 
-        ndk {
+        ndk { // packaged ABIs: the runtime is built for arm64 only
             abiFilters 'arm64-v8a'
         }
     }
@@ -189,13 +192,13 @@ android {
         sourceSets.main.assets.srcDirs += [ps2xPublicNoticesDir]
     }
 
-    externalNativeBuild {
-        cmake {
+    externalNativeBuild { // which CMake project AGP drives, and with which CMake
+        cmake { // engine CMakeLists, optional staging dir, CMake version
             path ps2xEngineCMakeLists
             if (ps2xNativeBuildDir) {
                 buildStagingDirectory file(ps2xNativeBuildDir)
             }
-            version '3.22.1'
+            version = '3.22.1' // Android SDK package cmake;3.22.1
         }
     }
 
@@ -210,16 +213,12 @@ android {
         }
     }
 
-    buildTypes {
-        debug {
-            externalNativeBuild {
-                cmake {
-                    arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
-                }
-            }
+    buildTypes { // debug: optimised native code with symbols; release: the shipped APK
+        debug { // RelWithDebInfo (-O3 -g, see the flags above)
+            externalNativeBuild { cmake { arguments('-DCMAKE_BUILD_TYPE=RelWithDebInfo') } }
         }
-        release {
-            minifyEnabled false
+        release { // built by tools/ssx3/build.py via assembleRelease
+            minifyEnabled = false // the Java helpers are not shrunk or obfuscated
             signingConfig ps2xKeystoreFile ? signingConfigs.ssx3Local : signingConfigs.debug
             // PG5 GEN only (see ps2xPgoGenerate): wrap.sh + run-as profile pull.
             // F8: public/release builds are non-debuggable; --dev keeps it.

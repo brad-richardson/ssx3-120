@@ -1904,14 +1904,14 @@ def validate_om1_stage(path):
     if not stage.is_dir():
         raise ValueError('--om1-stage must be a directory holding your locally generated '
                          'offline VU1 tables (got ' + str(path) + '); see '
-                         'tools/ssx3/offline-core/README.md')
+                         'third_party/offline-core/README.md')
     missing = [name for name in OM1_STAGE_REQUIRED if not (stage / name).is_file()]
     if missing:
         raise ValueError('--om1-stage is missing: ' + ', '.join(missing))
     if not list(stage.glob('*.s')) or not list(stage.glob('*_tables.c')):
         raise ValueError('--om1-stage needs the recorded assembly (*.s) and tables (*_tables.c); '
                          'the portable recording recipe is still incomplete, so generate the '
-                         'stage with the lane tooling (see tools/ssx3/offline-core/README.md)')
+                         'stage with the lane tooling (see third_party/offline-core/README.md)')
     return stage
 
 
@@ -2385,7 +2385,7 @@ def ios_om1_receipt_path(work):
     return work / 'om1-stage.json'
 
 
-OM1_OFFLINE_CORE_DIR = ROOT / 'tools/ssx3/offline-core'
+OM1_OFFLINE_CORE_DIR = ROOT / 'third_party/offline-core'
 
 
 def om1_core_hashes(core_dir=None):

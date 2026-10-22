@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later OR MIT -->
 # Android SSX 3 local setup
 
 New local preparation/build entry: [tools/ssx3](../../tools/ssx3/README.md). Supported build hosts: macOS Apple silicon, Linux x86_64/arm64 (Windows users: Ubuntu in WSL2); play targets: Android arm64 / iOS.
@@ -14,14 +15,14 @@ validated. No game-bearing APK is provided.
 Use JDK 17, Gradle 8.7+ (AGP 8.6.1), SDK 34, **NDK 28.2.13676358** and SDK
 CMake 3.22.1. The app requires Android API 29+ and builds only `arm64-v8a`;
 default native flags target `armv8.2-a+fp16+dotprod`, so arm64 alone does not
-establish device compatibility. See [AGP](build.gradle#L2) and
-[toolchain/ABI](app/build.gradle#L33). Arbitrary Android devices are not validated.
+establish device compatibility. See [AGP](build.gradle#L4) and
+[toolchain/ABI](app/build.gradle#L111). Arbitrary Android devices are not validated.
 
 The public builder supplies signing, version code, package id and paths. For a
 direct Gradle build with inputs you prepared yourself, run from `android/`
 with the committed wrapper (Gradle 8.9):
 
-```sh
+```bash
 ./gradlew assembleRelease   -Pps2xBootElf=/storage/emulated/0/Android/data/com.ssx3.recomp/files/SLUS_207.72   -Pps2xGameCodegenDir=/absolute/local/generated-ee   -Pps2xVu0RecompDir=/absolute/local/generated-vu0   -Pps2xJniLibsDir=/absolute/local/jniLibs   -Pps2xAppId=com.ssx3.recomp
 ```
 
@@ -29,7 +30,7 @@ The JNI directory contains an `arm64-v8a/` subdirectory with matching GE1 and
 microVU libraries (plus their runtime dependencies and Turnip if enabled).
 **Do not include `libhardware.so`** there: it is built from source and Gradle
 rejects a duplicate. PGO is off unless supplied; omit `ps2xPgoData` for a no-PGO
-build ([properties](app/build.gradle#L6), [JNI guard](app/build.gradle#L93)).
+build ([properties](app/build.gradle#L9), [JNI guard](app/build.gradle#L186)).
 Output: `app/build/outputs/apk/release/app-release.apk`.
 This direct command uses the debug key; the public builder uses a per-user
 keystore. A direct Gradle invocation without `ps2xAppId` or public signing
@@ -43,7 +44,7 @@ key. It installs over the existing app and SHA-checks the ISO, ELF, presets and
 GE1 resources in this app's external files directory. It never removes cards
 or saves and never packages the ISO in the APK:
 
-```sh
+```bash
 python3 tools/ssx3/build.py install --work /path/to/private-build
 ```
 
@@ -107,7 +108,7 @@ by `PS2X_MC_ROOT`. When that directory is named `mc0`, port 1 uses its sibling
 ([card paths](https://github.com/brad-richardson/PS2Recomp/blob/1ce278b8ebc3511a2f1d389c2a47ec4662da3cbe/ps2xRuntime/src/lib/Kernel/Stubs/MemoryCard.cpp#L124)). With the
 app stopped, copy the entire files directory to a **new** local backup directory:
 
-```sh
+```bash
 adb pull /storage/emulated/0/Android/data/com.ssx3.recomp/files /absolute/local/new-backup-directory
 ```
 
@@ -121,7 +122,7 @@ created once at `~/.config/ssx3-120/android-signing.keystore` (outside any
 work dir, never in the checkout) and reused on every later build, with a
 monotonic `versionCode` from a counter in each work directory
 (`version-code.txt`); `versionName` stays `0.1.0`
-([configuration](app/build.gradle#L41)). An existing work-dir
+([configuration](app/build.gradle#L117)). An existing work-dir
 `ssx3-signing.keystore` is preferred when present; `--keystore` overrides.
 **Back up your keystore; a different key forces an uninstall, which wipes
 saves.** Copy the keystore with your backups and restore it before

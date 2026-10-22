@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // split-input-1 #5: SSX 3 input marker (`ssx3-input-marker`, LIM1/LIM2).
 //
 // Moved verbatim from ps2xRuntime/src/lib/Kernel/Stubs/Pad.cpp (marker
@@ -568,9 +569,11 @@ namespace ps2_stubs
             g_padMarker.lastBoostO = g_lim2BoostO;
         }
 
-        // Active-low button bits (values from Pad.cpp, which owns the pad state).
-        constexpr uint16_t kPadBtnL3 = 1u << 1;
-        constexpr uint16_t kPadBtnR3 = 1u << 2;
+        // DualShock 2 digital button word, active-low (a held button reads 0;
+        // Pad.cpp owns the pad state). Bit 0 is Select, 1 L3, 2 R3, 3 Start;
+        // the marker only watches the two stick clicks.
+        constexpr uint16_t kDs2StickClickL = 0x0002u; // L3, bit 1
+        constexpr uint16_t kDs2StickClickR = 0x0004u; // R3, bit 2
 
         // ---- LIM1 guest-call latches (read-only; armed only) ----
         PS2Runtime::RecompiledFunction g_lim1TrackerNext = nullptr;
@@ -910,10 +913,10 @@ namespace ps2_stubs
             padMarkerPushLocked(row);
             bool chordFired = false;
             // Chord edges on the effective (guest-visible) state.
-            const bool l3Down = (buttons & kPadBtnL3) == 0u;
-            const bool r3Down = (buttons & kPadBtnR3) == 0u;
-            const bool wasL3Down = (g_padMarker.prevButtons & kPadBtnL3) == 0u;
-            const bool wasR3Down = (g_padMarker.prevButtons & kPadBtnR3) == 0u;
+            const bool l3Down = (buttons & kDs2StickClickL) == 0u;
+            const bool r3Down = (buttons & kDs2StickClickR) == 0u;
+            const bool wasL3Down = (g_padMarker.prevButtons & kDs2StickClickL) == 0u;
+            const bool wasR3Down = (g_padMarker.prevButtons & kDs2StickClickR) == 0u;
             if (l3Down && !wasL3Down)
             {
                 g_padMarker.l3Ms = nowMs;

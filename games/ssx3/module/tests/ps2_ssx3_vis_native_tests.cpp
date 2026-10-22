@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // VNP1: SSX 3 VU0 visibility test 0xDB8, native port vs the VU0 engine.
 // Local only: needs the game's VU0 code image (PS2X_VR3_VU0_IMAGE, the
 // vu0_40829a098c260b4f.bin dump); skipped when unset.
 #include "MiniTest.h"
+// Engine: runtime, GS front end, guest memory, VU0 and its state, FP mode.
 #include "ps2_runtime.h"
 #include "runtime/gs/gs_frontend.h"
 #include "runtime/ps2_memory.h"
@@ -9,7 +11,7 @@
 #include "runtime/ps2_vu_state.h"
 #include "Ssx3VisNative.h"
 #include "ps2_fpmode.h"
-
+// Standard library: ints, stdio/getenv, memcpy, the image file, buffers.
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

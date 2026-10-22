@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "ps2_fh1_full120.h"
-
+// Standard library: float math, fixed-width ints, memcpy bit casts, buffers.
 #include <cmath>
 #include <cstdint>
 #include <cstring>

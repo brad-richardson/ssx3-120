@@ -94,16 +94,28 @@ and its status), [Tricky host review](docs/research/tricky-host-review.md)
 You supply the discs: USA SSX 3 (`SLUS_207.72`), plus USA SSX Tricky for
 the Tricky courses. No game data, art, BIOS, derived assets, or
 game-bearing binaries are published here or in any release. This is a fan
-project, not affiliated with or endorsed by Electronic Arts. GPL-3.0
-(`LICENSE`). `SOURCE_PROVENANCE.md` + `SOURCE_MANIFEST.tsv` record every
+project, not affiliated with or endorsed by Electronic Arts. MIT OR
+GPL-3.0-or-later; the GPL-only parts are listed under [License](#license).
+`SOURCE_PROVENANCE.md` + `SOURCE_MANIFEST.tsv` record every
 file's pinned source and bytes; `THIRD_PARTY_NOTICES.md` names every
 vendored component.
 
 ## License
 
-The repository as a whole is GPL-3.0 (`LICENSE`). Files carrying
-`SPDX-License-Identifier: GPL-3.0-or-later OR MIT` are additionally
-available under the MIT licence (`LICENSE-MIT`). Data and config files
-with no header that are dual-licensed the same way are listed in
-`LICENSES.md`. How to tell: `grep -r "SPDX-License-Identifier:
-GPL-3.0-or-later OR MIT" --include='*' .`, or check `LICENSES.md`.
+Everything in this repository is available under **MIT OR
+GPL-3.0-or-later**, at your option (`LICENSE-MIT`, `LICENSE`), except:
+
+- `deps/`: the PS2Recomp engine submodule, GPL-3.0 (its own `LICENSE`).
+- `third_party/`: code by others under the licence named in each file
+  (the PCSX2/ARMSX2-derived offline VU1 core, GPL-3.0-or-later).
+- Third-party files kept where a build needs them: the Gradle wrapper
+  (`apps/android/gradlew`, `gradlew.bat`, the wrapper JAR; Apache-2.0) and
+  the PCSX2-derived SPU2 headers
+  `games/ssx3/module/include/ps2_snd_spu.h` / `ps2_snd_spu_gauss.h`
+  (GPL-3.0-or-later). The bundled PGO profiles are engine-derived data
+  under GPL-3.0.
+
+`REUSE.toml` declares this by path ([REUSE](https://reuse.software) 3.3;
+`pipx run reuse lint` checks it), source files carry an SPDX licence
+header, and the licence texts are in `LICENSES/`. Apps built from this
+repository link the GPL-3.0 engine and are distributed under its terms.

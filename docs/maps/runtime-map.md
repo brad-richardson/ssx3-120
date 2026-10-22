@@ -33,7 +33,7 @@ Inside `ps2xRuntime`: `src/` = `main.cpp` + `lib/` (all `.cpp`) +
 | Scheduler | `src/lib/Kernel/EeScheduler.cpp` + `include/runtime/ee_scheduler.h` et al |
 | HLE / IOP | `src/lib/ps2_iop_host.cpp` (`include/ps2_stubs.h`, `ps2_syscalls.h`) |
 | GS / GE1 | `src/lib/gs/` (frontend, external GE1 backend, CPU backend, replay core, worker, GIF arbiter) |
-| VU / OM1 | `src/lib/vu/` (VU core, VU1, VU0, microVU, native world); offline VU1 images in `tools/ssx3/offline-core/` |
+| VU / OM1 | `src/lib/vu/` (VU core, VU1, VU0, microVU, native world); offline VU1 images in `third_party/offline-core/` |
 | Net | `src/lib/ps2_net_*.cpp` (DirtySock, link/nolink, netsync, stock120) |
 | Settings overlay | `include/ps2_settings_overlay.h` (in-game panel: hold Select + Start) |
 | Savestate | `src/lib/ps2_savestate.cpp` + section registry |

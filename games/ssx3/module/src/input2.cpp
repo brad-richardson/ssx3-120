@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // split-input-1 #5: SSX 3 input path (`ssx3-input2`).
 //
 // Moved verbatim from ps2xRuntime/src/lib/ps2_runtime.cpp (INP2 block and
@@ -9,6 +10,7 @@
 #include "ps2_fh1_input2.h"
 #include "runtime/ee_guest_unwind.h"
 
+// Standard library.
 #include <array>
 #include <cstdint>
 #include <cstdio>

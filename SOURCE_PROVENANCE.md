@@ -21,6 +21,9 @@ reviewable diffs on top).
 
 - `android/` → `apps/android/` (Gradle native-build source made explicit via `-Pps2xEngineCMakeLists`; see below).
 - `tools/ssx3/presets/*.env` → `presets/*.env` (`stage` reads the new location).
+- `tools/ssx3/offline-core/` → `third_party/offline-core/` (license-cleanup-1;
+  PCSX2/ARMSX2-derived, GPL-3.0-or-later; `build.py` `OM1_OFFLINE_CORE_DIR`
+  follows; the engine keeps its own copy at the old path).
 - Lab tooling copies → `tests/det/*`, `tools/replay/*`, `tools/bench/*` (generalized; see commit message).
 
 ## Composition edits (not verbatim; reviewed in the step-2 commit)
@@ -129,6 +132,18 @@ working until the removal commit; after it, the engine needs
 `SSX3_MODULE_DIR` pointed at this repo for contract/export flows
 (fork CI follow-up in the REPORT's merge recipe).
 
+## Licence cleanup (license-cleanup-1, 2026-10-22)
+
+The 24 files the authorship audit found mixed (license-audit-1) had their
+upstream-attributed lines re-authored: written fresh from behaviour, not
+edited from the upstream text. Manifest rows are
+`composition:license-cleanup-1-reauthor`; the per-file provenance notes
+(what was upstream, how the new text was produced) and the equivalence
+checks are in the lane report in the lab repo. Behaviour is unchanged:
+the address decodes in `sif_handshake.cpp`, `copied_payload.cpp` and
+`movie.cpp` were checked against the old code over all 2^32 addresses.
+`LICENSES.md` is replaced by `REUSE.toml`.
+
 ## Never in this repo or its releases
 
 Generated EE/VU sources, ISO/ELF, converted worlds/audio/HUD, texture
@@ -138,6 +153,7 @@ their own disc under an external `--work` directory.
 
 ## Licence
 
-GPL-3.0 (`LICENSE`, unchanged from the engine). Per-file copyright headers
-are preserved. Third-party components and their notices: see
+MIT OR GPL-3.0-or-later by default, path by path in `REUSE.toml`
+(README → License); `deps/` and `third_party/` keep their own licences.
+Per-file copyright headers are preserved. Third-party components and their notices: see
 `THIRD_PARTY_NOTICES.md`.

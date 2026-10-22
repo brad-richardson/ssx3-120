@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # module-seam-1: the SSX 3 game module (runtime/game_module.h). A static
 # library attached to final targets with ps2x_attach_game_module(); the
 # runtime never includes these headers. Moved families: README.md.
@@ -48,7 +49,8 @@ set_target_properties(ssx3_game_module PROPERTIES
 )
 
 # Same release flags as ps2_runtime, where this code compiled before the move.
-include("${PS2X_ENGINE_SOURCE_DIR}/ps2xRuntime/cmake/ReleaseMode.cmake")
+set(_ssx3_module_release_mode "${PS2X_ENGINE_SOURCE_DIR}/ps2xRuntime/cmake/ReleaseMode.cmake")
+include("${_ssx3_module_release_mode}")
 get_property(_ssx3_module_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR _ssx3_module_multi_config)
     EnableFastReleaseMode(ssx3_game_module)

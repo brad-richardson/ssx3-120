@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Deploy the Rust ssx3-lobby to the Oracle host, replacing MComm.
 # Copies the static binary + systemd unit + production config over SSH,
 # installs them, stops the MComm compose stack (image and compose file

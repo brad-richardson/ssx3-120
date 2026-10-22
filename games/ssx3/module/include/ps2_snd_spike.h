@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // HLE of the SSX 3 EA SND tick and tag-1 PCM path. The guest-time model
 // (sound-clock ticks, cid-0 uploads, tag-3 voice updates, status block)
 // always runs: the game waits on SND progress once its sound banks load
@@ -34,10 +35,10 @@
 #include "ps2_runtime_macros.h"
 #include "ps2_snd_spu.h"
 
+// Standard library.
 #include <algorithm>
 #include <chrono>
 #include <cstdarg>
-
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

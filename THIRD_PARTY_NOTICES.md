@@ -1,7 +1,8 @@
 # THIRD_PARTY_NOTICES.md
 
 The SoundTouch static link, the community Turnip binary, the RE function
-map / hook addresses, and the whole-repo GPL-3.0 framing ship here with
+map / hook addresses, and the repository's licensing (MIT OR
+GPL-3.0-or-later by default, path by path in `REUSE.toml`) ship here with
 each component's license noted. This file is that record: every
 component with its license and source. Full license texts ship with
 every support bundle (`notices/` assembled by `tools/ssx3/prebuilt.py`
@@ -20,10 +21,10 @@ this file remains the human-readable record alongside each bundle's
 
 | Component | Source / pin | Licence |
 | --- | --- | --- |
-| SSX 3 lobby server (`infra/lobby-rust`, original code for this project) | `infra/lobby-rust/` | GPL-3.0-or-later (top-level `LICENSE`) |
+| SSX 3 lobby server (`infra/lobby-rust`, original code for this project) | `infra/lobby-rust/` | MIT OR GPL-3.0-or-later (`REUSE.toml`) |
 | PS2Recomp upstream (`ran-j/PS2Recomp`) and the `ssx3` product fork | `deps/PS2Recomp @ 1ce278b8`, `LICENSE` | GPL-3.0 |
 | ARMSX2 adapter/build carry (GS + microVU platform recipes; renderer/VU core stays in the vendor repo); PCSX2-derived GE1 code travels under the same carry | `ps2xRuntime/third_party/armsx2` (`README.md`); vendor `brad-richardson/armsx2 @ 4b75f706` | GPL-3.0-or-later adapters; GE1/PCSX2-derived parts GPL-3.0+; see vendor tree |
-| Offline VU1 host core (four handwritten dispatch/bridge/stub sources rebuilt into the iOS OM1 stage) | `tools/ssx3/offline-core/` (`README.md`); derived from PCSX2/ARMSX2 microVU | GPL-3.0-or-later |
+| Offline VU1 host core (four handwritten dispatch/bridge/stub sources rebuilt into the iOS OM1 stage) | `third_party/offline-core/` (`README.md`); derived from PCSX2/ARMSX2 microVU | GPL-3.0-or-later |
 | SoundTouch (generic host-audio support), linked statically into the support libraries | `ps2xRuntime/third_party/soundtouch` (`README.at1.md:6–25`), `COPYING.TXT` | LGPL-2.1. Relink path: the full source build lives in this repo — the builder compiles `libps2x_soundtouch.a` from the vendored source by default (`tools/ssx3/prebuilt.py` archives it; `tools/ssx3/README.md` source-by-default), so anyone can rebuild and replace that archive and relink |
 | raylib (UI/overlay rendering) 5.5, fetched at configure time | `https://github.com/raysan5/raylib.git` tag `5.5` via `FetchContent` (`ps2xRuntime/CMakeLists.txt`); EGL-alpha + iOS-SDL2-DPI patches in `ps2xRuntime/cmake/` | zlib |
 | sse2neon (ARM SIMD translation header, ARM targets only), fetched at configure time | `https://github.com/DLTcollab/sse2neon.git` tag `v1.9.1` via `FetchContent` (`CMakeLists.txt`) | MIT |
@@ -43,9 +44,9 @@ this file remains the human-readable record alongside each bundle's
 | vgmstream (Tricky speech decode build tool only; never shipped) | Local install only, gated by a minimum-version and capability probe (`tools/ssx3/tricky/tool_paths.py`): `ffmpeg` >= 6.0, `vgmstream-cli` r1900+; macOS `brew install vgmstream`, or build the CLI from `https://github.com/vgmstream/vgmstream.git` when your distro lacks it. Nothing is downloaded or pinned. | Permissive ISC-style (use/copy/modify/distribute with notice), per lock note |
 | Inherited Vita modules (five `.suprx` files; outside the Android/iOS recipes) | `deps/PS2Recomp/ps2xRuntime/vita/module/` at the engine pin in `deps.lock.json` | Upstream provenance/licence inventory still needs an explicit record; the project GPL label alone is not a per-binary notice |
 | GE1 prewarm selector blobs (Vulkan + Metal shader prewarm data; carried in the vendor tree) | engine `ps2xRuntime/third_party/armsx2/ge1/tfx-prewarm-vk.bin`, `tfx-prewarm-metal.bin` (with `tfx-prewarm-data.h`) at the engine pin in `deps.lock.json` | Upstream provenance/licence inventory still needs an explicit record; the project GPL label alone is not a per-binary notice |
-| Bundled PGO profiles (indexed instrumentation profiles: function names, hashes and counters only; no game bytes) | `tools/ssx3/pgo/android/profile.profdata.gz`, `tools/ssx3/pgo/ios/profile.profdata.gz` (with `MANIFEST.json` trained fork/codegen SHAs) | GPL-3.0 (same tree); profile data holds no game bytes |
+| Bundled PGO profiles (indexed instrumentation profiles: function names, hashes and counters only; no game bytes) | `tools/ssx3/pgo/android/profile.profdata.gz`, `tools/ssx3/pgo/ios/profile.profdata.gz` (with `MANIFEST.json` trained fork/codegen SHAs) | GPL-3.0-only (engine-derived data, declared in `REUSE.toml`); profile data holds no game bytes |
 | Procedural iOS app icon (generated at build time, not hand art) | engine `ps2xRuntime/tools/make_ios_icon.swift` recipe; staged `ps2xRuntime/ios/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` at the engine pin in `deps.lock.json` | GPL-3.0 (same engine tree) |
-| Gradle wrapper scripts/JAR (product app build dependency); Android Gradle Plugin 8.6.1 via the plugin portal; Gradle 8.9 distribution | `apps/android/gradle/`, `apps/android/build.gradle` | per wrapper licence; JAR is binary build tooling. Google SDK/NDK packages (`platforms;android-34`, `build-tools;34.0.0`, `ndk;28.2.13676358`, `cmake;3.22.1`, `platform-tools`) are fetched during the build and require accepting Google's SDK licence (`--accept-android-licenses`) |
+| Gradle wrapper scripts/JAR (product app build dependency); Android Gradle Plugin 8.6.1 via the plugin portal; Gradle 8.9 distribution | `apps/android/gradlew`, `apps/android/gradlew.bat`, `apps/android/gradle/`, `apps/android/build.gradle` | Wrapper script, batch file and JAR: Apache-2.0 (`REUSE.toml`, `LICENSES/Apache-2.0.txt`); JAR is binary build tooling. Google SDK/NDK packages (`platforms;android-34`, `build-tools;34.0.0`, `ndk;28.2.13676358`, `cmake;3.22.1`, `platform-tools`) are fetched during the build and require accepting Google's SDK licence (`--accept-android-licenses`) |
 | plutovg / plutosvg (Mac library recipe sources) | fetched by `tools/ssx3/build.py` `mac-libs` (`v1.1.0` / `v0.0.7`) into the private work dir | MIT; notices assembled into bundles |
 | Python build helpers | `uv`-provisioned `numpy` + `Pillow` (font-pack tools only; `tools/ssx3/build.py` header) | numpy BSD-3-Clause, Pillow HPND; stdlib otherwise |
 | Temurin JDK 17 (auto-fetched toolchain) | Adoptium release API (`deps.lock.json` bootstrap pins, into `--work/toolchain/`) | GPL-2.0 with Classpath Exception |

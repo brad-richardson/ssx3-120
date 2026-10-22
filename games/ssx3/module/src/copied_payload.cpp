@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // module-seam-2: moved from ps2xRuntime/src/lib/Kernel/Syscalls/
 // Ssx3CopiedPayload.cpp (fork c71407e9). The kernel reaches it through the
 // module's syscall hooks (runtime/game_module.h); state and helpers are
@@ -101,26 +102,33 @@ bool emulateLookup(const uint8_t *rdram, R5900Context *ctx)
     return true;
 }
 
+// Stores one guest word; reports whether addr decoded to host memory
+// (an unmapped address writes nothing).
 bool writeGuestWord(uint8_t *rdram, uint32_t addr, uint32_t value)
 {
-    uint8_t *ptr = getMemPtr(rdram, addr);
-    if (!ptr)
+    uint8_t *const host = getMemPtr(rdram, addr);
+    const bool mapped = host != nullptr;
+    if (mapped)
     {
-        return false;
+        std::memcpy(host, &value, sizeof(value));
     }
-    std::memcpy(ptr, &value, sizeof(value));
-    return true;
+    return mapped;
 }
+
+// EE calling convention (MIPS o32 register use): the first four integer
+// arguments arrive in $a0-$a3, which are GPRs 4-7.
+constexpr int kGprA0 = 4;
 
 // Payload-implied validation per helper, decoded from the game's own
 // bytes at the destination base. Success shapes that need TLB state the
 // HLE does not model are documented at each return.
 bool emulateHelper(uint32_t syscallNumber, uint8_t *rdram, R5900Context *ctx)
 {
-    const uint32_t a0 = getRegU32(ctx, 4);
-    const uint32_t a1 = getRegU32(ctx, 5);
-    const uint32_t a2 = getRegU32(ctx, 6);
-    const uint32_t a3 = getRegU32(ctx, 7);
+    const auto argument = [ctx](int n) { return getRegU32(ctx, kGprA0 + n); };
+    const uint32_t a0 = argument(0);
+    const uint32_t a1 = argument(1);
+    const uint32_t a2 = argument(2);
+    const uint32_t a3 = argument(3);
     int32_t result = -1;
     switch (syscallNumber)
     {

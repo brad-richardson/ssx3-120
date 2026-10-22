@@ -1,3 +1,4 @@
-plugins {
-    id 'com.android.application' version '8.6.1' apply false
-}
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
+// Root build script. It only pins the Android Gradle Plugin (8.6.1) for the
+// build; the :app module is the one that applies it.
+plugins { id('com.android.application') version '8.6.1' apply false }
