@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // flyover-2: skip Tricky's donor flyover via the guest's own transition.
 //
 // On Tricky courses the pre-race intro plays the donor world's flyover over

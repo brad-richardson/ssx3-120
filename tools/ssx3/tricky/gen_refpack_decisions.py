@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Build the committed RefPack decisions file from a capture dir. [tk-speed-1]
 
 A capture dir holds one <group-sha>.json per searched group (written by

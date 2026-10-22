@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Synthetic sector test for the public slim writer."""
 import importlib.util
 from pathlib import Path

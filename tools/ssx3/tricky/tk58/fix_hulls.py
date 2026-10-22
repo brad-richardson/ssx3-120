@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK58 post-composite step: replace TK33b scenery hulls that are not convex hulls.
 
 Guest read (TK58 REPORT): 0x334888 collects a mode-1 instance part's triangle hits from 0x32c0f8

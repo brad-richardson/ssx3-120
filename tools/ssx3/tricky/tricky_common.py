@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Shared Tricky converter inputs (converter-scope-1).
 
 Single home for every repo value the Tricky driver reads from the

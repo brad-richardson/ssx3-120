@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 Part 5 slice 3: draw-distance scaling, moved verbatim from
 // ps2xRuntime/src/lib/ps2_runtime.cpp (the `ssx3-lod-scale` override).
 // The manifest stays runtime-side (read-only include); the Tricky-scope

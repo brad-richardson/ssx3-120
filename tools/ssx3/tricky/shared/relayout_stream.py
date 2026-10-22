@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Rebuild an SSX 3 world archive with our own SSB block boundaries.
 
 Every stream group is decoded, re-chunked into 32 KiB blocks at boundaries chosen by

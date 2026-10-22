@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // VNP1: native port of SSX 3's VU0 visibility test (micro program 0xDB8 of
 // image 40829a098c260b4f). See Ssx3VisNative.h for the contract.
 //

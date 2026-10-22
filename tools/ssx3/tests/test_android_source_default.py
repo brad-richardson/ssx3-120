@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Android libraries default to the source build; --prebuilt is the opt-in.
 
 v0-defaults-1 (Brad 10-16): the Android APK uses the source libraries by

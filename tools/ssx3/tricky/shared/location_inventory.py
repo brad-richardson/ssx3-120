@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Inventory what an SSX 3 location holds besides terrain (read-only).
 
 Parses the SDB index (locations, 96-byte spatial records, 68-byte group records),

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK33: u0zero.py -- per course: families whose Tricky property is mode 1 + player collision (flag 0x20) with u0 = 0
 (not the 1e30 'immovable' sentinel), and whether our TK16-lineage world made them solid (receipt how).
 Usage: u0zero.py --root <lane work root>"""

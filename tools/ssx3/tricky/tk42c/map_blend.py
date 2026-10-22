@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42c: map flagged donor textures -> preset-world kind-9/kind-0 records.
 
 Usage: map_blend.py WORLD.BIG DONOR_SSH CENSUS.json EFFECTS.json HOSTLOC

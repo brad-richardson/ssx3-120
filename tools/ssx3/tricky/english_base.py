@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """english_base.py: build the 8-member Tricky ENGLISH base composite.
 
 Reconstructed tk-audio-2 merge recipe (english-recipe-1): the phase_english

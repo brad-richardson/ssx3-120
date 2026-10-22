@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tricky audio toolchain: optional local tools, --tricky-audio modes.
 
 No network, no real discs: local tools are stub shell scripts, ISOs are

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # ssx3-120 one-command builder (builder-ux-1). Needs only `uv`.
 #
 #   just android ~/SSX3.iso

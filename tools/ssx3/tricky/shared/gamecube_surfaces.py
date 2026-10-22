@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Transfer verified terrain behavior from Tricky GC to SSX 3 GC.
 
 Tricky surface zero means reset; SSX 3 zero means normal snow. SSX 3 terrain

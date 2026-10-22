@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13: SSX 3 PS2 kind-12 triangle collision (type 1), little-endian port of tools/gamecube_collision.py.
 
 The GameCube and PS2 SSX 3 records share one layout with byte-swapped words (checked here by reading

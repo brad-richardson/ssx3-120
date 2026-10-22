@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // module-seam-1: the SSX 3 game module. Families move here from the runtime
 // one at a time (docs: games/ssx3/module/README.md); each keeps its override
 // name, ELF match and apply function. Table order is application order.

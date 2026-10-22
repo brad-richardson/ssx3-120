@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """music_selfcheck.py <workdir>: music tooling regression checks.
 
 Port of TK41 tk41_selfcheck.py (port adaptations only: workdir is a required

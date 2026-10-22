@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """One-command builder flow: wrapper, PEP 723, tricky validation, resume.
 
 No network, no disc: the ISO under test is synthetic (ISO9660 magic only),

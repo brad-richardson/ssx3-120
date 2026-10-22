@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Public det-key comparator: shipped key vs candidate run dir.
 
 Key dir (tests/det/keys/<key>/): manifest.json (pins), hashes.bin (raw

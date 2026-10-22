@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK18: Megaplex single-lap donor AIP. Tricky's Megaplex is a lap course: the 6 start lanes (AI 0-5) sit just
 above the finish, laps restart at the top (AI 12-15, at the race line's first point). For one SSX 3 lap the start
 list is rewritten to the top lanes; nothing else changes (count stays 6, so no offsets move).

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """patch_music_inf.py: retitle the music-pool slots in DATA/CONFIG/MUSIC.INF.
 
 The race-start song banner shows, per playing pool slot, the station brand

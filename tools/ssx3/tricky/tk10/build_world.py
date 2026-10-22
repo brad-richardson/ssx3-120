@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK10: replace-world build = tools/replace_terrain.py + race gates on the donor opening.
 
     [TK10_KEEP_RESET=N] build_world.py <replace_terrain.py args...>

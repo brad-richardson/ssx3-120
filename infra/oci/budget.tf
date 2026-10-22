@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Monthly cost guard. The lobby is meant to run inside the Always Free
 # allowance; alerts fire at the $10 monthly budget. The recipient lives only in
 # the local, gitignored terraform.tfvars.

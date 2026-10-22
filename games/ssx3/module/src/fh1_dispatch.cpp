@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // full120 slice 3: dispatch cold side moved from ps2_fh1_full120.h: the
 // hook-interest table content (which source/target PCs each FIX group
 // lists). Body verbatim; the k* PC constants stay runtime-side until

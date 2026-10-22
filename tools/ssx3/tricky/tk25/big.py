@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """big.py: read-only ISO9660 + BIGF access without extracting.
   big.py ls <iso> <ISO/PATH>                   list BIGF members (name off size)
   big.py get <iso> <ISO/PATH> <member> <out>   extract one member

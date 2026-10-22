@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Upscale a directory of dumped game textures with a spandrel model, alpha kept separate.
 
 Needs torch and spandrel (a venv on a CUDA host works); it runs anywhere those

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK20: world_table.py WORLD_DIR EXPERIMENT.json -- one row: instances/models/textures, solids/k12, course group bytes + records, rails."""
 import json, sys
 from pathlib import Path

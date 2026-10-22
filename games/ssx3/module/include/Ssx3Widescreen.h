@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // split-input-1 #7: SSX 3 widescreen default. The module owns the option-

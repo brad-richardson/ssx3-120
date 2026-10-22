@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk25b_check_slots.py <orig.dat> <built.dat> <built.dat.decisions.tsv> <receipts-prefix> [--ffmpeg <exe>]
 Acceptance: output size == input size; SCHl offset list identical; unreplaced
 slots byte-identical (cmp per range); every replaced slot decodes with the

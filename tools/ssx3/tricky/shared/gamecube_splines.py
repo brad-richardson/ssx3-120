@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Strict Tricky GC rail reader and SSX 3 GC curve encoder.
 
 The GC target has a 12-byte segment prefix, not the PS2 reader's 16 bytes.

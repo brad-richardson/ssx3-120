@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TKP5: which programs of a composite's course script are named by the header event tables (TK57 §5).
 
     event_refs.py ISO COMPOSITE.BIG --group G --work DIR [--programs K ...]

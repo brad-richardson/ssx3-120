@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk-routes-1 data step: one Tricky route fixture per run, on a TKP5-lineage PS2XCMP1 composite.
 
     route_step.py ISO IN.BIG OUT.BIG --group G --receipt R.json --work DIR cover [--rids RID ...] [--cover-rids RID ... ...]

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tricky audio-tool resolution (tk-toolchain-1; Brad 10-18: audio optional).
 
 uv is the only hard requirement. ffmpeg + vgmstream are OPTIONAL and

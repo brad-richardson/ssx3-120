@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK56 step 1: per-course table of Tricky class binds -> class row -> program the row actually runs -> intended program.
 
     survey.py ISO COMPOSITE.BIG [COMPOSITE.BIG ...] --work DIR --out OUT.json

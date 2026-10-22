@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13: SSX Tricky PS2 course world (.pbd): header, instances, materials, models and mesh geometry.
 
 Header/record layouts: GlitcherOG/SSX-Library PBDHandler.cs (GPL-3; read as a format reference only).

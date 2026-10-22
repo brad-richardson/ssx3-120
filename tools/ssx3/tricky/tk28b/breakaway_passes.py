@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK28: breakaway_passes.py BASE-WORLD.BIG BASE-RECEIPT.json MAP BREAKAWAY.txt RIDE.jsonl T0 T1 [MAXD]  (uv run --with numpy)
 Ticks where a ride comes within MAXD (default 60) of the in-game collision mesh of a break-away instance as built in the
 BASE world (before the fix): the contacts the fix removes (the rider now passes through)."""

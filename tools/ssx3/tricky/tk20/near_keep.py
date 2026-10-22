@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK20: near_keep.py WORLD.BIG RECEIPT.json ROUTE KEEP_D OUT.txt [EXTRA_DROP.txt] -- donor instance indices whose world AABB is farther
 than KEEP_D from the race line (route densified every 300), plus EXTRA_DROP's, one per line (make_scenery16 --drop-instances).
 Distances as budget_drop.py (TK16)."""

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK19: give a Tricky replace-world's terrain patches the donor's own textures and lightmaps (PS2 route).
 
     make_terrain_tex.py WORLD.BIG EXPERIMENT.json DONOR.pbd DONOR.ssh DONOR_L.ssh STEM OUT.BIG [--receipt R.json]

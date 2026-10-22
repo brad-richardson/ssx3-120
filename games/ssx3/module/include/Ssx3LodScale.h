@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // snd-seam-1 Part 5 slice 3: draw-distance scaling (LOD1/TLS1). The module

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42c: patch f7 on N kind-0 materials in a world (TK42b patch_material, generalized).
 
 Usage: patch_blend.py WORLD.BIG OUT.BIG --spec SPEC.json [--receipt R.json]

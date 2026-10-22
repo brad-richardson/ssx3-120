@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // snd-seam-1 Part 5: TK11 Tricky-mode frontend entry. The module owns the

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42b: trace world scenery instance -> kind3 -> model -> kind0 materials -> kind9 textures.
 
 Usage: world_tex.py WORLD.BIG GROUP INST [INST ...]

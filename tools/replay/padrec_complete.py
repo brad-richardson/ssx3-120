@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tail-complete a PS2X pad recording so it covers through a run-end tick.
 
 A recording stops at the last guest pad read (e.g. force-stop); replaying it

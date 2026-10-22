@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13: PS2 PSMT8 <-> PSMCT32 (un)swizzle of 8-bit texel data (the widespread 'swizzle8' mapping), and CLUT CSM1 order."""
 
 

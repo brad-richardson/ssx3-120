@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Single-member ISO/BIG extraction through the in-repo ISO9660 reader.
 
 Shared by the Tricky driver (build_tricky.py) and the HUD atlas tool

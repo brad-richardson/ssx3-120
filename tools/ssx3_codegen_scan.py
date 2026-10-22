@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Fail-loud SSX3 generated-code promotion invariants.
 
 Use --generation-log for every newly generated tree and --runtime-log for each

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Course-pool scheduling tests (tk-speed-1). No game data, no discs."""
 import importlib.util
 import sys

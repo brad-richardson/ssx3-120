@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Roll back the Oracle lobby host to the previous Rust ssx3-lobby.
 # Restores /usr/local/bin/ssx3-lobby.previous (saved by
 # infra/deploy-lobby-rust.sh) and /etc/ssx3-lobby/lobby.toml.previous,

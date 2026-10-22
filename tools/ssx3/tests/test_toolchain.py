@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Project-local JDK/SDK/NDK bootstrap: pins, discovery order, fetch trust.
 
 No network: downloads use file:// URLs, sdkmanager/licence flows are

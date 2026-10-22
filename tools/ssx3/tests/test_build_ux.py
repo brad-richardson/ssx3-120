@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """First-build UX: estimate scaling, banner formatting, failure help, non-TTY.
 
 No network, no disc, no toolchain: estimate math and printers are pure,

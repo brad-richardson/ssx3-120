@@ -1,4 +1,5 @@
 #!/system/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # PG5 GEN builds only (gradle adds this dir when -Pps2xPgoGenerate=ON): PGO
 # profile path for the instrumented APK. PLAIN path (no %c: NDK r28's
 # continuous mode produced unmergeable files, PG1); the pgo_flush helper

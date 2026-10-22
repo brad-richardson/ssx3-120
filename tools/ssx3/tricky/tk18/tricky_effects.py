@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK18 Part 2: decode a Tricky course's effect slots and effect programs (GC-layout .gsf from ps2_as_gc.py).
 
     tricky_effects.py COURSE.gsf COURSE.map COURSE.pbd OUT.json

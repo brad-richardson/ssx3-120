@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK6: re-track an added location's groups (add_location.py output): OLD -> NEW track.
 
     retrack.py IN.BIG STEM G0 G1 OLD NEW OUT.BIG [KEEP_KINDS]

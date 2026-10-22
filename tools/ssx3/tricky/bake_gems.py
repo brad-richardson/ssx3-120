@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK45c: bake the Tricky gem sidecar (one TSV row per gem).
 
 Inputs per course: the shipped world BIG (worlds-final; gem kind-3 records

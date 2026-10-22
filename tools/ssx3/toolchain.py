@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Project-local JDK + Android SDK/NDK bootstrap (builder-ux-1).
 
 Only downloads when the caller allows it (`ensure_*` with

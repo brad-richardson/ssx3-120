@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Stage a native-runtime GameCube game directory that differs from stock in its worlds.
 
 Every entry is a symlink into the stock tree, so a staged directory costs no

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tkp4_speech.py: TKP4 merged speech composite (TK25c rider members + TK43b meter members).
 
 Subcommands (read-only on inputs; writes only the named outputs):

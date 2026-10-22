@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // HNG2: rider animation-variant pick guard (PS2X_SSX3_ANIM_PICK_GUARD, default

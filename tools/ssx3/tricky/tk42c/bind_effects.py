@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK24: bind Tricky slot-1 constant effects to SSX 3 class programs in a finished Tricky world (post-TK19c), in place.
 
     bind_effects.py WORLD.BIG SCENERY.json EFFECTS.json OUT.BIG [--types UVScroll] [--names PREFIX ...] [--scale S]

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Public determinism gate (Mac host): four det keys against your own disc.
 #
 # Usage: mac_gate.sh --work DIR --iso FILE [--elf FILE] [--profiles reference,play,full120events,play120] [--engine DIR] [--jobs N] [--suffix S]

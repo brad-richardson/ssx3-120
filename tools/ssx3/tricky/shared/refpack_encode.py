@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Small deterministic 10FB encoder for bounded SSX 3 block experiments.
 
 LZ matching with one-byte lookahead; does not reproduce EA's compressor byte for byte.

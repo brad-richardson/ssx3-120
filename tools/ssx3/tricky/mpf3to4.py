@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """mpf3to4.py: Tricky (.mpf v3) -> SSX 3 (.mpf v4) Pathfinder converter (TK41).
 
 TK41b lane copy of MUS1's fixed converter, plus check_graph_v4(): a

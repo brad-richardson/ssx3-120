@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # ssx3-120 one-command builder (builder-ux-1). Needs only `uv`.
 #
 #   make android ISO=/path/to/SSX3.iso [TRICKY=/path/to/Tricky.iso] [WORK=~/ssx3-work] [JOBS=4] [INSTALL=1] [PREBUILT=1]

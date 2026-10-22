@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Grow one SSX 3 stream group by appending raised copies of some of its terrain patches.
 
 This is the roadmap's M2 step 4: a group with more resources than the disc's, a

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Extract a Tricky race line and measure a ride against its transformed route.
 
 Race-line layout follows the pinned SSX-Library AIPSOPHandler.cs. Coordinates

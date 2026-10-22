@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # One Always Free Ampere A1 (arm64) instance. Ubuntu 24.04 aarch64 is looked
 # up by data source, never a hardcoded OCID.
 

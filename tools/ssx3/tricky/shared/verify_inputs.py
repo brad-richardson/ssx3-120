@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Cross-check our ISO inventory/extraction against macOS bsdtar.
 
 Reads the original images and staged archives; writes only a small JSON report.

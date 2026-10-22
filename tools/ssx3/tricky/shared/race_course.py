@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Give an SSX 3 location a donor Tricky race course: track chain, gates, AI lines, race-line table.
 
 Decoded 2026-09-11 on GameCube Snow Jam (the PS2 layout is the same, little-endian

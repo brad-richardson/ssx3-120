@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Synthetic tests for the shipped RefPack decisions (tk-speed-1).
 
 No game data, no discs: every test builds its inputs in memory. The

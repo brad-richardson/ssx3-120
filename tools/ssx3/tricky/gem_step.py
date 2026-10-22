@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Extend a current TK45c table only from authored MultiplierScore pickups.
 
 Inputs are current TKP4 composites and original donor files extracted by

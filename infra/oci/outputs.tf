@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 output "instance_public_ip" {
   description = "Public IPv4 of the lobby host."
   value       = oci_core_instance.lobby.public_ip

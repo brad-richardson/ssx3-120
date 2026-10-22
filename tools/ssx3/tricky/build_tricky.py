@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Public Tricky-layer builder: two discs in, <work>/tricky device layout out.
 
 Contract (tk-build-1; called by tools/ssx3/build.py `tricky` step):

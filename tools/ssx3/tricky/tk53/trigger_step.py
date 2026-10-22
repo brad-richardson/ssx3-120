@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK53 candidate 3: stock-style invisible break trigger for Tricky break-away covers.
 
     trigger_step.py ISO IN_COMPOSITE.BIG OUT_COMPOSITE.BIG --group G --rids R [R ...] --donor-pbd mesa.pbd

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // split-input-1 #5: SSX 3 input marker (`ssx3-input-marker`, LIM1/LIM2).

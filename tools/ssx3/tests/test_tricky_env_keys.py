@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TRICKY_ENV key audit: every key build_tricky.py stages in tricky.env
 must be read by the runtime (vendored ps2xRuntime sources) or recorded in
 the knob registry/matrix. Fails on any unread key (dead knob).

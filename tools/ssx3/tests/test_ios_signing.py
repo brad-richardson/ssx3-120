@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """iOS signing get-task-allow follows the provisioning profile.
 
 Every public user signs with a development profile (Xcode automatic

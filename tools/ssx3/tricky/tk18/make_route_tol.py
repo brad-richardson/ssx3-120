@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK18: TK12 make_route.py with a donor race-chain tolerance: make_route_tol.py TOL DONOR.AIP EXPERIMENT.JSON OUT.txt [--z]"""
 import functools, runpy, sys
 from pathlib import Path

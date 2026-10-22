@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Build and verify game-free Android support bundles. No disc input is accepted."""
 import argparse
 import hashlib

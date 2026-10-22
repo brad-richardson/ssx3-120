@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """bench-android.py — one canonical Android bench leg.
 
 One leg: keyguard + AC + battery pre-check, install + installed-SHA check,

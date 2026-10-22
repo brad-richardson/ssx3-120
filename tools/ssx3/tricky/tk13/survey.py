@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13 survey: parse every kind-2 model of a world group with ps2mdr; count shapes and invariants.
     survey.py WORLD.BIG GROUP"""
 import json, struct, sys

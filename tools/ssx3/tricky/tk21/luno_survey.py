@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK21 Part B: survey SSX 3 PS2 course scripts (kind 16) across every stock location in BAM.BIG.
 
 PS2 kind-16 layout (TK13 REPORT + replace_terrain.disable_course_scripts, little-endian): +56 program count/table/end;

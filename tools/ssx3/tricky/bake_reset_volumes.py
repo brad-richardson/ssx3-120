@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Bake SSX Tricky donor ResetZone collision triangles into an RSV1 sidecar.
 
 Triangles stay in donor coordinates. The runtime inverse-transforms the rider

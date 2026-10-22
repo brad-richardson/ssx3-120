@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk-mega-1: derive the borrowed rail host-constants template from a stock SSX 3 world archive.
 
     rail_template.py STOCK-BAM.BIG OUT.json [--group 115] [--tmp DIR]

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Conservative bounds for SSX bicubic power-basis terrain patches."""
 import math
 import struct

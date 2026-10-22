@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """silence_intro_banks.py: drop the stock SSX 3 radio/artist DJ intros.
 
 The Tricky race sequencer streams song intros from two ENGLISH.BIG bank

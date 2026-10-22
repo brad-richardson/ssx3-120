@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // full120 slice 2: clock policy (VBlank/EE rate switch, stock-time

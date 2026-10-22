@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Product archive identity is engine-pinned: for the same engine pin the
 product contract() must equal the engine checkout's own contract(). A
 mismatch means the move split the support-bundle ABI (or the engine pin

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 /* Native RefPack search: find_matches + optimal plan + greedy encode.
  *
  * Byte-identical port of tools/ssx3/tricky/shared/refpack_optimal.py

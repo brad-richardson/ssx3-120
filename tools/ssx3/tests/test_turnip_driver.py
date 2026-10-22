@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """verified_driver fetches a Vulkan driver .so from inside a release archive.
 
 Covers the community-zip path (StevenMXZ Gen8 V37, Part 4): a good archive

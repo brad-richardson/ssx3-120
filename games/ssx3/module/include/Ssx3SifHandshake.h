@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #ifndef PS2_SSX3_SIF_HANDSHAKE_H
 #define PS2_SSX3_SIF_HANDSHAKE_H
 

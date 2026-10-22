@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK12: a Tricky replace-world with the donor RACE course (+ optional host-instance hiding), as <NAME>.BIG.
 
     make_race_world.py BASE.BIG STOCK_BAM.BIG DONOR.AIP EXPERIMENT.JSON STEM OUT.BIG [--hide LOC ...] [--dz 1000000]

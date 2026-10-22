@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """EBN1: fixed-workload EE/GameThread replay bench (Mac).
 
 Mint:  boot from tick 0 on a fixed pad script, save a state at T0, exit.

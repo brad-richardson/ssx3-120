@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42b: patch kind-0 material tail fields (f8,f9) in a world, same-size records.
 
     patch_material.py WORLD.BIG GROUP MAT_RID F8 F9 OUT.BIG [--receipt R.json] [--f7 N]

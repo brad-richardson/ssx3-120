@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
 # Auth stays in ~/.oci/config (DEFAULT profile); nothing secret goes here
 # except paths and OCIDs, and the state file stays local (see backup-state.sh).

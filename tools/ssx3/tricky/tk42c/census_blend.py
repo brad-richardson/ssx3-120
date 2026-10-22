@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42c: census of donor blend-flag materials per course.
 
 Usage: census_blend.py DONOR_DIR OUT.json

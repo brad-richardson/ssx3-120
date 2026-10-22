@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """PGO profile resolution: freshness gate, escape hatch, explicit override.
 
 No network, no disc, no NDK: the bundled compressed profiles are read from

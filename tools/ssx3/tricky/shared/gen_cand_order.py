@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Regenerate tools/ssx3/tricky/shared/refpack_cand_order.h.
 
 The optimal-parse DP in refpack_optimal.py iterates long-match length

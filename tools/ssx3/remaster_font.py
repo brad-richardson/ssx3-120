@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Remaster the SSX3 font atlases with the raster-edge recipe (lane REM3).
 
 Build-time step. It runs on the user's own USA disc and their own

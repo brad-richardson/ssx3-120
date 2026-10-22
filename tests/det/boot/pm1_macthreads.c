@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // PM1 mac thread sampler: per-thread cumulative CPU + pthread names, no root.
 //
 // Usage: pm1_macthreads PID INTERVAL_S

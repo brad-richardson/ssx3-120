@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Generic Android bench: one APK, fixed leg recipes, one table out.
 #
 # Usage: bench-android.sh --apk APK --serial SER --app-id ID --legs LEGS.json [--suite quick|full] [--dry-run]

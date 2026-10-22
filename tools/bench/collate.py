@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """bench-android.sh collator: one bench dir -> table.md + table.json.
 
 Reads each leg's bench-android.py receipts (summary.json) plus bench.json.

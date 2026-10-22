@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # iOS device toolchain for the product builder (ios-builder-1).
 #
 # Xcode generator, arm64 device slice. Code signing stays ENABLED (unlike the

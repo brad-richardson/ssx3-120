@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 family #4: Tricky song mix-contribution provider bodies. Each
 // forwards one audio-output touch point to the song player (which stays in
 // the runtime until the Tricky families move). Output-only: guest hashes

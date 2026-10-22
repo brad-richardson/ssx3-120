@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """iOS builder flow: team/bundle validation, device resolution, OM1 stage
 validation, dry-run listing, shipped preset hygiene, MoltenVK manifest.
 

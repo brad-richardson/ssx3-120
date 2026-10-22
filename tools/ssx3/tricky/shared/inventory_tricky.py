@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Read-only inventory of every SSX Tricky (PS2) course archive on the disc.
 
 For each DATA/MODELS/*.BIG (C0FB archive, RefPack members) this lists the

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TKP5: cross-step check of a chained world against every step's receipt.
 
     verify_chain.py ISO COURSE FINAL.BIG REFERENCE.BIG --group G --out OUT.json

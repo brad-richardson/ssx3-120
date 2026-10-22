@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """bake_gems pairing tests (tk-speed-1-gems). No game data, no discs.
 
 Locks the fix for 'GARI: kind-3 3334 != scenery 3332': show-hidden

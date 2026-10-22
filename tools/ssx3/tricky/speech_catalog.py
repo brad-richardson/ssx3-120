@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """speech_catalog.py: split .dat members into SCHl streams, decode each to WAV.
 
 Port of TK25b tk25b_catalog.py (port adaptations only: WORK/VGM/EXT/STR/WAV

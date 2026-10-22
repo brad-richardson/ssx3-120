@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK51 Part 2: import hidden donor1444's authored SSF surface into visible donor1443/world1400.
 
 Usage: patch_source_bridge.py INPUT_COMPOSITE OUTPUT_COMPOSITE --donor-id 1444 --donor-pbd <stem>.pbd --ssx3-iso <SSX3-USA.iso>

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tests for the APK-path font wiring (stage/install helpers in build.py)."""
 import importlib.util
 import tempfile

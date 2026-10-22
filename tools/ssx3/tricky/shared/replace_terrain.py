@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Replace a location's terrain with a complete Tricky PBD terrain set.
 
 Experimental geometry build: keeps SSX 3 materials and, by default, every

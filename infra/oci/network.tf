@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # VCN, public subnet, internet gateway, route table, security list.
 # SSH (22), the lobby TCP ports and the Rust relay UDP range are open
 # to separate admin/player lists. With the default empty lists, no ingress

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK23 lane copy of TK19 make_terrain_tex.py (working tree f405e1cc, with TK19 Part 2 --mips-only/--compact-ids) + --exact-bounds.
 
     make_terrain_tex.py WORLD.BIG EXPERIMENT.json DONOR.pbd DONOR.ssh DONOR_L.ssh STEM OUT.BIG [--receipt R.json]

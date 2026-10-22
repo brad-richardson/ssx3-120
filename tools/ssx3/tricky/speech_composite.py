@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk25c_composite.py <src.iso> <members-dir> <out-composite> [--materialized <patched-big>]
 
 TK25c: splice the 7 loudness-matched .dat members into a copy of the stock

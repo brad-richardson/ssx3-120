@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TKP5 (lane copy of TK52 preview_step.py; only the course table grows): replace a Tricky course's host COURSEPIC
 pixels from original Tricky PS2LOAD art, for every course in COURSES (host member from the TK56 host-loc table).
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK57 glass targets, one course (port of the TK57 lane glass_targets.py).
 
 Reads the donor <stem>.pbd/.ssf/.map from the run workdir (extracted from

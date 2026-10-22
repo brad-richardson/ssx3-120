@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK20 lane copy of TK16 make_rails16.py: (1) temp dir under TK20; (2) a host with no rail-bound (0003/000a) spline
 (ABC1, Aloha's host) takes its templates from any host spline with >= 2 segments: the segment prefixes and trailer are
 byte-identical across GARI/SNOW/MESA/MERQ/ALASKA/ABC1/EBC3 hosts [measured, TK20 REPORT].

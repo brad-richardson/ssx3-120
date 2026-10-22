@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tricky world-chain validation: recipes, helpers, and shared BIGF reader.
 
 Synthetic only: no game data, no ISOs. Golden-SHA gates on real chain

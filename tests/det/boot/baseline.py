@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Det baselines: store one control run per engine pin, boot only candidates.
 
 Store: <store>/<key>/ with manifest.json (pins + per-file

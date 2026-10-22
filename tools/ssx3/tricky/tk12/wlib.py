@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK12 world helpers: decode an SSX 3 PS2 world archive (BAM.BIG / renamed <NAME>.BIG) by group."""
 import hashlib, io, struct, sys
 from pathlib import Path

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "ps2_ssx3_anim_pick_guard.h"
 

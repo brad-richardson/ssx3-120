@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Write optional host shader selector configuration outside the checkout."""
 import argparse
 import json

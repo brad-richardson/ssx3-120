@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Deploy the MComm quickplay lobby to the OCI host.
 # Builds the image on this Mac for linux/arm64, ships it over SSH,
 # then starts the compose stack on the host. Idempotent: re-running

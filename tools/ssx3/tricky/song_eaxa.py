@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """AU2: reference decoder for SSX 3 SCHl streams (codec byte 0x0A), used to
 check whether bytes the EE hands to the IOP are compressed stream data or
 decoded PCM.

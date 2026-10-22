@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TKP4b: assign Tricky songs to stock music slots (in-place fit).
 
 Fit rule (TK41b shape): Tricky .mpf/.mus must each fit the stock song's home

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # /// script
 # requires-python = ">=3.12,<3.13"
 # dependencies = ["numpy==2.5.4", "Pillow==13.0.0"]

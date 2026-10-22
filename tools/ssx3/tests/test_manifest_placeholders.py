@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Android manifest placeholders resolve: every ${name} in
 apps/android/app/src/main/AndroidManifest.xml must be provided by the
 effective manifestPlaceholders map in apps/android/app/build.gradle.

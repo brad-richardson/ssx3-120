@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Extract current COURSPIT members for the game's existing FE async loader.
 
 No pixel/header/texture-ID changes. One synthetic ISO file per selected member;

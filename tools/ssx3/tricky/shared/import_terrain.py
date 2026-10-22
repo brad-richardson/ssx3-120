@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Place a section of SSX Tricky (Garibaldi) terrain into an SSX 3 location (roadmap M4).
 
 Selects Tricky patches near a course centreline segment, rotates the section so its

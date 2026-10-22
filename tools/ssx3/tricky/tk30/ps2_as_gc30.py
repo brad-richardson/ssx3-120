@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK16: rebuild the GameCube-layout gameplay file (.gsf) and a stub .nbd from Tricky PS2 course files.
 
     ps2_as_gc.py DONOR.pbd DONOR.ssf OUT.gsf OUT.nbd [--check-gsf GC.gsf --check-nbd GC.nbd]

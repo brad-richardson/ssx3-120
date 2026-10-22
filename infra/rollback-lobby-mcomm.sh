@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Roll back the Oracle lobby host from the Rust ssx3-lobby to MComm.
 # Stops (and disables) the ssx3-lobby systemd unit, then restarts the
 # MComm compose stack in /srv/ssx3-lobby (image + compose file were left

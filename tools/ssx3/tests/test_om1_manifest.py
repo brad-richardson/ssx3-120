@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """OM1 manifest hygiene: tools/ssx3/ios/om1-manifest.json holds offsets,
 hashes and pState only. It must never carry image bytes (bring your own
 disc: the builder rebuilds every image from the user's ELF at build time).

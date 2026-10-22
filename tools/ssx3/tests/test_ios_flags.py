@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """iOS compiler selection (D05) and CPU tuning (D04) in the public builder.
 
 No network, no Xcode, no device: xcrun/version probes and the cmake driver

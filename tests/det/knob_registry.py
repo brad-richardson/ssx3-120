@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Check registered PS2X_/GE1_ runtime names at a selected engine revision.
 
 Direct getenv literals and quoted names passed through tables/helpers are covered.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK12: carry the donor's authored reset surfaces into a PS2 replace-world (item 5), as <STEM>.BIG.
 
     make_resets.py BASE.BIG EXPERIMENT.JSON DONOR.pbd STEM OUT.BIG

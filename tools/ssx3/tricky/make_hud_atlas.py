@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK43c (lane copy of TK43a's tool): stage the Tricky meter sprite atlas
 from the Tricky ISO, plus the lit-red letter row.
 

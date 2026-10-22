@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK56: check a fixed composite against the pre-fix survey.
 
     verify.py ISO SURVEY_BEFORE.json WORLD COMPOSITE.BIG --work DIR --out OUT.json

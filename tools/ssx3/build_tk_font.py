@@ -1,4 +1,5 @@
 #!/opt/homebrew/bin/python3.14
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk-menu-2 staged FEFONT: bake the game's own menu font for the overlay.
 
 Reads (read-only): the user's own SSX 3 ISO (DATA/FONTS/FEFONT.SFN glyph

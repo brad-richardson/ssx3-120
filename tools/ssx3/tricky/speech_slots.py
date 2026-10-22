@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk25c_slots.py <ssx3.dat> <tk25b-decisions.tsv> <mapping.tsv> <out.dat> --target <name> --loudrows <tsv>
 
 TK25c: same mapping as TK25b (same Tricky source per slot) but with loudness

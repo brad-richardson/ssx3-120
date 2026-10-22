@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Native RefPack search: byte-identity vs the Python reference [native-refpack-1].
 
 Synthetic buffers only (no game data, no discs): a seeded fuzz mix of at

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK56: render the per-course bind table (markdown) from survey.py JSON + TK49's instance inventory (names).
 
     table.py SURVEY.json INVENTORY.tsv [BIND_RECEIPT.json ...] > table.md

@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Harden the live lobby host to the SEC2 (M10) settings. cloud-init's
 # user_data is ignored after creation, so rebuild settings in
 # oci/cloud-init.yaml are mirrored here for the running host.

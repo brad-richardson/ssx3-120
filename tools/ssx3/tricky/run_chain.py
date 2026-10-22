@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk-port-1 validation driver: replay the TK10->TKP5 world chain from the two ISOs.
 
 New glue (not a port). Every step invokes a ported converter as a subprocess

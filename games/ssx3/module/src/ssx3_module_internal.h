@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // module-seam-1: apply functions the SSX 3 module table (ssx3_module.cpp)

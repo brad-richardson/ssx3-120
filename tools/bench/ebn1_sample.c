@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // EBN1 sampler: per-thread cumulative CPU + process instructions/cycles, no root.
 //
 // Usage: ebn1_sample PID INTERVAL_S

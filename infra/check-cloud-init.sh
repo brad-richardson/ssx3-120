@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Static guard for the INF1 first-boot fixes plus the SEC2 (M10/M9)
 # hardening. No cloud access needed. Fails loudly if cloud-init regresses:
 # wrong compose package, firewall ordering that would wipe Docker's chains,

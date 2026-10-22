@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Print the replay env for a padrec recording; refuse on mismatch.
 
 The output is ps2x.env-compatible (KEY=VALUE lines, '#' comments): the

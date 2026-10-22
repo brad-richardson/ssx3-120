@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK37: floor each imported instance's world AABB so it lands in a level-L spatial cell (default 11), in place.
 
     aabb_floor.py WORLD.BIG OUT.BIG [--group G] [--level 11] [--receipt R.json]

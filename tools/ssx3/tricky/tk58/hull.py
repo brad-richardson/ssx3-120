@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK58: TK33b's incremental convex hull with exact orientation tests on the 0.001 input grid that TK33b
 already rounds to (integer determinants, so the visible set is exact and the horizon is one loop). The
 result is verified (closed 2-manifold, Euler 2, F <= 2V-4, every input point behind every face plane

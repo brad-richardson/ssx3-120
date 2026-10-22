@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // full120 slice 1: FIX-policy content (name/bit tables, "all" composition,

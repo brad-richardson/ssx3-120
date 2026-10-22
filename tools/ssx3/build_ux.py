@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """First-build experience: step banners, host-scaled estimates, final summary.
 
 Small output/UX layer for the one-command builds

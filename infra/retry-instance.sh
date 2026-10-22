@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Create only the lobby instance, retrying across the region's ADs until
 # Always Free A1 capacity appears ("Out of host capacity" is routine on the
 # free tier). The network must already exist (a first `tofu apply` creates it

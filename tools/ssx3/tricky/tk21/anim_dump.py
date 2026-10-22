@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK21: dump Tricky PS2 .pbd per-object animation (layout: SSX-Library PBDHandler.cs ObjectAnimation, read 10-01).
     anim_dump.py DONOR.pbd MODEL[,MODEL...]
 Per animated object: U1..U6 (initial pos/rot?), action bitmask (1 X, 2 Y, 4 Z pos; 8/16/32 X/Y/Z rot), entries of 6-float rows."""

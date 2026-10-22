@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TKP5 chain step: move programs that TK56/TK51 wrote into event-table stubs to appended program slots.
 
     relocate_step.py ISO IN.BIG OUT.BIG --group G --programs K [K ...] --reference REF.BIG --receipt R.json --work DIR

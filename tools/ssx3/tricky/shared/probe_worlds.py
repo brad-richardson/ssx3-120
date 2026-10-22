@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Inspect staged SSX world archives; export a Garibaldi terrain preview.
 
 File-format reference: SSX-Library, pinned in docs/investigation.md.

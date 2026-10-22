@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK51 Part 3 independent post-composite importer of authored hidden colliders.
 No render geometry or DMA chains. Retains donor node hierarchy, matrices,
 node boxes and separate SSF parts; numeric surface IDs require prior audit.

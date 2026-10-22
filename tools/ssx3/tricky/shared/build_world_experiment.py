@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Build a bounded SSX 3 control or terrain-bump archive for emulator testing.
 
 Only recompresses blocks containing the selected patch. It preserves every archive

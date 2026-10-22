@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Synthetic tests for the Tricky audio/HUD/sidecar converters.
 
 No game data, no discs, no ffmpeg: every test builds its inputs in

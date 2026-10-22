@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK12: autopilot route (world XY per line) = the donor race chain through the world placement.
 
     make_route.py DONOR.AIP EXPERIMENT.JSON OUT.txt

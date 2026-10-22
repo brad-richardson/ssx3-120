@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """No-disc regressions for the prebuilt trust boundary and source fallback."""
 import io
 import json

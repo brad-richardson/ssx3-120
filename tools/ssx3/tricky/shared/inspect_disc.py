@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Read-only ISO9660 / EA BIG inspection. Python standard library only.
 
 Supports the single-extent, 2048-byte-sector PS2 discs in this investigation.

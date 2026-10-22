@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13: SSX 3 PS2 world models (kind 2, "MDR"), instances (kind 3) and the VIF chunks they carry.
 
 Layouts measured on stock BAM.BIG ARA1 (group 33) and cross-read against GlitcherOG/SSX-Library

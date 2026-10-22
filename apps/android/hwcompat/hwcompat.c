@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 /* N8C2 diagnostic app-local libhardware loader probe. MIT license. */
 #define _GNU_SOURCE
 #include <android/log.h>

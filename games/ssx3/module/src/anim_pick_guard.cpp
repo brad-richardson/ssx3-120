@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // module-seam-1: moved verbatim from ps2xRuntime/src/lib/ps2_runtime.cpp
 // (fork 1d7d4081); the wrappers and their state keep their names.
 #include "ps2_ssx3_anim_pick_guard.h"

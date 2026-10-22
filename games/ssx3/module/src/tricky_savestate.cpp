@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 family #8: Tricky-state persistence owned by the module.
 // The "trickygems" section (name, version, registration) lives here in the
 // K1 static-registration pattern, and the TK34 patch-grow kernel-section

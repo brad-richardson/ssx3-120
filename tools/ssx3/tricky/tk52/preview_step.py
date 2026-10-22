@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK52: replace BHP1/ESS3 COURSEPIC pixels from original Tricky PS2LOAD art.
 
 Preserve the complete current COURSPIT directory and every SSH header/name.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK16 (from TK13 make_scenery.py; TK16 changes: --profile tricky, the default): import a Tricky course's scenery (models, instances, textures, collision) into a PS2 replace-world.
 
     make_scenery.py BASE.BIG EXPERIMENT.JSON DONOR.pbd DONOR.ssh DONOR_GC.nbd DONOR_GC.gsf STEM OUT.BIG

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Verify the byte-preservation manifest (no disc, no network).
 
 - Every file listed in SOURCE_MANIFEST.tsv must match its recorded SHA256.

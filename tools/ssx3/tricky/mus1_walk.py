@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """mus1_walk.py: simulate SSX 3's PathFinder v4 node walk on an .mpf (MUS1).
 
 Models the game's own code (codegen of the pinned SLUS_207.72):

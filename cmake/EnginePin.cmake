@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Validates that deps/PS2Recomp matches the deps.lock.json engine pin.
 # Fails configure on a dirty or mismatched engine checkout so a build can
 # never silently mix product files with the wrong runtime.

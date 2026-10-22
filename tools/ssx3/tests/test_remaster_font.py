@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Synthetic tests for the public raster-edge font builder."""
 import importlib.util
 import struct

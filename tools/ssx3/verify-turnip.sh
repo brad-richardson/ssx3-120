@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # verify-turnip.sh — verify the pinned Turnip release assets before/after use.
 # 1. Downloads binary + notices from tools/ssx3/turnip.json URLs.
 # 2. Enforces the pinned SHA-256 (same gate as tools/ssx3/build.py). Archive

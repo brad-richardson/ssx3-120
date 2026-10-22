@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK13: names from a Tricky course .map (ColdFusion map file): section -> {uid: name}.
 Sections: MODELS, INTERNAL INSTANCES, SPLINES, MATERIALS, ... (rows `Name UID Ref Hash ...`)."""
 import re

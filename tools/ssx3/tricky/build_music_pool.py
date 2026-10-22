@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """build_music_pool.py: build the two music-pool composites from an assign TSV.
 
 Port of TKP4b tkp4b_build_music.py (port adaptations only: hardcoded lane

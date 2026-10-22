@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK18: decode every member of a Tricky DATA/MODELS/<C>.BIG (C0FB, RefPack) into OUTDIR/<basename>.
 
     extract_big.py BIG OUTDIR

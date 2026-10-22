@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Shipped RefPack packing decisions (no game bytes). [tk-speed-1]
 
 Every world-archive pack in the Tricky chain funnels through

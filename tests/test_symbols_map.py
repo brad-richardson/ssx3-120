@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Coverage + shape check for games/ssx3/ssx3-symbols.tsv (symbols-map-1).
 
 The TSV is well-formed (7 columns, known kind/confidence values, canonical

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK23 lane copy of TK21 make_scenery21.py (81ac7cc7) + --solidify-file/--slab (fence slabs) and --split-hull (sign stands).
 TK21 lane copy of TK16 make_scenery16.py (adds --pose, --no-collision-file; posed instance bounds). TK16 (from TK13 make_scenery.py; TK16 changes: --profile tricky, the default): import a Tricky course's scenery (models, instances, textures, collision) into a PS2 replace-world.
 

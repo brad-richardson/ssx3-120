@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK10: turn a replace-world <NAME>.BIG into a composite overlay file (PS2XCMP1).
 
     make_composite.py ISO WORLD.BIG OUT.BIG [--materialized OUT_FULL.BIG]

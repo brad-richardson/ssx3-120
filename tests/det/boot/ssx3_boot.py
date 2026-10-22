@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Shared bounded boot: run the Mac runner on a route and collect receipts.
 
 Canonical codegen pins, --route i26|fr1r1, --dump-ticks a,b,c

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """versionCode must always increase across work dirs (vcode-fix-1).
 
 A rebuild in a fresh --work dir used to restart the per-dir counter at 2,

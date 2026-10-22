@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Android stage() must carry the online preset like the iOS preset does."""
 import importlib.util
 import json

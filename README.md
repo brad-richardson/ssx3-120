@@ -98,3 +98,12 @@ project, not affiliated with or endorsed by Electronic Arts. GPL-3.0
 (`LICENSE`). `SOURCE_PROVENANCE.md` + `SOURCE_MANIFEST.tsv` record every
 file's pinned source and bytes; `THIRD_PARTY_NOTICES.md` names every
 vendored component.
+
+## License
+
+The repository as a whole is GPL-3.0 (`LICENSE`). Files carrying
+`SPDX-License-Identifier: GPL-3.0-or-later OR MIT` are additionally
+available under the MIT licence (`LICENSE-MIT`). Data and config files
+with no header that are dual-licensed the same way are listed in
+`LICENSES.md`. How to tell: `grep -r "SPDX-License-Identifier:
+GPL-3.0-or-later OR MIT" --include='*' .`, or check `LICENSES.md`.

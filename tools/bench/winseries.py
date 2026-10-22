@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """PL3 canonical perf-window tool: per-window CPU/present series from perf logs.
 
 Parses old and new perf logs:

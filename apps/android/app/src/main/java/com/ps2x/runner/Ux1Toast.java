@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 package com.ps2x.runner;
 
 import android.app.Activity;

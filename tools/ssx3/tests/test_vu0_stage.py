@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """VU0 image staging (build-parity-fix-1 D03) plus the D01/D02 pins.
 
 No network, no disc, no NDK, no device: stages are synthetic, heavy build

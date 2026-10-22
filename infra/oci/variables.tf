@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Variables for the SSX 3 lobby host on Oracle Cloud (Always Free Ampere A1).
 # No credentials here: auth comes from the DEFAULT profile in ~/.oci/config.
 

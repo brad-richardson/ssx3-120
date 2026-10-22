@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Optimal-parse 10FB RefPack encoder for fixed-capacity SSB blocks.
 
 The greedy encoder in refpack_encode.py is about 0.2% larger than EA's output, which

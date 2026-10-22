@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42b: trace donor instance -> model -> material block -> material -> SSH texture entry.
 
 Usage: donor_tex.py COURSE.pbd COURSE.ssh INST [INST ...]

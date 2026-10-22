@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "Ssx3TrickySong.h"
 // Staging only (white-box song state, mirrored from the shared song tests).

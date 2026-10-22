@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Back up the local OpenTofu state to private pinned storage (never git).
 # Usage: infra/backup-state.sh
 set -eu

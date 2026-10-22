@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // snd-seam-1 family #8: TK34 patch-grow kernel-section field providers. The

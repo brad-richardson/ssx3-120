@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk41_remus.py <v3.mus> <v3.mpf> <song-template.sch> <out.mus> <offsets.tsv> [only=N] [jobs=J]
 
 TK41 H7 fix: resample Tricky 44.1 kHz EA-XA segments to 32 kHz and re-encode

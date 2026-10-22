@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // module-seam-2: moved verbatim from ps2xRuntime/src/lib/ps2_runtime.cpp
 // (fork c71407e9). The runtime keeps the mode (PS2Runtime::setHleIopMode);
 // the module owns the choice for SSX 3.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK19 Part 2: rank a donor course's terrain textures by how much of the race line runs over them.
 
 route_textures.py DONOR.pbd EXPERIMENT.json ROUTE.txt N [OUT.txt]

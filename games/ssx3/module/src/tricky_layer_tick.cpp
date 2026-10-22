@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 Part 5 slice 4: the scheduler's Tricky-layer VBlank call
 // behind a module provider (ABI 7). The forward below is byte-identical to
 // the inline call it replaces; the reducer body itself moves here in a

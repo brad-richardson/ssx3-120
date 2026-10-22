@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Native RefPack search behind the Python reference. [native-refpack-1]
 
 `refpack_optimal.plan` (backward DP) is ~65% of the Tricky pack search and

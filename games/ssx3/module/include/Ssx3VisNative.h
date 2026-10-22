@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #ifndef SSX3_VIS_NATIVE_H
 #define SSX3_VIS_NATIVE_H
 

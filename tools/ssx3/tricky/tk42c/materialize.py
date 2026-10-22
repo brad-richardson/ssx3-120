@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK42c: materialize a PS2XCMP1 composite against the ISO (read-only on pinned inputs).
 
 Usage: materialize.py COMPOSITE.BIG ISO OUT.BIG

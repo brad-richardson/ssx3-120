@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // full120 slice 6: tap-target lists (game branch targets/sites named by
 // the env-driven tap bodies) moved from ps2_fh1_full120.h. Values
 // verbatim; the runtime tap bodies stay generic and read them through

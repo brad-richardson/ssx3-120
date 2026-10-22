@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Sizing tests for the low-RAM ThinLTO cap.
 
 The Android game link peaks at ~8.39 GiB with 18 ThinLTO backends and scales

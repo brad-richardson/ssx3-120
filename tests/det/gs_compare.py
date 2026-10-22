@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """GR1 perceptual gate: compare completed-frame dumps, baseline vs candidate.
 
 Per frame (matched by filename, usually replay vq-%06d.ppm):

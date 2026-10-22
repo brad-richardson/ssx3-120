@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #include "MiniTest.h"
 #include "Ssx3QuickPlayDirect.h"
 

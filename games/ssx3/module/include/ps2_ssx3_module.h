@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // module-seam-1: the SSX 3 game module's entry (runtime/game_module.h).

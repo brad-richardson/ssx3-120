@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK51 hidden-collider census, one course (port of the TK51 lane census).
 
 Reads the donor <stem>.pbd/.ssf/.map from the run workdir (extracted from

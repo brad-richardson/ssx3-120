@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK28: classify wipeouts (sel 2/st 8), resets (sel 3/st 9) and short ground->air pops from a taps.py TSV.
    classify.py TAPS.tsv T0 T1 [OUT-prefix]
 Ground = sel 0 (st 0..3); air = sel 1. Normal = R+0x370 (ground normal while grounded; air code rewrites it).

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Bounded Tricky GC collision reader and SSX 3 GC triangle-mesh encoder.
 
 Target type 1 stores uint8 triangle indices, one bbox per ten triangles,

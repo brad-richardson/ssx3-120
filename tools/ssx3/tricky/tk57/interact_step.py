@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK57 data step: Tricky bouncing blocks and breakable glass on SSX 3's own behaviour templates.
 
     interact_step.py ISO IN_COMPOSITE.BIG OUT_COMPOSITE.BIG --group G --scenery S.json --donor-pbd D.pbd

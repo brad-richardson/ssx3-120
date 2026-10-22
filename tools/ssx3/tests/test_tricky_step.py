@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Tricky builder step: disc identity, record/resume, stage/install wiring.
 
 No network, no real discs: Tricky ISOs under test are synthetic

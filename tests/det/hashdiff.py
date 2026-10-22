@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Compare [det-hash:v1] lines between two det runs.
 
 Provenance: verbatim logic from the lab gate's GB8 gb8_hashdiff.py

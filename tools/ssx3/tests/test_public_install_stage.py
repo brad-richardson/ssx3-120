@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Public install must let the app own writable directories on Android 15."""
 import importlib.util
 import json

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 /* Optional Android local PGO training: periodic flush before process kill.
  *
  * Staged via -Pps2xPgoHelperDir=<this dir>; compile only with

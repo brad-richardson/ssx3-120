@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk-menu-2 overlay art: build the disc-only art atlas (no font, no REM3).
 
 Reads (read-only): the user's own SSX 3 ISO (DATA/UI/FE_1.SSH, mountain +

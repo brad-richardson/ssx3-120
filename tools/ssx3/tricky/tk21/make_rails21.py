@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK16 (copy of TK13's, temp dir only; TK13 from TK12, unchanged except the temp file): import the donor course's rails into a PS2 replace-world (item 3), as <STEM>.BIG.
 
     make_rails.py BASE.BIG EXPERIMENT.JSON DONOR.nbd DONOR.gsf STEM OUT.BIG [TMPDIR] [--template T] [--tmp D]

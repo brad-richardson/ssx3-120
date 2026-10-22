@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Read original donor effect bindings twice; lane-local extraction only."""
 import argparse, hashlib, json, struct, sys
 from pathlib import Path

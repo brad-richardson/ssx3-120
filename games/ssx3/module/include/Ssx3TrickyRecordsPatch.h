@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 #pragma once
 
 // Wrap the guest SET0001 serializer: restore this user's pre-Tricky

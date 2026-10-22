@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // full120 slice 1: FIX-policy content moved from ps2_fh1_fix.h (one family,
 // one commit). Bodies are verbatim; only the lookup signatures changed from
 // std::string to const char * (strcmp comparison), matching the module ABI's

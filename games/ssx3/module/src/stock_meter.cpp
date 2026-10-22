@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // snd-seam-1 Part 5 slice 2: stock-meter suppression on Tricky courses,
 // moved verbatim from ps2xRuntime/src/lib/ps2_runtime.cpp (the
 // `ssx3-tricky-stock-meter` override). The layer policy stays runtime-side;

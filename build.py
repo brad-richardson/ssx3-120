@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """ssx3-120 product entrypoint: build from your own disc.
 
 Forwards to tools/ssx3/build.py with the pinned engine (deps/PS2Recomp)

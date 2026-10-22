@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 // full120 slice 2: clock policy moved from ps2_fh1_full120.h (and the
 // `ssx3-full120-clock` override from ps2_runtime.cpp): the VBlank/EE rate
 // switch, the stock-time accumulators, the VBlank commit, the manager word

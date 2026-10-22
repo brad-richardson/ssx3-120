@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 # Back up the live lobby's persistent data (/srv/ssx3-lobby/data) to the Mac.
 # Safe to run while the lobby serves: the game rewrites its JSON files per
 # event (Session.json may lag an in-flight race by seconds; accounts,

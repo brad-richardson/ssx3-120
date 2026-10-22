@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk41_composite.py <src.iso> <disc-path> <out-composite> <member=blob>... [--materialized <patched>]
 
 TK41: rebuild a stock BIGF (same total size, rewritten directory) with replaced

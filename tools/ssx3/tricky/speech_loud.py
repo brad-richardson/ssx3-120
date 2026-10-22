@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """speech_loud.py: loudness helpers (ffmpeg ebur128 measurement).
 
 Port of TK25c tk25c_loud.py (port adaptations only: the cache path is set

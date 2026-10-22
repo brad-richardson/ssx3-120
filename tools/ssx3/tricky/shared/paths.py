@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Environment-driven defaults for author-machine data locations.
 
 This repository ships no game data: every tool that reads discs, extracted

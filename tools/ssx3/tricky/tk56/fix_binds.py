@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """TK56 data step: rebind every Tricky class bind to a class row whose create slot runs its intended program.
 
     fix_binds.py ISO IN_COMPOSITE.BIG OUT_COMPOSITE.BIG --group G --receipt R.json --work DIR

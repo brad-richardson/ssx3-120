@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """tk25b_eaxa.py: EA-XA R1 (ADPCM_EA_R1) encoder matching ffmpeg's decoder bit for bit.
 
 References:

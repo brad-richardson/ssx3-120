@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later OR MIT
 """Bake MEGA's authored MultiplierScore rows from the exact current preset world.
 
 Game data stays outside Git. The donor-to-host match uses the TK18 placement,
