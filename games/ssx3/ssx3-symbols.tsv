@@ -77,7 +77,8 @@ address	kind	name	role	source	evidence	confidence
 0x11bb40	code	cRider_addFocusBox	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:88	prior map SYM1	decomp-unverified
 0x11bb98	code	cRider_addRiderMetrix	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:89	prior map SYM1	decomp-unverified
 0x11c230	code	cRider_initOnce	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:85	prior map SYM1	decomp-unverified
-0x11d390	code	reset_entry	engine hook/const kResetEntry	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_resetvol.h:20	inferred
+0x116120	code	fall_reset_entry	engine hook/const kResetEntry (RSV1 zone hit → stock fall reset, a1=0 a2=1 as reset-action instances 0x139dd8)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_resetvol.h:23	verified
+0x11d390	code	reset_entry	start-record placement entry (RSV1 used it before tk-alaska-opus-1 Task 7)	engine	local/research/tk-alaska-opus-1/REPORT.md Task 7	inferred
 0x11d640	code	subresource_ready_pred	per-item ready predicate ANDed by all-sub-resources poll 0x12a180	labels.tsv:CP4 [codegen read] (NM1)	CP4 notes	inferred
 0x11e098	code	quat_normalize_matrix_builder	normalizes quat via rsqrt, quat-to-matrix, stores at obj+0x1A0 disputed: cRider_updateOrientationImplicit (ssxdecomp 0ca6b276a657cd7d).	labels.tsv:RK4 [trace] (NM1)	prior labels	inferred
 0x11e150	code	matrix_to_packet_consumer	reads obj+0x1A0 composed matrix toward render packets	labels.tsv:RK4 [codegen read] (NM1)	prior labels	inferred
