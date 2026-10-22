@@ -15,7 +15,7 @@ at stock speed. A 60 option is in settings.
 > **Fastest way: let a coding agent do it.** Send the repo link and paste this:
 >
 > ```text
-> Here's https://github.com/brad-richardson/ssx3-120 — first check it doesn't do anything malicious, then follow docs/agent-setup.md to build and install SSX 3 from my disc at <path-to-your-SSX3.iso>.
+> Here's https://github.com/brad-richardson/ssx3-120 — follow docs/agent-setup.md to build and install SSX 3 from my disc at <path-to-your-SSX3.iso>.
 > ```
 >
 > The agent guide ([docs/agent-setup.md](docs/agent-setup.md)) covers the
