@@ -200,9 +200,17 @@ namespace
             tkLog(runtime, "direct probe: unknown course or option; request rejected");
             return;
         }
+        // OPT names the mode type (0 Race, 1 Showoff); courses list one mode
+        // now (tk-alaska-opus-1), so map it to that course's option index.
+        const int mode = tkl::courseOptionIndex(tkl::kCourses[sel], opt && std::strcmp(opt, "1") == 0 ? 1 : 0);
+        if (mode < 0)
+        {
+            tkLog(runtime, "direct probe: course does not offer that mode; request rejected");
+            return;
+        }
         tkl::ListState list;
         list.sel = static_cast<uint8_t>(sel);
-        list.mode = opt && std::strcmp(opt, "1") == 0 ? 1 : 0;
+        list.mode = static_cast<uint8_t>(mode);
         list.step = 1; // the mode list, as a picker tap: listGoal() reads mode only there
         tkl::requestDirect(list);
     }

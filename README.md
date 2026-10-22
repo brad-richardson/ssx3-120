@@ -57,7 +57,7 @@ Settings: hold Start, press Select+Start, or tap the … button.
 
 Build it with `--tricky-iso <Tricky.iso>` (supported discs: [docs/tricky-inputs.md](docs/tricky-inputs.md)); without it the app boots stock SSX 3 only.
 Tricky courses run inside SSX 3's engine, so SSX 3 handling, tricks and scoring apply on Tricky blocks and gems.
-With a Tricky build, the main menu gets a "Tricky Courses (Alpha)" row: pick a course and a mode (Race or Showoff) and you're taken into it.
+With a Tricky build, the main menu gets a "Tricky Courses (Alpha)" row: pick a course and you're taken into it (each course offers Race or Showoff for now, whichever its SSX 3 event supports).
 Tricky music and the announcer come from your Tricky disc when `ffmpeg` and `vgmstream-cli` are installed; otherwise Tricky courses use SSX 3's soundtrack.
 See [docs/known-issues.md](docs/known-issues.md) for what is still rough.
 
