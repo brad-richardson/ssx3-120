@@ -2193,6 +2193,8 @@ address	kind	name	role	source	evidence	confidence
 0x1f31000	data	packet_addr	engine hook/const kPacketAddr: after the runtime's HLE pools	engine	deps/PS2Recomp/games/ssx3/module/include/ps2_snd_spike.h:57	inferred
 0x1f31100	data	done_packet_base	engine hook/const kDonePacketBase: ring of 16 x 0x20	engine	deps/PS2Recomp/games/ssx3/module/include/ps2_snd_spike.h:58	inferred
 0x1f31400	data	hle_arena_base	engine hook/const kHleArenaBase	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_hle_pools.h:54	inferred
+0x1fd8000	data	low_heap_ceiling	engine hook/const kLowHeapCeiling: guest heap ceiling (SetupHeap/EndOfHeap) under PS2X_HLE_POOLS_LOW=1, 32 KB under the main stack	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_hle_pools.h:48 (tk-alaska-opus-1)	verified
+0x1fe0000	data	main_stack_base	engine hook/const kMainStackBase: SSX 3 crt0 SetupThread stack (0x1FE0000, 0x20000; sp seen 0x1FF7790..0x1FFFD80)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_hle_pools.h:49 (tk-alaska-opus-1 g8 thread table)	verified
 R+0x110	data	rider_pos	primary position 3x f32; == 0x5409c0 exactly t1800+	netsync-spike-1	netsync-spike-1 notes	verified
 R+0x1d0	data	rider_pos_copy	position copy 3x f32; tracks 0x5409c0 in-race	netsync-spike-1	netsync-spike-1 notes	verified
 R+0x2a4	data	stunt_charge_spin	spin stunt charge, slewed per update by sub_001211F8	AIR1/FLP1/FLP2	docs/facts.md:323	verified
