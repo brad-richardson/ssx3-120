@@ -43,9 +43,9 @@ TKP5_FINALS = {  # odin-play-tricky-tkp5/SHA256SUMS
     'mesa': '081a94d7793f36cc3ab88aa557b4286091e0a1feb4f79661fc89acbc4596f85f',
     'merq': 'bcbaf32d16a27b7328788515a5aa57927d468abd03927f39b657614951257323',
     'aloha': '6ae037e395c6686d14f2911e170ed91c93e7f8ab8fcaa387033c9221c6c809bb',
-    'elys': '1d0676267ee963659a31077048b701a6b3a92ffaf8394d6b083b8a7f90e626eb',
+    'elys': 'a71b81045eb1ff19151733b2b62ef357f293788d0f9da001704b157e77c5aa7b',
     'alaska': '43a23f8ad20af36c1012d3661b0e5d0f3de82767d1315b3eba73861573233c47',
-    'untrack': '4fce15a5e31c0897b490bbf972f6e17e57c777f2dd240b162bb636b00b00e343',
+    'untrack': '4d2563a9f7686b19a900b9c6264a26cb4d2248bf94a951ff14b9a6a63d2333e8',
     'pipe': 'b353d0614897de85520d3917a81e1c7aafc95011d270b147a80a30eb2810a4bc',
     'mega': '8c28ceeda86f321402fc07e7ac8a056e366d32167e3e0feaaf9e796e1e54bafd',
 }
@@ -137,17 +137,17 @@ COURSES = {
         # oracles decide).
         stem_scenery='UNTRACK',
         oracle_b='b83d43c7',
-        oracle_c='6cce9262',
+        oracle_c='862343d4e79c3776994e81cc0632528d246f83038cc252d19784fabf6efeb0cd',
         terrain_tool='tk30/make_terrain_tex30.py',
         terrain_extra=['--mips', '1', '--prune', '--compact-ids',
                        '--lm-alpha-scale', '0.5', '--lm-inset', '0.5'],
         terrain_L='untrac_L.ssh',
         composite_tool='tk30/make_composite30.py',
-        oracle_tk49='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
+        oracle_tk49='bd54e6559ae1ce6a4eef2abf0082f89b68348d8a0550a9b2b9ee57a49ec63206',
         floor_group=None, bind=None,
         # staged == TK49; s3 proxies feed the reloc below.
-        oracle_staged='4cd09ece16c8ede2943c7ab69e067267899e4e62985e656a1acc2f83d89e2f9f',
-        oracle_s3='e6ea3205e05b901ad5c8c79dec5842c4173cd73bfc951ed087d8b51eba1f11cb',
+        oracle_staged='bd54e6559ae1ce6a4eef2abf0082f89b68348d8a0550a9b2b9ee57a49ec63206',
+        oracle_s3='a43b8a7ddd994be9fcc52bd463986a971c80e322dd5f949b63767b3372e3766d',
         fix_group=None, preview_loc='ESS3',
         # Relocate group verbatim (TKP5 tooling/relocate.sh group()); the
         # TK56 fix is unwired for untrack but s5 still relocates p151->179.
@@ -450,7 +450,7 @@ COURSES = {
         cand_stem_scenery='ELYS',
         cand_stem_terrain='elys',
         oracle_cand_sc='ef001690',
-        oracle_candt='60e1b402',
+        oracle_candt='821024c35900174cc362c8803ebc2ee11a1f6806945657f9f4d5a7678e221834',
         bind_names=['Mdl_Jumbotron', 'Mdl_Lcdscan', 'Mdl_Lcd'],
         bind_base='candt',
         bind_scenery='cand',
@@ -458,27 +458,27 @@ COURSES = {
         effects='elys',
         # TK26 elys-eb1 terrain (TK19c tool): --mips 4 --mips-only
         # elys-line-tex20 --prune --prune-kinds 10 --compact-ids --lm 1.0
-        # --offline-tex-max 32. eb1 68207cc0; candt 60e1b402 path after eb1
-        # pending recon.
+        # --offline-tex-max 32. eb1 1a725904; candt 821024c3 path after eb1
+        # (0.5 recipe).
         terrain_tool='tk19c/make_terrain_tex.py',
         terrain_extra=['--mips', '4', '--mips-only',
                        '{data}/elys-line-tex20.txt', '--prune',
                        '--prune-kinds', '10', '--compact-ids',
                        '--lm-alpha-scale', '0.5', '--offline-tex-max', '32'],
         terrain_L='elysiu_L.ssh',
-        oracle_c='68207cc0',
-        oracle_bound='b9df59d3ee19532927eb35d07e1132f2aab8a3410ace7a577d44bfe5d2a9b212',
+        oracle_c='1a725904d5383556f9ce5eac11f68e40539388cf55c73d8f1d7dd083da35c28e',
+        oracle_bound='df3010b214c350ecfbdd19e6e91e3d379c4fc8ca5c237f623a5fc145c449c0bb',
         floor_group=135,
-        oracle_final='169a8cf4ef60020e1604f82cb059c1ab7c140fe3a6ba2cf870a46c24afae3fd4',
+        oracle_final='94d9c776cf99f506c8c01c1cbcc7b9ea96b2e2be029a1aa71f8a877d97c30e04',
         fix_group=135,
-        oracle_fix='8d9e9f86e5a85e548834b20aaf8921782ee61b215d61a7c9112bb174e52b660f',
-        oracle_play='9fee3f4fd2b55b71b843862bc7584bc3c547e3d871fd4add5af120ea947e263a',
-        oracle_mat='dd64f261378d8d8414f791a23b339df8a5fe874a36afd1e70c938e3305314fd6',
-        oracle_blend='fb04d5034efd7d85a73b689a4b50501782f60abb54e2aaeea7b6a65a583eb5db',
+        oracle_fix='234cc7c8a7fc8cde96ca20a821633c27cc047960c0225f97bbc1dd538fe318d5',
+        oracle_play='59f19afe780f74d38e4dc6bcd29f7c61c7d960aba68b71b5b91977c9cb5a1521',
+        oracle_mat='e006182df63ae99b8261cb533febb935dbb70c853031546ac1a0a2d0c317c7d9',
+        oracle_blend='c6ca7a8e4293192f2f75fa96e43ce263af9f7e64a0686b4b6b02dd6dd5ff1d98',
         blend_spec='blend-spec-elys2.json',
-        oracle_staged='60728a31dd088ff8572f0cfd6fa899b3e9390488750e87cc1bd1fb7c3596ae6d',
-        oracle_s2='caffab52336cf25cb21f101ba938ac2d82b15157f00dfbfba67899258f863b81',
-        oracle_s4='caffab52336cf25cb21f101ba938ac2d82b15157f00dfbfba67899258f863b81',
+        oracle_staged='9d5fbb80a8f2cec21ffeab41c90b26fc5a571e26316cee9ab801276ebfcba7d0',
+        oracle_s2='95e21666725c6af395f5ff7b4c656f39e6dea2695db208c21bceec14429a4a59',
+        oracle_s4='95e21666725c6af395f5ff7b4c656f39e6dea2695db208c21bceec14429a4a59',
         preview_loc='EBC3',
     ),
     'aloha': dict(
@@ -1013,7 +1013,7 @@ class Chain:
     # Rebuilds scenery from the RACE base (pre-rails: kind 3/12 assert) with
     # soft-u0zero + keep-file + the course trims, then rails + the course
     # terrain flags. Proven: merq (60e1f21c -> e5394e3c), elys (ef001690 ->
-    # 60e1b402, lowercase terrain stem).
+    # 821024c3, lowercase terrain stem).
     def rung_cand(self, c, r, sbig, bdir, ddir):
         w = self.W / f'w-{c}-cand'
         (w / 'sc').mkdir(parents=True, exist_ok=True)

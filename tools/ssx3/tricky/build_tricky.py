@@ -109,6 +109,15 @@ def course_submit_order():
 ROUTES_COURSES = {c: r['oracle_routes'] for c, r in COURSES.items()
                   if r.get('oracle_routes')}
 S5_FINALS = {c: TKP5_FINALS[c] for c in TKP5_FINALS if c != 'mega'}
+# rel5 payload pins (release-1022-2): the driver gates the exact bytes it
+# ships. Pipe/Alaska/Merqury converter updates still live on the
+# release-1022-1 branch (not on main), so their recipe oracles here are
+# stale; these three entries pin the carried rel4 bytes instead (proven by
+# SHA equality in the lane REPORT). Elysium/Untracked flow through the
+# re-pinned TKP5_FINALS (0.5 recipe, this lane).
+S5_FINALS['pipe'] = '27c103c8dd777bf07e0b5690600ed1c2b5f11883a544998be38c6e5f3afb5650'
+S5_FINALS['alaska'] = '7544c0c6761a8c42980c6f0065182d649a7567e46d25ffe69f9e5c115a004e19'
+ROUTES_COURSES['merq'] = '1c92eebd012a4b87dfb2c68ef3f0c16a4005c9fa8979278a71896689e56f7e32'
 # Device payload goldens (tk-port-2 REPORT section 2 + TKP5 section 1).
 # Preview is a recorded 12-char pin (tk-port-1 REPORT section 6).
 PREVIEW_PIN = '3332b0af708d'
@@ -134,10 +143,11 @@ AUDIO_SHA = {'music-tricky-big': '26125d2a4463690133ab2a3097254b819115550e53723a
 # driver never emits a full sidecar until tk-nogc-1's courses land.
 GEMS_345_SHA = 'c8407f435bd4697a0a93c98e5dd64579697e21000936564a5af7eca26b18c13b'
 HUD_ATLAS_SHA = 'a7ccacdabb2cfefb392fb2dba319cb7f3d6056ec911ede1510e9aaba26071f28'
-# Resetvol: two standalone gate-container bakes on run-11 donor trees are
-# byte-identical AND match the staged file (DEV1 staging.tsv, RSV1).
-# Standing-rule adoption (deterministic + matches staging).
-RESETVOL_SHA = '77acce0393b151d33165829b33a938eebdcee0e3eb800d65b514aa2f7d1ab6c8'
+# Resetvol: filtered bake (placement from run_chain build args + Aloha
+# 1272/1273 quarantine). release-1022-1 validated it; release-1022-2
+# re-baked it independently from the prior lane's committed code and the
+# release-1022-1 donor tree: byte-identical (see lane REPORT §2).
+RESETVOL_SHA = 'b6604174eb4be8c72fd679f34df87182ce7d8463011cce57c5c15338b5e4b21e'
 # Oracle change (orch 10-18): play == public, so the public pipeline is the
 # reference — adopt OUR composite 4106bce5 (speech_eaxa.py from the pinned
 # decisions). PB70's 07dcb666 came from the lost TK43b builders and cannot
@@ -1032,10 +1042,15 @@ class Build:
 
     def phase_resetvol(self):
         out = self.W / 'tricky-resetvol.tsv'
+        # Ship the validated quarantine: the ALOHA 1272/1273 volumes sit on
+        # the early start chute and reset every run to the start. Drop them
+        # here so the driver reproduces the shipped sidecar byte-for-byte.
+        # Revert path: drop these two flags and re-pin RESETVOL_SHA.
         run(self.logs, 'resetvol', sys.executable, T / 'bake_reset_volumes.py',
             out, '--donor-dir', self.W / 'donor',
             '--untrack-dir', self.W / 'donor' / 'untrack',
-            '--plans', T / 'resetvol-plans.json', cwd=self.W)
+            '--drop-ordinal', 'ALOHA:1272',
+            '--drop-ordinal', 'ALOHA:1273', cwd=self.W)
         check(out, RESETVOL_SHA, 'tricky-resetvol.tsv')
         return out
 

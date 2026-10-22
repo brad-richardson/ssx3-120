@@ -5,6 +5,11 @@
 Triangles stay in donor coordinates. The runtime inverse-transforms the rider
 path from host space before its swept triangle test. PBD low/high bounds are
 only broadphase bounds: a rider can enter one far from the collision surface.
+
+The per-course placement is the world build's own (run_chain.py COURSES
+build_args: host location, source/target anchors, yaw, scale), so the zones
+land where the converted world does. The old TK10 plan table placed MERQ in
+DRA4 (yaw 79.0, ~713k units off the ERA5 build) and GARI at yaw 80.7 (vs 73).
 """
 import argparse
 import hashlib
@@ -24,27 +29,36 @@ from mapnames import map_names
 
 EVENTS = {
     'GARI': (0, 'gari', 'ARA1'), 'SNOW': (1, 'snow', 'BRA2'),
-    'MESA': (2, 'mesa', 'CRA3'), 'MERQ': (4, 'merquer', 'DRA4'),
+    'MESA': (2, 'mesa', 'CRA3'), 'MERQ': (4, 'merquer', 'ERA5'),
     'ALASKA': (6, 'alaska', 'DSS2'), 'UNTRACK': (7, 'untrack', 'ESS3'),
     'PIPE': (11, 'pipe', 'BHP1'), 'ALOHA': (14, 'aloha', 'ABC1'),
     'MEGA': (15, 'megaple', 'DBC2'), 'ELYS': (16, 'elysium', 'EBC3'),
 }
 
 
-def placement(course, donor, host, plans):
-    if course == 'UNTRACK':
-        # TK31/REPORT.md:113 is the shipped ESS3 placement.
-        return ([5369.39599609375, -10045.30078125, 28632.5703125],
-                [-327424.4895833333, 182567.0625, 484667.875], 347.6, .55)
-    if course == 'MEGA':
-        # TK18/REPORT.md §1.1 replaced TK10's bottom-of-lap AI0 anchor with
-        # AI12 at the top and yaw 279.4. AI12 is read from pinned megaple.aip.
-        return ([1630.64453125, 196.73287963867188, 12.964978218078613],
-                [47827.451171875, -244658.3515625, 278105.828125], 279.4, .55)
-    matches = [p for p in plans if p['course'] == donor and p['host'] == host]
-    assert len(matches) == 1, (course, matches)
-    p = matches[0]
-    return p['source_anchor'], p['gate_centre'], p['yaw'], p['scale']
+RECIPE_KEYS = {'GARI': 'gari', 'SNOW': 'snow', 'MESA': 'mesa', 'MERQ': 'merq',
+               'ALASKA': 'alaska', 'UNTRACK': 'untrack', 'PIPE': 'pipe',
+               'ALOHA': 'aloha', 'MEGA': 'mega', 'ELYS': 'elys'}
+
+
+def placement(course, host):
+    """(source anchor, target anchor, yaw, scale) from the world build recipe."""
+    from run_chain import COURSES
+    args = COURSES[RECIPE_KEYS[course]]['build_args']
+
+    def arg(key):
+        for i, a in enumerate(args):
+            if a == key:
+                return args[i + 1]
+            if a.startswith(key + '='):
+                return a.split('=', 1)[1]
+        raise KeyError((course, key))
+
+    def vec(key):
+        return [float(x) for x in arg(key).split(',')]
+
+    assert arg('--location') == host, (course, arg('--location'), host)
+    return vec('--source-anchor'), vec('--target-anchor'), float(arg('--yaw')), float(arg('--scale'))
 
 
 def main(argv=None):
@@ -54,14 +68,22 @@ def main(argv=None):
                     help="donor extracts dir (per-course <course>/<course>.pbd + .map)")
     ap.add_argument("--untrack-dir", required=True,
                     help="untrack donor dir (<untrack>.pbd + .map)")
-    ap.add_argument("--plans", required=True,
-                    help="placement plans JSON (default: resetvol-plans.json)")
+    ap.add_argument("--drop-ordinal", action="append", default=[],
+                    help="tk-fix-1: skip a ResetZone instance (COURSE:ordinal, repeatable). "
+                         "Aloha 1272/1273 sit on the early start chute and reset every run to the "
+                         "start; quarantine them while the rider-path question is open.")
     a = ap.parse_args(argv)
     out_path = Path(a.out)
     DONOR = Path(a.donor_dir)
     UNTRACK = Path(a.untrack_dir)
-    plans = json.loads(Path(a.plans).read_text())
-    out = ['# RSV1 reset surfaces; source: donor PBD mesh triangles, TK10/TK31 placement',
+    drop = set()
+    for item in a.drop_ordinal:
+        try:
+            course_key, ordinal = item.split(':')
+            drop.add((course_key.strip().upper(), int(ordinal)))
+        except ValueError:
+            raise SystemExit(f'--drop-ordinal expects COURSE:ordinal, got {item!r}')
+    out = ['# RSV1 reset surfaces; source: donor PBD mesh triangles, world build placement',
            '# course EVENT KEY srcXYZ dstXYZ yawDegrees scale; tri KEY ordinal ax ay az bx by bz cx cy cz']
     census = []
     for course, (event, donor, host) in EVENTS.items():
@@ -71,12 +93,14 @@ def main(argv=None):
         data = pbd_path.read_bytes()
         pbd = PBD(data)
         models = map_names(map_path.read_text())['MODELS']
-        src, dst, yaw, scale = placement(course, donor, host, plans)
+        src, dst, yaw, scale = placement(course, host)
         out.append('\t'.join(map(str, ('course', course, event, *src, *dst, yaw, scale))))
         found = []
         for i, inst in enumerate(pbd.instances):
             name = str(models.get(inst['model'], ''))
             if 'resetzone' not in name.lower():
+                continue
+            if (course, i) in drop:
                 continue
             model = pbd.models[inst['model']]
             mat = inst['matrix']
@@ -109,6 +133,7 @@ def main(argv=None):
         census.append(dict(course=course, event=event, donor=donor,
                            pbd_sha256=hashlib.sha256(data).hexdigest(),
                            count=len(found), triangles=sum(t for _, _, _, t in found),
+                           dropped_ordinals=sorted(o for c, o in drop if c == course),
                            oriented_mesh=sum(o for _, _, o, _ in found),
                            axis_aligned_mesh=sum(not o for _, _, o, _ in found),
                            model_names=sorted(set(n for _, n, _, _ in found)),
