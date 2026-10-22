@@ -82,5 +82,23 @@ void register_ps2_ssx3_quick_play_direct_tests()
                       "own pair show must stay stock");
             t.IsFalse(qpStrandLogoffReady(false, true, false, true, true, false, false),
                       "off-stage must stay stock");
+        });
+        tc.Run("dialog-face strand with live pair takes one Logoff attempt", [](TestCase &t)
+               {
+            // P42: post-accept strand on the entry object, pair still live
+            // (eval D+F+L, P=0). Fire the Part-1 shape on OUR pair, never on
+            // the strand object and never while the dialog is up.
+            t.IsTrue(qpStrandLiveLogoffReady(true, true, false, true, false),
+                     "live pair on fresh strand show must attempt");
+            t.IsFalse(qpStrandLiveLogoffReady(true, true, false, true, true),
+                      "an attempted strand must not attempt again");
+            t.IsFalse(qpStrandLiveLogoffReady(true, false, false, true, false),
+                      "dead pair stays stock here (gate A owns it)");
+            t.IsFalse(qpStrandLiveLogoffReady(true, true, true, true, false),
+                      "dialog up must stay stock (never preempt: P24)");
+            t.IsFalse(qpStrandLiveLogoffReady(true, true, false, false, false),
+                      "stale strand show must stay stock");
+            t.IsFalse(qpStrandLiveLogoffReady(false, true, false, true, false),
+                      "off-stage must stay stock");
         }); });
 }

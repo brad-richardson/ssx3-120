@@ -44,4 +44,17 @@ inline bool qpStrandLogoffReady(bool readyStage, bool pairDead, bool dialogUp,
     return readyStage && pairDead && !dialogUp && freshShowRecent &&
            shownSane && !shownIsPair && !alreadyAttempted;
 }
+// qp-cancel-1 Part 2 (b): the DIALOG-face strand keeps our pair LIVE (P42:
+// post-accept eval=14 is D+F+L with P=0, entry object reshown, patch
+// intact). The Part-1 Logoff shape on the live pair is the exact call Part 1
+// proves; the strand object itself stays untouched (P26 no-op, P32 corrupt).
+// Attempt exactly once per strand show: ready, pair live, no dialog up
+// (accepted already; never preempt one: P24), strand show recent, not yet
+// attempted. A healthy stock quit to Online Main would also match (superset,
+// noted in REPORT); Online Alpha biases Main-ward by design.
+inline bool qpStrandLiveLogoffReady(bool readyStage, bool pairLive, bool dialogUp,
+                                    bool strandFresh, bool alreadyAttempted)
+{
+    return readyStage && pairLive && !dialogUp && strandFresh && !alreadyAttempted;
+}
 }

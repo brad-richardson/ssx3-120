@@ -21,7 +21,7 @@ struct State {
     Stage stage = Stage::Idle;
     uint32_t menu = 0, ui = 0, config = 0, root = 0, popup = 0, menuScreen = 0, below = 0, stranded = 0;
     uint32_t pairRoot = 0, dlgFired = 0, lastShown = 0, lastShownTick = 0, strandAttempted = 0;
-    uint32_t strandEvalLogged = 0;
+    uint32_t strandEvalLogged = 0, strandSeen = 0;
     uint64_t tap = 0, lastTick = 0, injections = 0, rootRetired = 0;
     std::chrono::steady_clock::time_point started{};
 } state;
@@ -159,6 +159,8 @@ void continuation(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
         state.stage=Stage::Queued; log(r,"root-and-filter-queued"); finish(ram,c); break;
     case 50:
         log(r,"strand-logoff-returned",result); finish(ram,c); break;
+    case 51:
+        log(r,"strand-logoff-b-returned",result); finish(ram,c); break;
     default: fail(ram,c,r,"unknown-continuation"); break;
     }
 }
@@ -268,7 +270,7 @@ void switchHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
     }
     if (ps2_quick_play_direct::qpOnlineMainReturnTakesLogoff(shown, state.stage==Stage::Ready, state.below) &&
         object(shown,0x6d0)) {
-        state.stranded=shown; log(r,"stranded-online-main",shown);
+        state.stranded=shown; state.strandSeen=shown; log(r,"stranded-online-main",shown);
     }
     if (state.root && !state.rootRetired &&
         (state.stage==Stage::Ready || state.stage==Stage::Leaving)) state.rootRetired=tick(r);
@@ -351,6 +353,30 @@ void padHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
                 log(r,"strand-logoff-attempt",state.lastShown); return;
             }
             log(r,"strand-logoff-skipped",state.lastShown);
+        }
+        // Part 2 (b): dialog-face strand with a LIVE pair (P42: post-accept
+        // eval shows pair alive on the entry object). Fire the Part-1 shape
+        // on our own live pair — the strand object itself stays untouched
+        // (P26 no-op, P32 corrupt). Child prefers our filter (Part-1-exact);
+        // falls back to the strand show when the filter is gone.
+        if (state.strandSeen != 0u) {
+            const bool pairLiveB = state.pairRoot != 0u && rd(ram,state.pairRoot+8)==0x46ad48u;
+            const bool freshB = state.lastShown==state.strandSeen && now0 >= state.lastShownTick &&
+                now0-state.lastShownTick <= 600u;
+            const bool evalB = state.strandAttempted==state.strandSeen;
+            if (ps2_quick_play_direct::qpStrandLiveLogoffReady(true, pairLiveB, dialogUp, freshB, evalB)) {
+                state.strandAttempted=state.strandSeen;
+                uint32_t childB = 0u;
+                if (state.popup != 0u && object(state.popup,0x734u) &&
+                    rd(ram,state.popup+0x20)==state.pairRoot) childB = state.popup;
+                else if (object(state.strandSeen,0x6d0u)) childB = state.strandSeen;
+                if (childB != 0u && begin(ram,c,0x1c0138,51,state.pairRoot,childB)) {
+                    reg(c,6,0xf);
+                    state.stage=Stage::Leaving;
+                    log(r,"strand-logoff-b-attempt",state.pairRoot); return;
+                }
+                log(r,"strand-logoff-b-skipped",state.strandSeen);
+            }
         }
     }
     // qp-cancel-1 Part 2: the strand was recorded by switchHook (Online Main
