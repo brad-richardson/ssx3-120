@@ -235,17 +235,22 @@ void switchHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
     switchOriginal(ram,c,r);
 }
 void filterHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
-    // Back (event 6) on the idle filter: stock notifies Online Main, which
-    // pops the filter and stays active; its own Back then offers
-    // "Disconnect from server", whose Yes pushes cFEStateNetAccountMem (the
-    // save prompt). Take Online Main's Logoff confirmation instead,
-    // 0x1c0138(root, child, 0xF): close the child, switch to a new
-    // cFEStateMainMenu (whose init destroys the session, auth, game link and
-    // net manager) and log off. A searching filter keeps stock Back (abort).
+    // Back (event 6) on our filter, idle or searching: take Online Main's
+    // Logoff confirmation, 0x1c0138(root, child, 0xF): close the child,
+    // switch to a new cFEStateMainMenu (whose init destroys the session,
+    // auth, game link and net manager) and log off. No disconnect dialog,
+    // no cFEStateNetAccountMem save prompt, no login/persona screens.
+    // Stock Back on a searching filter instead closes into the hidden Online
+    // Main (drawHook hides our root: black gap, "menus gone") and then the
+    // disconnect-confirm trench — that is qp-cancel-1 (and the long way to
+    // the Part-2 strand). The in-flight search's lobby session dies with the
+    // session teardown below.
     const auto self=getRegU32(c,4), event=getRegU32(c,6);
-    if (event==6 && state.stage==Stage::Ready && self==state.popup && object(self,0x734) &&
-        !rd(ram,self+0x6ec) && object(state.root,0x6d0) && rd(ram,self+0x20)==state.root) {
-        state.stage=Stage::Leaving; log(r,"back-to-main");
+    const bool isOurs = self==state.popup && object(self,0x734) &&
+        object(state.root,0x6d0) && rd(ram,self+0x20)==state.root;
+    if (ps2_quick_play_direct::qpBackTakesLogoff(event, state.stage==Stage::Ready, isOurs)) {
+        const bool searching = rd(ram,self+0x6ec) != 0u;
+        state.stage=Stage::Leaving; log(r, searching ? "back-to-main-search" : "back-to-main");
         reg(c,4,state.root); reg(c,5,self); reg(c,6,0xf); c->pc=0x1c0138;
         return;
     }
