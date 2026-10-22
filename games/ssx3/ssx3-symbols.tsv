@@ -58,6 +58,7 @@ address	kind	name	role	source	evidence	confidence
 0x114298	code	launch_transition_velocity	FH3 DIAG_WATCH: writes R+0x1e0 at 0x1144b8 (launch vector), 0x114a2c (wall projection), 0x114a80 (×0.8), 0x114ad0 (speed clamp to R+0x2e4), 0x114b74 (final scale); callers 0x12eafc/0x130890/0x13bfe8/0x13f19c engine: constexpr kLaunchHelper (deps/PS2Recomp/ps2xRuntime/include/ps2_fh1_full120.h:963)	FH1 §Labels	FH1 notes	verified
 0x114db8	code	lim1_gate	Limiter-1 rival-rider gate (a0 = R; v0 0 = admit); wrapped by lim1GateWrapper (fork 34bf77d9)	engine	deps/PS2Recomp/games/ssx3/module/src/input_marker.cpp:1017	inferred
 0x115d48	code	rider_look_at_rival_anim (2 stream-1 draws per update when +0x35c ≥ 1)	rider_look_at_rival_anim (2 stream-1 draws per update when +0x35c ≥ 1) (S + L)	FA1 §Labels	FA1 notes	verified
+0x116120	code	fall_reset_entry	engine hook/const kResetEntry (RSV1 zone hit → stock fall reset, a1=0 a2=1 as reset-action instances 0x139dd8)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_resetvol.h:23	verified
 0x116950	code	gGenTrickName	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:82	prior map SYM1	decomp-unverified
 0x116e08	code	gGenMonsterTrickReqName	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:83	prior map SYM1	decomp-unverified
 0x116fb8	code	HUD timed-slot step (+8 += [0x49b5d8], expire at +4 → state 0x34)	ee-at; W1	FH23 §Labels	FH23 notes	verified
@@ -77,7 +78,6 @@ address	kind	name	role	source	evidence	confidence
 0x11bb40	code	cRider_addFocusBox	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:88	prior map SYM1	decomp-unverified
 0x11bb98	code	cRider_addRiderMetrix	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:89	prior map SYM1	decomp-unverified
 0x11c230	code	cRider_initOnce	ssxdecomp name	decomp:ssxdecomp/ssx3@0ca6b276a657cd7d6f973f5b8a159282c86537b1:config/symbol_addrs.txt:85	prior map SYM1	decomp-unverified
-0x116120	code	fall_reset_entry	engine hook/const kResetEntry (RSV1 zone hit → stock fall reset, a1=0 a2=1 as reset-action instances 0x139dd8)	engine	deps/PS2Recomp/ps2xRuntime/include/ps2_ssx3_tricky_resetvol.h:23	verified
 0x11d390	code	reset_entry	start-record placement entry (RSV1 used it before tk-alaska-opus-1 Task 7)	engine	local/research/tk-alaska-opus-1/REPORT.md Task 7	inferred
 0x11d640	code	subresource_ready_pred	per-item ready predicate ANDed by all-sub-resources poll 0x12a180	labels.tsv:CP4 [codegen read] (NM1)	CP4 notes	inferred
 0x11e098	code	quat_normalize_matrix_builder	normalizes quat via rsqrt, quat-to-matrix, stores at obj+0x1A0 disputed: cRider_updateOrientationImplicit (ssxdecomp 0ca6b276a657cd7d).	labels.tsv:RK4 [trace] (NM1)	prior labels	inferred
