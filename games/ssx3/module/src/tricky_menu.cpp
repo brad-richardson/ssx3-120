@@ -60,6 +60,35 @@ namespace
     // FE-owned guest continuation. All call arguments and the original FE
     // entry registers live in guest RAM across scheduler checkpoints.
     constexpr uint32_t kDirectMagic = 0x544b4431u;
+    // tk-six-1: Alaska Showoff initial-clock bump (v4: live total word).
+    // tick_to_time_mul (0x29cca8; ee-xref tick_to_time_mul) computes the
+    // slopestyle countdown as s2 = (total - elapsed) % 3600 in 60 Hz
+    // ticks: both sides scale by K1 = K2 = 1/60 (floats at [gp-0x459C] =
+    // [gp-0x4598] = 0.016667 in live RAM, gp = 0x4A30F0 from the
+    // scheduler thread contexts). The TOTAL side is the int at [s0+0x78]
+    // where s0 = [[gp-0x848]+0xC0] (gp-0x848 = 0x4A28A8, the app holder).
+    // Six savestates (two courses, five boots) agree: root 0x4C9428,
+    // s0 0x59FE00, total 4500 (75 s x 60) on every Alaska state and
+    // 3600 -> 7800 (+4200 = +70 s) across Untracked's positional bonus
+    // gate. (v1-v3 poked 0xb215fc, a guest-written shadow: the write
+    // landed but HUD/expiry were unchanged.) The bonus path adds to this
+    // same word, so any bump composes with a future gate revival.
+    // v5 sizing (+315 s -> 390 s initial): three rider lines (idle fall
+    // line, 6 s S-turn tuck, sparse-steer tuck) all crawl ~300-400
+    // ticks/% with NO bonus granted on this world (28%/38%/39% crossings
+    // all monotonic; the per-rider slot-word gate at 0x239854 never arms
+    // -- ridden-vs-converted path divergence per T3 M1.2 is the standing
+    // hypothesis, converter-lane follow-up). The measured full run needs
+    // ~256 s of racing; 390 s covers it + ~40% margin for late-race
+    // slowdown, with the bottom/results proof deciding. Armed only for
+    // the Alaska Showoff DIRECT launch (donor ev6, type 1, rules 1);
+    // fired once at/after tick 6900, past the guest's final total init
+    // at race start (~6820; an early poke is clobbered). 4400-4600 guard
+    // keeps a relocated word safe; stock and other cells never arm it,
+    // and every accept re-inits the word, so no restore is needed.
+    constexpr uint32_t kAlaskaAppHolder = 0x4a28a8u; // [gp-0x848]
+    constexpr int32_t kAlaskaBumpTicks = 18900;      // +315 s x 60 Hz
+    static bool sAlaskaClockBumpArmed = false;
     constexpr uint32_t kDirectFrame = 0x240u;
 
     bool tkDirectContinue(uint8_t *ram, R5900Context *ctx, PS2Runtime *runtime)
@@ -183,6 +212,10 @@ namespace
         wr32(ram, f + 0x18, request.rules);
         wr32(ram, f + 0x1c, request.context);
         wr32(ram, f + 0x20, ctx->pc);
+        // tk-six-1: arm the Alaska Showoff clock bump only for its own
+        // DIRECT launch args; every other cell disarms it.
+        sAlaskaClockBumpArmed =
+            (request.event == 6u && request.type == 1u && request.rules == 1u);
         std::memcpy(ram + f + 0x40, ctx->r, sizeof(ctx->r));
         tkSetGpr(ctx, 29, f);
         ps2_ssx3_fe_launch::note("fe-consume", runtime->memory().gs().vsyncTick.load());
@@ -395,6 +428,46 @@ namespace
         if (ps2_ssx3_course::appUpdateFn(rdram) == ps2_ssx3_course::kGameUpdate)
         {
             s.mapController = 0u;
+            if (sAlaskaClockBumpArmed)
+            {
+                // tk-six-1: armed Alaska Showoff launch: grant +315 s once
+                // the race is underway, by bumping the live countdown
+                // total at [s0+0x78] (see the kAlaskaAppHolder note at the
+                // top of this file). v1 fired at tick 4930 and was
+                // clobbered by the guest's re-init at race start (~6820);
+                // firing at/after tick 6900 lands past the final init
+                // (total 4500) while staying far ahead of the first bonus
+                // gate. Single-fire latch; the 4400-4600 guard keeps a
+                // relocated word from ever being clobbered; every path
+                // logs tick, chain and value.
+                const auto tick =
+                    runtime->memory().gs().vsyncTick.load(std::memory_order_relaxed);
+                if (tick >= 6900u)
+                {
+                    sAlaskaClockBumpArmed = false;
+                    int32_t total = -1;
+                    int32_t readback = -1;
+                    uint32_t app = 0;
+                    uint32_t s0 = 0;
+                    if (PS2_RAM_SIZE > 0xC4u)
+                        app = rd32(rdram, kAlaskaAppHolder);
+                    if (app && app + 0xC0u + 4 <= PS2_RAM_SIZE)
+                        s0 = rd32(rdram, app + 0xC0u);
+                    if (s0 && s0 + 0x78u + 4 <= PS2_RAM_SIZE)
+                        std::memcpy(&total, rdram + s0 + 0x78u, sizeof(total));
+                    if (total >= 4400 && total <= 4600)
+                    {
+                        const int32_t bumped = total + kAlaskaBumpTicks;
+                        std::memcpy(rdram + s0 + 0x78u, &bumped, sizeof(bumped));
+                        std::memcpy(&readback, rdram + s0 + 0x78u, sizeof(readback));
+                    }
+                    char msg[160];
+                    std::snprintf(msg, sizeof(msg),
+                                  "alaska showoff total tick=%llu app=0x%x s0=0x%x saw=%d readback=%d",
+                                  (unsigned long long)tick, app, s0, total, readback);
+                    tkLog(runtime, msg);
+                }
+            }
             s.wasGame = true;
             ps2_ssx3_fe_launch::playing(runtime->memory().gs().vsyncTick.load());
             return;
