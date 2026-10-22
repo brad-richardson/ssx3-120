@@ -41,5 +41,46 @@ void register_ps2_ssx3_quick_play_direct_tests()
                       "Back outside the ready stage stays stock");
             t.IsFalse(qpBackTakesLogoff(kBack, false, false),
                       "Back on foreign filter off-stage stays stock");
+        });
+        tc.Run("Online Main return takes Logoff whatever dismissed it", [](TestCase &t)
+               {
+            // P17/P22: the accept SHOWS the stock Online Main again. The
+            // dismiss caller (0x1a9618 vs 0x1d51dc), the ignored second arg
+            // and the filter's parent all vary run to run: only the shown
+            // state matching entry's covered state counts.
+            constexpr uint32_t kOnlineMain = 0xb853a0u;
+            t.IsTrue(qpOnlineMainReturnTakesLogoff(kOnlineMain, true, kOnlineMain),
+                     "reshown Online Main must take Logoff");
+            t.IsFalse(qpOnlineMainReturnTakesLogoff(0xbc4240u, true, kOnlineMain),
+                      "entry switch (filter show) stays stock");
+            t.IsFalse(qpOnlineMainReturnTakesLogoff(kOnlineMain, false, kOnlineMain),
+                      "reshown Online Main off-stage stays stock");
+            t.IsFalse(qpOnlineMainReturnTakesLogoff(kOnlineMain, true, 0u),
+                      "no recorded entry state stays stock");
+            t.IsFalse(qpOnlineMainReturnTakesLogoff(kOnlineMain, true, 0xbc3b60u),
+                      "a different recorded state stays stock");
+            t.IsFalse(qpOnlineMainReturnTakesLogoff(0u, true, kOnlineMain),
+                      "null shown state stays stock");
+        });
+        tc.Run("silent-strand fresh show takes one Logoff attempt", [](TestCase &t)
+               {
+            // P34: pair torn with no dialog; the strand's Online Main is a
+            // fresh live object. All guards true -> attempt exactly once.
+            t.IsTrue(qpStrandLogoffReady(true, true, false, true, true, false, false),
+                     "fresh live non-pair show with dead pair must attempt");
+            t.IsFalse(qpStrandLogoffReady(true, true, false, true, true, false, true),
+                      "an evaluated show must not attempt again");
+            t.IsFalse(qpStrandLogoffReady(true, false, false, true, true, false, false),
+                      "live pair must stay stock");
+            t.IsFalse(qpStrandLogoffReady(true, true, true, true, true, false, false),
+                      "dialog up must stay stock (never preempt: P24)");
+            t.IsFalse(qpStrandLogoffReady(true, true, false, false, true, false, false),
+                      "stale show must stay stock");
+            t.IsFalse(qpStrandLogoffReady(true, true, false, true, false, false, false),
+                      "dead shown object must stay stock (P27)");
+            t.IsFalse(qpStrandLogoffReady(true, true, false, true, true, true, false),
+                      "own pair show must stay stock");
+            t.IsFalse(qpStrandLogoffReady(false, true, false, true, true, false, false),
+                      "off-stage must stay stock");
         }); });
 }

@@ -19,7 +19,9 @@ PS2Runtime::RecompiledFunction drawOriginal{}, filterOriginal{}, switchOriginal{
 enum class Stage { Idle, Connect, Auth, Persona, RootQueued, Queued, Ready, Leaving, Failed };
 struct State {
     Stage stage = Stage::Idle;
-    uint32_t menu = 0, ui = 0, config = 0, root = 0, popup = 0, menuScreen = 0;
+    uint32_t menu = 0, ui = 0, config = 0, root = 0, popup = 0, menuScreen = 0, below = 0, stranded = 0;
+    uint32_t pairRoot = 0, dlgFired = 0, lastShown = 0, lastShownTick = 0, strandAttempted = 0;
+    uint32_t strandEvalLogged = 0;
     uint64_t tap = 0, lastTick = 0, injections = 0, rootRetired = 0;
     std::chrono::steady_clock::time_point started{};
 } state;
@@ -28,6 +30,9 @@ uint32_t rd(const uint8_t *ram, uint32_t a) {
 }
 void wr(uint8_t *ram, uint32_t a, uint32_t v) { if (a <= PS2_RAM_SIZE - 4) std::memcpy(ram+a, &v, 4); }
 bool object(uint32_t p, uint32_t n) { return p >= 0x10000 && p <= PS2_RAM_SIZE - n; }
+// qp-label-2 menu words (EE RAM u32): main 0x053da6c, sub 0x053dc18.
+// The link-death dialog reads 0x5/0x8; healthy sessions never show 0x5.
+constexpr uint32_t kMenuMain = 0x053da6cu, kMenuSub = 0x053dc18u;
 void reg(R5900Context *c, int r, uint32_t v) { c->r[r] = _mm_set_epi64x(0, static_cast<int32_t>(v)); }
 uint64_t tick(PS2Runtime *r) { return r->memory().gs().vsyncTick.load(std::memory_order_relaxed); }
 void log(PS2Runtime *r, const char *event, uint32_t value=0) {
@@ -152,6 +157,8 @@ void continuation(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
         state.stage=Stage::Ready; log(r,"filter-ready"); finish(ram,c); break;
     case 35:
         state.stage=Stage::Queued; log(r,"root-and-filter-queued"); finish(ram,c); break;
+    case 50:
+        log(r,"strand-logoff-returned",result); finish(ram,c); break;
     default: fail(ram,c,r,"unknown-continuation"); break;
     }
 }
@@ -206,6 +213,14 @@ template<uint32_t Pc> void closeHook(uint8_t *ram, R5900Context *c, PS2Runtime *
     // 0x39ce98 runs unchanged and Main's widget timeline events stay inert
     // until the queue retires it (case 34 reattaches).
     const auto screen=getRegU32(c,4);
+    // Part 2 (a) teardown-hook probe, record-only: at link death the entry
+    // pair is already torn (P27/P29). Log every close of our pair, and every
+    // close while Ready with its caller, to identify the death-time closer.
+    // No behavior change: always falls through to the original below.
+    if (screen != 0 && (state.stage==Stage::Ready || screen==state.popup || screen==state.root)) {
+        log(r, Pc==0x39ce48 ? "teardown-close-48" : "teardown-close-98", screen);
+        log(r, "teardown-close-ra", getRegU32(c,31));
+    }
     if (Pc==0x39ce48 && object(screen,0xd4) && rd(ram,screen+0xd0)==state.menu &&
         (state.stage==Stage::Connect || state.stage==Stage::Auth || state.stage==Stage::Persona)) {
         log(r,"deferred-menu-close",getRegU32(c,31));
@@ -228,8 +243,33 @@ void drawHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
     drawOriginal(ram,c,r);
 }
 void switchHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
-    // 0x1a8a40 replaces the top online state (Matchup, or Main Menu below);
-    // after it the root only plays its close.
+    // 0x1a8a40 shows a new top online state; the second arg is ignored by the
+    // switch itself. Entry shows our filter (caller 0x1c1b0c); a later switch
+    // is the disconnect strand coming back.
+    // qp-cancel-1 Part 2: any connection-lost accept SHOWS the stock Online
+    // Main Menu again — that landing is the strand, whatever face or caller
+    // dismissed the dialog. Only record it; the switch runs stock. Entry's
+    // covered state is recorded to recognize the return; anything else stays
+    // stock. (P24/P26/P32: every 0x1c0138 route from the strand is dead —
+    // stock-OnlineMain Logoff no-ops, torn-root Logoff is unsafe, the UI
+    // transplant corrupts the strand. The back-out probe P30/P33 decides the
+    // route home.)
+    const auto shown=getRegU32(c,4), ra=getRegU32(c,31);
+    if (ra==0x1c1b0c && state.stage==Stage::Ready) {
+        state.below=getRegU32(c,5);
+        state.pairRoot=state.root;
+    }
+    // Part 2 (a): record EVERY top-state show while Ready with its tick, so
+    // padHook can tell a fresh post-tear strand show from a stale pointer.
+    // Record-only (one line per switch); the switch itself runs stock.
+    if (state.stage==Stage::Ready && shown != 0u) {
+        state.lastShown=shown; state.lastShownTick=tick(r);
+        log(r,"strand-switch",shown);
+    }
+    if (ps2_quick_play_direct::qpOnlineMainReturnTakesLogoff(shown, state.stage==Stage::Ready, state.below) &&
+        object(shown,0x6d0)) {
+        state.stranded=shown; log(r,"stranded-online-main",shown);
+    }
     if (state.root && !state.rootRetired &&
         (state.stage==Stage::Ready || state.stage==Stage::Leaving)) state.rootRetired=tick(r);
     switchOriginal(ram,c,r);
@@ -258,6 +298,69 @@ void filterHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
 }
 void padHook(uint8_t *ram, R5900Context *c, PS2Runtime *r) {
     const auto returnPc=getRegU32(c,31);
+    // Death telemetry: the link-death words (0x5/0x8) appear with the death
+    // handling, at which point the entry pair is already torn (P27/P29) — so
+    // this only records the moment, one shot per entry.
+    if (state.stage==Stage::Ready && !state.dlgFired &&
+        rd(ram,kMenuMain)==0x5u && rd(ram,kMenuSub)==0x8u) {
+        state.dlgFired=1; log(r,"dialog-pair-torn");
+    }
+    // Part 2 (a) fix candidate: one deferred 0x1c0138 on a FRESH post-tear
+    // strand object (P34: silent face, pair slot ptr=0, cross rebuilds a live
+    // Online Main the entry-matching detector misses). Guards (pure gate
+    // qpStrandLogoffReady): ready, pair vtbl flipped dead, no dialog up,
+    // switch within the last 600 ticks, shown live and not our pair, once.
+    // begin()+return skips the pad leaf for one tick (mainHook precedent).
+    // P26 no-op or wrong-landing verdicts come from the leg, not here.
+    if (state.stage==Stage::Ready) {
+        const auto now0=tick(r);
+        const bool pairDead = state.pairRoot != 0u && rd(ram,state.pairRoot+8) != 0x46ad48u;
+        const bool dialogUp = rd(ram,kMenuMain)==0x5u && rd(ram,kMenuSub)==0x8u;
+        const bool fresh = state.lastShown != 0u && now0 >= state.lastShownTick &&
+            now0-state.lastShownTick <= 600u;
+        // P37: the fresh strand Online Main is sane but its vtbl is not our
+        // root's 0x46ad48, so equality is the wrong liveness test. Sanity =
+        // bounds + non-null mapped vtbl + none of our three pair members
+        // (root, pairRoot, popup: the torn-pair call of P27 is excluded).
+        const uint32_t shownVtbl = state.lastShown != 0u && object(state.lastShown,0x10u) ?
+            rd(ram,state.lastShown+8) : 0u;
+        const bool sane = state.lastShown != 0u && object(state.lastShown,0x6d0u) &&
+            shownVtbl != 0u && object(shownVtbl,0x40u);
+        const bool isPair = state.lastShown != 0u &&
+            (state.lastShown==state.pairRoot || state.lastShown==state.root ||
+             state.lastShown==state.popup);
+        const bool evaluated = state.lastShown != 0u && state.strandAttempted==state.lastShown;
+        // One guard-vector snapshot per show while anything is interesting
+        // (pair dead, dialog up, or fresh show): bits P=1 D=2 F=4 L=8 I=16.
+        // Tells exactly which guard blocks when no attempt fires (P35).
+        if (state.lastShown != 0u && state.strandEvalLogged != state.lastShown &&
+            (pairDead || dialogUp || fresh)) {
+            state.strandEvalLogged = state.lastShown;
+            const uint32_t vec = (pairDead?1u:0u) | (dialogUp?2u:0u) | (fresh?4u:0u) |
+                (sane?8u:0u) | (isPair?16u:0u);
+            log(r,"strand-eval",vec);
+            log(r,"strand-eval-vt",shownVtbl);
+        }
+        if (ps2_quick_play_direct::qpStrandLogoffReady(true, pairDead, dialogUp, fresh,
+                                                       sane, isPair, evaluated)) {
+            state.strandAttempted=state.lastShown;
+            const auto child=rd(ram,state.lastShown+0x69c);
+            if (object(child,0x10u) && begin(ram,c,0x1c0138,50,state.lastShown,child)) {
+                reg(c,6,0xf);
+                state.stage=Stage::Leaving;
+                log(r,"strand-logoff-attempt",state.lastShown); return;
+            }
+            log(r,"strand-logoff-skipped",state.lastShown);
+        }
+    }
+    // qp-cancel-1 Part 2: the strand was recorded by switchHook (Online Main
+    // reshown while Ready). P26/P32: every 0x1c0138 route is dead here —
+    // stock-Online Main Logoff no-ops, torn-root Logoff is unsafe, and the UI
+    // transplant corrupts the strand into a re-dialog loop. So record only:
+    // the back-out probe (P30/P33) decides the route home.
+    if (state.stage==Stage::Ready && state.stranded) {
+        state.stranded=0; log(r,"strand-stock");
+    }
     padOriginal(ram,c,r);
     // The original pad glue is an HLE leaf. A chained Tricky refresh can
     // redirect it; do not nest another continuation over that redirect.
