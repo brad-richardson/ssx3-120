@@ -711,9 +711,34 @@ def run(step, *cmd, env=None, cwd=None, log=None):
 def check(path, expect, label):
     got = sha256(path)
     if expect and not got.startswith(expect) and got != expect:
+        # tk-bright-1 lane bracket: record variant SHAs instead of aborting.
+        if os.environ.get('TK_BRIGHT_UNGATED', ''):
+            print(f'{label} UNGATED:\n  got    {got}\n  expect {expect}',
+                  flush=True)
+            return got
         raise SystemExit(f'{label} MISMATCH:\n  got    {got}\n  expect {expect}')
     print(f'{label} ok {got[:16]}', flush=True)
     return got
+
+
+def bright_alpha(extra, course):
+    """tk-bright-1 lane: bracket lightmap alpha for the listed courses only.
+
+    TK_LM_ALPHA_SCALE replaces the recipe --lm-alpha-scale value; other
+    courses and the unset default keep the committed recipe verbatim.
+    """
+    want = os.environ.get('TK_LM_ALPHA_SCALE', '')
+    courses = os.environ.get('TK_LM_ALPHA_COURSES', 'elys,untrack').split(',')
+    if not want or course not in courses:
+        return extra
+    out = list(extra)
+    for i, a in enumerate(out):
+        if a == '--lm-alpha-scale' and i + 1 < len(out):
+            out[i + 1] = want
+    if out != list(extra):
+        print(f'{course} terrain: --lm-alpha-scale {want} (lane bracket)',
+              flush=True)
+    return out
 
 
 class Chain:
@@ -923,7 +948,7 @@ class Chain:
         out.parent.mkdir(parents=True, exist_ok=True)
         L = r['terrain_L']
         fmt = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
-        extra = [a.format(**fmt) for a in r['terrain_extra']]
+        extra = bright_alpha([a.format(**fmt) for a in r['terrain_extra']], c)
         # Workdir scratch (same convention as the scenery rungs above):
         # all terrain tools take --tmp, never the lane defaults.
         extra += ['--tmp', str(out.parent / 'tmp')]
@@ -973,7 +998,7 @@ class Chain:
         tout = tdir / f'{c.upper()}.BIG'
         L = r['terrain_L']
         fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
-        tex = [a.format(**fex) for a in r['terrain_extra']]
+        tex = bright_alpha([a.format(**fex) for a in r['terrain_extra']], c)
         run('sg-terrain', sys.executable, self.T / r['terrain_tool'],
             out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
@@ -1018,7 +1043,7 @@ class Chain:
         tout = tdir / f'{c.upper()}.BIG'
         L = r['terrain_L']
         fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
-        tex = [a.format(**fex) for a in r['terrain_extra']]
+        tex = bright_alpha([a.format(**fex) for a in r['terrain_extra']], c)
         run('cand-terrain', sys.executable, self.T / r['terrain_tool'],
             out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
@@ -1105,7 +1130,7 @@ class Chain:
         tout = tdir / f'{c.upper()}.BIG'
         L = r['terrain_L']
         fex = dict(donor=ddir, course=c.upper(), data=self.T / 'data')
-        tex = [a.format(**fex) for a in r['terrain_extra']]
+        tex = bright_alpha([a.format(**fex) for a in r['terrain_extra']], c)
         run('finalw-terrain', sys.executable, self.T / r['terrain_tool'],
             out, bdir / 'experiment.json', ddir / f"{r['donor']}.pbd",
             ddir / f"{r['donor']}.ssh", ddir / L,
